@@ -98,7 +98,7 @@ class TouchControls {
   private leftEl: HTMLDivElement
   private rightEl: HTMLDivElement
 
-  constructor(private canvas: HTMLCanvasElement, private input: InputManager) {
+  constructor(_: HTMLCanvasElement, private input: InputManager) {
     // Only enable on touch-capable (coarse pointer) screens
     const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
     if (!coarse) {
