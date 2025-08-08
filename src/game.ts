@@ -584,6 +584,7 @@ class Game {
       setTimeout(() => (optBtn.innerHTML = '<strong>Options</strong>'), 1200)
     }
     chgBtn.onclick = () => this.showChangelog()
+    this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
     this.changelogOverlay = document.createElement('div') as HTMLDivElement
@@ -1166,22 +1167,24 @@ class Game {
       const gp = this.input.getActiveGamepad()
       const a = !!gp && (gp.buttons[0]?.pressed || gp.buttons[9]?.pressed)
       const enter = !!this.input.keys['enter']
-      const left = !!gp && (gp.buttons[14]?.pressed || (this.input.axesLeft.x < -0.6))
-      const right = !!gp && (gp.buttons[15]?.pressed || (this.input.axesLeft.x > 0.6))
+      const dpadLeft = !!gp && gp.buttons[14]?.pressed
+      const dpadRight = !!gp && gp.buttons[15]?.pressed
+      const axisX = this.input.axesLeft.x
+      const moveAxis = Math.abs(axisX) > 0.6 ? Math.sign(axisX) : 0
       const cards = Array.from(this.titleOverlay.querySelectorAll('.card')) as HTMLButtonElement[]
-      const currentIndex = cards.findIndex((c) => c.classList.contains('selected'))
-      if (right) {
-        const next = Math.min(cards.length - 1, currentIndex + 1)
-        cards.forEach((c, i) => c.classList.toggle('selected', i === next))
+      this.uiNavCooldown = Math.max(0, this.uiNavCooldown - dt)
+      // Stick navigation with cooldown
+      if (this.uiNavCooldown <= 0 && moveAxis !== 0) {
+        this.uiNavCooldown = 0.25
+        this.uiSelectIndex = (this.uiSelectIndex + moveAxis + cards.length) % cards.length
       }
-      if (left) {
-        const prev = Math.max(0, currentIndex - 1)
-        cards.forEach((c, i) => c.classList.toggle('selected', i === prev))
-      }
-      if (a || enter) {
-        const selected = cards.find((c) => c.classList.contains('selected')) || cards[0]
-        selected.click()
-      }
+      // D-pad edge navigation
+      if (dpadLeft && !this.uiDpadPrevLeft) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
+      if (dpadRight && !this.uiDpadPrevRight) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
+      cards.forEach((c, i) => c.classList.toggle('selected', i === this.uiSelectIndex))
+      if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
+      this.uiDpadPrevLeft = dpadLeft
+      this.uiDpadPrevRight = dpadRight
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())

@@ -121,6 +121,10 @@ html, body {
   padding: 14px;
   color: #0b1020;
   background: linear-gradient(#bfc6d1, #9aa4b3);
+  image-rendering: pixelated;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 2px, rgba(0,0,0,0.04) 2px 4px),
+    linear-gradient(#bfc6d1, #9aa4b3);
   border: 1px solid #2a2f39;
   border-radius: 4px;
   text-align: left;
