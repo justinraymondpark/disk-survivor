@@ -46,6 +46,10 @@ export class AudioManager {
     this.unlocked = true
     if (!this.musicEl && this.currentTheme) this.startMusic(this.currentTheme)
     if (this.musicEl && this.musicEl.paused) this.musicEl.play().catch(() => {})
+    // Re-apply current volume settings to ensure UI and playback match
+    this.setMasterVolume(this.masterVolume)
+    this.setMusicVolume(this.musicVolume)
+    this.setSfxVolume(this.sfxVolume)
   }
 
   stopMusic() {
@@ -137,11 +141,12 @@ export class AudioManager {
     src.stop(ctx.currentTime + duration)
   }
 
-  playShoot() { this.click(950, 0.035, 0.05, 'square') }
-  playPickup() { this.click(1700, 0.05, 0.05, 'triangle'); setTimeout(() => this.click(2000, 0.05, 0.05, 'triangle'), 70) }
-  playEnemyDown() { this.noiseBurst(0.03, 0.05); this.click(300, 0.04, 0.08, 'square') }
-  playImpact() { this.noiseBurst(0.018, 0.04); this.click(520, 0.028, 0.06, 'square') }
-  playLevelUp() { this.click(880, 0.1, 0.08, 'square'); setTimeout(() => this.click(1175, 0.1, 0.08, 'square'), 90); setTimeout(() => this.click(1480, 0.12, 0.08, 'square'), 180) }
+  // Louder, punchier defaults
+  playShoot() { this.click(950, 0.045, 0.16, 'square') }
+  playPickup() { this.click(1700, 0.06, 0.14, 'triangle'); setTimeout(() => this.click(2000, 0.06, 0.12, 'triangle'), 70) }
+  playEnemyDown() { this.noiseBurst(0.03, 0.12); this.click(300, 0.05, 0.18, 'square') }
+  playImpact() { this.noiseBurst(0.02, 0.08); this.click(520, 0.035, 0.12, 'square') }
+  playLevelUp() { this.click(880, 0.1, 0.14, 'square'); setTimeout(() => this.click(1175, 0.1, 0.14, 'square'), 90); setTimeout(() => this.click(1480, 0.12, 0.14, 'square'), 180) }
   playOuch() {
     const ctx = this.ensure()
     const t0 = ctx.currentTime
@@ -150,13 +155,13 @@ export class AudioManager {
     osc.type = 'triangle'
     osc.frequency.setValueAtTime(700, t0)
     osc.frequency.exponentialRampToValueAtTime(220, t0 + 0.14)
-    gain.gain.setValueAtTime(0.22, t0)
+    gain.gain.setValueAtTime(0.3, t0)
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16)
     osc.connect(gain).connect(this.sfxGain!)
     osc.start()
     osc.stop(t0 + 0.18)
   }
-  playGameOver() { this.click(392, 0.18, 0.1, 'sawtooth'); setTimeout(() => this.click(466, 0.18, 0.1, 'sawtooth'), 140); setTimeout(() => this.click(523, 0.22, 0.1, 'sawtooth'), 280) }
+  playGameOver() { this.click(392, 0.2, 0.12, 'sawtooth'); setTimeout(() => this.click(466, 0.2, 0.12, 'sawtooth'), 140); setTimeout(() => this.click(523, 0.24, 0.12, 'sawtooth'), 280) }
 }
 
 function clamp01(n: number) { return Math.max(0, Math.min(1, n)) }
