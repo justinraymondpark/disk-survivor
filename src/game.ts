@@ -51,10 +51,17 @@ class InputManager {
     if (!gp) return
     const deadZone = 0.15
     const dz = (v: number) => (Math.abs(v) < deadZone ? 0 : v)
-    this.axesLeft.x = dz(gp.axes[0] ?? 0)
-    this.axesLeft.y = dz(gp.axes[1] ?? 0)
-    this.axesRight.x = dz(gp.axes[2] ?? 0)
-    this.axesRight.y = dz(gp.axes[3] ?? 0)
+    const currLX = this.axesLeft.x, currLY = this.axesLeft.y
+    const currRX = this.axesRight.x, currRY = this.axesRight.y
+    const gpLX = dz(gp.axes[0] ?? 0)
+    const gpLY = dz(gp.axes[1] ?? 0)
+    const gpRX = dz(gp.axes[2] ?? 0)
+    const gpRY = dz(gp.axes[3] ?? 0)
+    // Merge: prefer whichever input has the stronger absolute value per axis
+    this.axesLeft.x = Math.abs(gpLX) > Math.abs(currLX) ? gpLX : currLX
+    this.axesLeft.y = Math.abs(gpLY) > Math.abs(currLY) ? gpLY : currLY
+    this.axesRight.x = Math.abs(gpRX) > Math.abs(currRX) ? gpRX : currRX
+    this.axesRight.y = Math.abs(gpRY) > Math.abs(currRY) ? gpRY : currRY
   }
 
   getActiveGamepad(): Gamepad | null {
@@ -570,6 +577,7 @@ class Game {
     titleWrap.appendChild(img)
     titleWrap.appendChild(fallbackText)
     const btnRow = document.createElement('div')
+    btnRow.className = 'title-buttons'
     btnRow.style.display = 'flex'
     btnRow.style.gap = '14px'
     const startBtn = document.createElement('button') as HTMLButtonElement
