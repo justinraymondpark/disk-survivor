@@ -20,15 +20,16 @@ export const handler: Handler = async (event) => {
 
   try {
     const store = getStore({ name: BUCKET })
-    const json = await store.get(KEY, { type: 'json' }) as Stored | null
-    const entries = (json?.entries ?? []) as Entry[]
+    const json = (await store.get(KEY, { type: 'json' })) as Stored | null
+    const entries = Array.isArray(json?.entries) ? (json!.entries as Entry[]) : []
     const sorted = [...entries].sort((a, b) => {
       if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived
       return b.score - a.score
     }).slice(0, TOP_N)
     return ok(JSON.stringify({ entries: sorted }), 200, 'application/json')
-  } catch (e) {
-    return error('Failed to fetch leaderboard')
+  } catch (e: any) {
+    console.error('leaderboard-top error:', e?.message || e)
+    return error(`Failed to fetch leaderboard: ${e?.message || 'unknown error'}`)
   }
 }
 

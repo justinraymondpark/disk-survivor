@@ -3,7 +3,7 @@ import { getStore } from '@netlify/blobs'
 
 const BUCKET = 'leaderboard'
 const KEY = 'entries.json'
-const TOP_N = 100 // keep a rolling top set server-side
+const TOP_N = 100
 
 interface Entry {
   name: string
@@ -31,8 +31,8 @@ export const handler: Handler = async (event) => {
 
     const trimmedName = name.slice(0, 20)
 
-    const current = await store.get(KEY, { type: 'json' }) as Stored | null
-    const entries: Entry[] = (current?.entries ?? []) as Entry[]
+    const current = (await store.get(KEY, { type: 'json' })) as Stored | null
+    const entries: Entry[] = Array.isArray(current?.entries) ? (current!.entries as Entry[]) : []
 
     entries.push({
       name: trimmedName,
@@ -41,7 +41,6 @@ export const handler: Handler = async (event) => {
       createdAt: new Date().toISOString(),
     })
 
-    // keep top set, sorted by time desc, tiebreak score desc
     const sorted = entries.sort((a, b) => {
       if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived
       return b.score - a.score
@@ -50,12 +49,13 @@ export const handler: Handler = async (event) => {
     await store.set(KEY, JSON.stringify({ entries: sorted }), { contentType: 'application/json' })
 
     return ok(JSON.stringify({ ok: true }))
-  } catch (e) {
-    return error('Failed to submit leaderboard')
+  } catch (e: any) {
+    console.error('leaderboard-submit error:', e?.message || e)
+    return error(`Failed to submit leaderboard: ${e?.message || 'unknown error'}`)
   }
 }
 
-function ok(body: string, status = 200, contentType = 'application/json') {
+function ok(body: string, status = 200, contentType: string = 'application/json') {
   return {
     statusCode: status,
     headers: corsHeaders(contentType),
