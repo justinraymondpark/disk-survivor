@@ -502,8 +502,11 @@ class Game {
 
     this.input = new InputManager(canvas)
 
-    // Load options
-    try { this.autoFire = localStorage.getItem('opt.autofire') === '1' } catch {}
+    // Load options without clobbering defaults
+    try {
+      const savedAF = localStorage.getItem('opt.autofire')
+      if (savedAF !== null) this.autoFire = savedAF === '1'
+    } catch {}
 
     window.addEventListener('resize', () => this.onResize())
     this.onResize()
@@ -2027,34 +2030,45 @@ class Game {
   }
 
   private async showChangelog() {
+    const wrap = document.createElement('div')
+    wrap.className = 'card'
+    wrap.style.minWidth = '420px'
+    wrap.style.maxWidth = '70vw'
+    wrap.style.maxHeight = '70vh'
+    wrap.style.overflow = 'auto'
+    const title = document.createElement('strong')
+    title.textContent = 'Change Log'
+    const desc = document.createElement('div')
+    desc.className = 'carddesc'
+    desc.style.margin = '8px 0 12px'
+    desc.textContent = 'Recent versions and notes'
+    const pre = document.createElement('pre')
+    ;(pre.style as any).whiteSpace = 'pre-wrap'
+    pre.style.fontFamily = 'ui-monospace, monospace'
+    pre.style.fontSize = '12px'
+    pre.style.lineHeight = '1.4'
+    const btnRow = document.createElement('div')
+    btnRow.style.display = 'flex'
+    btnRow.style.justifyContent = 'flex-end'
+    btnRow.style.marginTop = '12px'
+    const closeBtn = document.createElement('button') as HTMLButtonElement
+    closeBtn.className = 'card'
+    closeBtn.style.width = 'auto'
+    closeBtn.style.minHeight = 'unset'
+    closeBtn.style.padding = '6px 10px'
+    closeBtn.innerHTML = '<strong>Close</strong>'
+    closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
+    btnRow.appendChild(closeBtn)
+    wrap.append(title, desc, pre, btnRow)
+    this.changelogOverlay.innerHTML = ''
+    this.changelogOverlay.appendChild(wrap)
+    this.changelogOverlay.style.display = 'flex'
     try {
       const res = await fetch('/CHANGELOG.md')
       const text = await res.text()
-      const safe = escapeHtml(text)
-      this.changelogOverlay.innerHTML = `
-        <div class="card" style="min-width:420px; max-width:70vw; max-height:70vh; overflow:auto; white-space:pre-wrap;">
-          <strong>Change Log</strong>
-          <div class="carddesc" style="margin:8px 0 12px;">Recent versions and notes</div>
-          <div style="font-family: ui-monospace, monospace; font-size: 12px; line-height:1.4">${safe}</div>
-          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
-            <button id="changelog-close" class="card" style="width:auto; min-height:unset; padding:6px 10px;"><strong>Close</strong></button>
-          </div>
-        </div>
-      `
-      const closeBtn = this.changelogOverlay.querySelector('#changelog-close') as HTMLButtonElement
-      if (closeBtn) closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
-      this.changelogOverlay.style.display = 'flex'
+      pre.textContent = text
     } catch {
-      this.changelogOverlay.innerHTML = `
-        <div class="card" style="min-width:320px;">
-          <strong>Change Log</strong>
-          <div class="carddesc" style="margin-top:8px;">Unable to load CHANGELOG.md</div>
-          <button id="changelog-close" class="card" style="margin-top:10px;"><strong>Close</strong></button>
-        </div>
-      `
-      const closeBtn = this.changelogOverlay.querySelector('#changelog-close') as HTMLButtonElement
-      if (closeBtn) closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
-      this.changelogOverlay.style.display = 'flex'
+      pre.textContent = 'Unable to load CHANGELOG.md'
     }
   }
 
