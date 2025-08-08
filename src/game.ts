@@ -159,7 +159,7 @@ type Enemy = {
 
 type Pickup = {
   mesh: THREE.Mesh
-  kind: 'heal' | 'xp'
+  kind: 'heal' | 'xp' | 'vacuum'
   alive: boolean
   xpValue?: number
 }
@@ -285,6 +285,9 @@ class Game {
   shieldLevel = 0
   // Dot Matrix side bullets level
   sideBulletDamageMultiplier = 1
+  invulnTimer = 0
+  invulnDuration = 1.0
+  xpGainMultiplier = 1.0
 
   constructor(private root: HTMLElement) {
     const canvas = document.createElement('canvas')
@@ -542,7 +545,13 @@ class Game {
   dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp') {
     // Only drops: Heal (rare) or XP bundles
     const roll = Math.random()
-    const kind: Pickup['kind'] = forceKind ?? (roll < 0.3 ? 'heal' : 'xp')
+    let kind: Pickup['kind']
+    if (forceKind) kind = forceKind
+    else {
+      if (roll < 0.06) kind = 'vacuum' // rarer than chicken
+      else if (roll < 0.36) kind = 'heal'
+      else kind = 'xp'
+    }
     let mesh: THREE.Mesh
     if (kind === 'heal') {
       // Billboard quad with a simple chicken/pie emoji
@@ -555,6 +564,9 @@ class Game {
       ctx.fillText('🍗', 32, 36)
       const tex = new THREE.CanvasTexture(canvas)
       mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshBasicMaterial({ map: tex, transparent: true }))
+    } else if (kind === 'vacuum') {
+      // Glowing blue cube
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0x66ccff }))
     } else {
       // XP bundle cube (purple)
       mesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), new THREE.MeshBasicMaterial({ color: 0xb388ff }))
@@ -562,7 +574,7 @@ class Game {
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
     this.scene.add(mesh)
-    const xpValue = kind === 'heal' ? undefined : (Math.random() < 0.5 ? 3 : 5)
+    const xpValue = kind === 'xp' ? (Math.random() < 0.5 ? 3 : 5) : undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
 
@@ -571,6 +583,22 @@ class Game {
       const heal = Math.ceil(this.player.maxHp * 0.25)
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
       this.updateHPBar()
+    } else if (p.kind === 'vacuum') {
+      // Pull in all current XP orbs and XP bundles instantly
+      for (const orb of this.xpOrbs) {
+        if (!orb.alive) continue
+        orb.alive = false
+        this.scene.remove(orb.mesh)
+        this.gainXP(orb.value)
+      }
+      for (const pk of this.pickups) {
+        if (!pk.alive) continue
+        if (pk.kind === 'xp' && pk.xpValue) {
+          pk.alive = false
+          this.scene.remove(pk.mesh)
+          this.gainXP(pk.xpValue)
+        }
+      }
     }
     if (p.kind === 'xp' && p.xpValue) {
       this.gainXP(p.xpValue)
@@ -580,7 +608,7 @@ class Game {
   }
 
   updateHud() {
-    this.hud.textContent = `Lvl ${this.level}  XP ${this.xp}/${this.xpToLevel}  Score ${this.score}  Time ${(this.gameTime | 0)}s`
+    this.hud.textContent = `Lvl ${this.level}  XP ${this.xp.toFixed(1)}/${this.xpToLevel.toFixed(1)}  Score ${this.score}  Time ${(this.gameTime | 0)}s`
   }
 
   updateHPBar() {
@@ -657,6 +685,7 @@ class Game {
     addUpgrade('DMA Burst', 'Burst fire', '💥', () => (this.burstCount = Math.min(5, this.burstCount + 1)))
     addUpgrade('Magnet Coil', 'Pull XP farther', '🧲', () => (this.xpMagnetRadius = Math.min(5, this.xpMagnetRadius + 0.7)))
     addUpgrade('Piercing ISA', '+1 projectile pierce', '🧷', () => (this.projectilePierce = Math.min(3, this.projectilePierce + 1)))
+    addUpgrade('XP Amplifier', 'Gain more XP from drops', '📈', () => (this.xpGainMultiplier = Math.min(3.0, this.xpGainMultiplier * 1.1)))
 
     // Weapon level-ups appear as choices if already owned
     if (this.ownedWeapons.has('CRT Beam')) pool.push({ title: 'CRT Beam (Level up)', desc: '+1 length, +2 DPS, shorter off-time', icon: '📺', apply: () => this.levelUpBeam() })
@@ -760,8 +789,9 @@ class Game {
   }
 
   gainXP(amount: number) {
-    this.xp += amount
-    this.showXPToast(`+${amount} XP`)
+    const gained = amount * this.xpGainMultiplier
+    this.xp += gained
+    this.showXPToast(`+${gained.toFixed(1)} XP`)
     if (this.xp >= this.xpToLevel) {
       this.xp -= this.xpToLevel
       this.level += 1
@@ -779,7 +809,7 @@ class Game {
     const el = this.xpBar.querySelector('#xpfill') as HTMLDivElement
     if (el) el.style.width = `${fill * 100}%`
     const lab = this.xpBar.querySelector('#xplabel') as HTMLDivElement
-    if (lab) lab.textContent = `${this.xp}/${this.xpToLevel}`
+    if (lab) lab.textContent = `${this.xp.toFixed(1)}/${this.xpToLevel.toFixed(1)}`
   }
 
   showXPToast(text: string) {
@@ -1285,18 +1315,21 @@ class Game {
 
       // Collide with player
       if (e.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.5) ** 2) {
-        e.alive = false
-        this.spawnExplosion(e.mesh)
-        if (e.face) this.scene.remove(e.face)
-        this.player.hp = Math.max(0, this.player.hp - 1)
-        this.updateHPBar()
-        this.audio.playOuch()
-        if (this.player.hp <= 0) {
-          this.onPlayerDeath()
-          return
+        if (this.invulnTimer <= 0) {
+          e.alive = false
+          this.spawnExplosion(e.mesh)
+          if (e.face) this.scene.remove(e.face)
+          this.player.hp = Math.max(0, this.player.hp - 1)
+          this.updateHPBar()
+          this.audio.playOuch()
+          if (this.player.hp <= 0) {
+            this.onPlayerDeath()
+            return
+          }
+          this.updateHud()
+          this.onEnemyDown()
+          this.invulnTimer = this.invulnDuration
         }
-        this.updateHud()
-        this.onEnemyDown()
       }
 
       // Face billboard towards player
