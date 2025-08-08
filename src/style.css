@@ -152,6 +152,19 @@ html, body {
 }
 .overlay .card.appear { animation: popFade 360ms cubic-bezier(.2,.8,.2,1) forwards; }
 
+/* Netscape-ish UI option (baseline styles we can expand later) */
+.ns-button {
+  background: linear-gradient(#bfc6d1, #9aa4b3);
+  border: 1px solid #2a2f39;
+  border-right-color: #0f1115;
+  border-bottom-color: #0f1115;
+  color: #0b1020;
+  font-weight: 600;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.35), inset -1px -1px 0 rgba(0,0,0,0.2);
+}
+.ns-button:hover { filter: brightness(1.06); }
+.ns-button:active { filter: brightness(0.95); }
+
 /* Disabled cards (click lock) */
 .overlay .card:disabled {
   opacity: 0.6;

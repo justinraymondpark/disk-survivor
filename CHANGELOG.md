@@ -5,6 +5,12 @@
 - Primary bullets now honor Piercing ISA upgrade
 - Use unique overlay class and avoid duplicate id usage
 
+## v0.1.3 (2025-08-08)
+
+- Louder SFX and softer default music mix; stronger impact/shoot/level-up
+- Pause: Resume button now clickable
+- Changelog loads from bundle in prod; newest entries appear first
+
 ## v0.1.2 (2025-08-08)
 
 - Scrollable Change Log modal with proper markdown-as-text rendering

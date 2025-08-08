@@ -405,7 +405,7 @@ class Game {
           </label>
         </div>
       </div>
-      <button class="card selected"><strong>Resume</strong></button>
+      <button id="btn-resume" class="card selected"><strong>Resume</strong></button>
     `
     this.root.appendChild(this.pauseOverlay)
     const hookSliders = () => {
@@ -416,6 +416,7 @@ class Game {
       const vmuVal = this.pauseOverlay.querySelector('#vol-music-val') as HTMLSpanElement
       const vsVal = this.pauseOverlay.querySelector('#vol-sfx-val') as HTMLSpanElement
       const af = this.pauseOverlay.querySelector('#opt-autofire') as HTMLInputElement
+      const resumeBtn = this.pauseOverlay.querySelector('#btn-resume') as HTMLButtonElement
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
         if (vmu && vmuVal) vmuVal.textContent = Number(vmu.value).toFixed(2)
@@ -425,6 +426,7 @@ class Game {
       if (vmu) vmu.oninput = () => { this.audio.setMusicVolume(Number(vmu.value)); syncVals() }
       if (vs) vs.oninput = () => { this.audio.setSfxVolume(Number(vs.value)); syncVals() }
       if (af) af.onchange = () => { this.autoFire = !!af.checked; try { localStorage.setItem('opt.autofire', this.autoFire ? '1' : '0') } catch {} }
+      if (resumeBtn) resumeBtn.onclick = () => { this.togglePause() }
       // Initialize slider positions from current defaults
       if (vm) vm.value = this.audio.getMasterVolume().toFixed(2)
       if (vmu) vmu.value = this.audio.getMusicVolume().toFixed(2)
@@ -2068,7 +2070,16 @@ class Game {
     this.changelogOverlay.appendChild(wrap)
     this.changelogOverlay.style.display = 'flex'
     try {
-      pre.textContent = String(changelogRaw ?? '')
+      // Ensure newest entries are first by simple section split if possible
+      const raw = String(changelogRaw ?? '')
+      const sections = raw.split(/\n## /g)
+      if (sections.length > 1) {
+        const head = sections.shift() || ''
+        const sorted = sections.map(s => '## ' + s.trim()).filter(Boolean)
+        pre.textContent = [sorted.join('\n\n'), head.trim()].filter(Boolean).join('\n\n')
+      } else {
+        pre.textContent = raw
+      }
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }

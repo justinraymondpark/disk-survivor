@@ -6,9 +6,9 @@ export class AudioManager {
   private unlocked = false
   private currentTheme: ThemeKey = 'default'
 
-  private masterVolume = 0.7
-  private musicVolume = 0.7
-  private sfxVolume = 0.6
+  private masterVolume = 0.9
+  private musicVolume = 0.5
+  private sfxVolume = 0.9
 
   private musicEl: HTMLAudioElement | null = null
   private musicReqId = 0
@@ -150,11 +150,11 @@ export class AudioManager {
   }
 
   // Louder, punchier defaults
-  playShoot() { this.click(950, 0.045, 0.16, 'square') }
-  playPickup() { this.click(1700, 0.06, 0.14, 'triangle'); setTimeout(() => this.click(2000, 0.06, 0.12, 'triangle'), 70) }
-  playEnemyDown() { this.noiseBurst(0.03, 0.12); this.click(300, 0.05, 0.18, 'square') }
-  playImpact() { this.noiseBurst(0.02, 0.08); this.click(520, 0.035, 0.12, 'square') }
-  playLevelUp() { this.click(880, 0.1, 0.14, 'square'); setTimeout(() => this.click(1175, 0.1, 0.14, 'square'), 90); setTimeout(() => this.click(1480, 0.12, 0.14, 'square'), 180) }
+  playShoot() { this.click(950, 0.045, 0.22, 'square') }
+  playPickup() { this.click(1700, 0.06, 0.20, 'triangle'); setTimeout(() => this.click(2000, 0.06, 0.18, 'triangle'), 70) }
+  playEnemyDown() { this.noiseBurst(0.03, 0.16); this.click(300, 0.05, 0.24, 'square') }
+  playImpact() { this.noiseBurst(0.02, 0.12); this.click(520, 0.035, 0.18, 'square') }
+  playLevelUp() { this.click(880, 0.1, 0.16, 'square'); setTimeout(() => this.click(1175, 0.1, 0.16, 'square'), 90); setTimeout(() => this.click(1480, 0.12, 0.16, 'square'), 180) }
   playOuch() {
     const ctx = this.ensure()
     const t0 = ctx.currentTime
@@ -163,7 +163,7 @@ export class AudioManager {
     osc.type = 'triangle'
     osc.frequency.setValueAtTime(700, t0)
     osc.frequency.exponentialRampToValueAtTime(220, t0 + 0.14)
-    gain.gain.setValueAtTime(0.3, t0)
+    gain.gain.setValueAtTime(0.4, t0)
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16)
     osc.connect(gain).connect(this.sfxGain!)
     osc.start()
