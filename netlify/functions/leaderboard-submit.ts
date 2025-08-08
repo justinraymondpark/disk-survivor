@@ -17,8 +17,10 @@ interface Stored { entries: Entry[] }
 function makeStore() {
   const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID
   const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_TOKEN
-  if (siteID && token) return getStore({ name: BUCKET, siteID, token })
-  return getStore({ name: BUCKET })
+  const manual = Boolean(siteID && token)
+  console.log('blobs config (submit):', { manual, siteIDPresent: !!siteID, tokenPresent: !!token })
+  if (manual) return getStore(BUCKET, { siteID, token })
+  return getStore(BUCKET)
 }
 
 export const handler: Handler = async (event) => {
