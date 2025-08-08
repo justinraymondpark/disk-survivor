@@ -165,19 +165,22 @@ class TouchControls {
       e.preventDefault()
     }
     const onEnd = (e: TouchEvent) => {
+      let handled = false
       for (const t of Array.from(e.changedTouches)) {
         if (t.identifier === this.leftId) {
           this.leftId = null
           this.leftEl.style.display = 'none'
           this.input.axesLeft.x = 0; this.input.axesLeft.y = 0
+          handled = true
         } else if (t.identifier === this.rightId) {
           this.rightId = null
           this.rightEl.style.display = 'none'
           this.input.axesRight.x = 0; this.input.axesRight.y = 0
           this.input.mouseDown = false
+          handled = true
         }
       }
-      e.preventDefault()
+      if (handled || this.isEnabled()) e.preventDefault()
     }
     window.addEventListener('touchstart', onStart, { passive: false })
     window.addEventListener('touchmove', onMove, { passive: false })

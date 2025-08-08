@@ -61,6 +61,13 @@ html, body {
   gap: 6px;
   z-index: 20;
 }
+
+/* Responsive layout: stack cards on narrow/tall screens; keep row on wide */
+@media (max-width: 520px), (max-height: 520px) and (orientation: portrait) {
+  .overlay { padding: 12px; }
+  .overlay .card { width: 90vw; max-width: 320px; }
+  .overlay .card + .card { margin-top: 10px; }
+}
 #inventory .slotgroup strong {
   display: block;
   font-size: 11px;
@@ -115,6 +122,8 @@ html, body {
   background: rgba(0, 0, 0, 0.45);
   z-index: 30;
 }
+/* Make overlay content clickable on touch */
+.overlay { pointer-events: auto; }
 .overlay .card {
   width: 260px;
   min-height: 120px;
