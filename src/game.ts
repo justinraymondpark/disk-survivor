@@ -241,6 +241,7 @@ class Game {
   overlay: HTMLDivElement
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
+  changelogOverlay: HTMLDivElement
   showTitle = true
   xpBar: HTMLDivElement
   currentTheme: Theme = 'default'
@@ -357,12 +358,12 @@ class Game {
 
     // Level-up overlay
     this.overlay = document.createElement('div') as HTMLDivElement
-    this.overlay.id = 'overlay'
+    this.overlay.className = 'overlay'
     this.root.appendChild(this.overlay)
 
     // Pause overlay
     this.pauseOverlay = document.createElement('div') as HTMLDivElement
-    this.pauseOverlay.id = 'overlay'
+    this.pauseOverlay.className = 'overlay'
     this.pauseOverlay.style.display = 'none'
     this.pauseOverlay.innerHTML = `
       <div class="card" style="min-width:320px;">
@@ -411,7 +412,7 @@ class Game {
 
     // Title overlay
     this.titleOverlay = document.createElement('div') as HTMLDivElement
-    this.titleOverlay.id = 'overlay'
+    this.titleOverlay.className = 'overlay'
     this.titleOverlay.style.display = 'flex'
     this.titleOverlay.style.flexDirection = 'column'
     this.titleOverlay.style.gap = '18px'
@@ -445,8 +446,12 @@ class Game {
     const optBtn = document.createElement('button') as HTMLButtonElement
     optBtn.className = 'card'
     optBtn.innerHTML = '<strong>Options</strong>'
+    const chgBtn = document.createElement('button') as HTMLButtonElement
+    chgBtn.className = 'card'
+    chgBtn.innerHTML = '<strong>Change Log</strong>'
     btnRow.appendChild(startBtn)
     btnRow.appendChild(optBtn)
+    btnRow.appendChild(chgBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -462,6 +467,13 @@ class Game {
       optBtn.innerHTML = '<strong>Options</strong><div class="carddesc">Coming soon</div>'
       setTimeout(() => (optBtn.innerHTML = '<strong>Options</strong>'), 1200)
     }
+    chgBtn.onclick = () => this.showChangelog()
+
+    // Changelog overlay (hidden by default)
+    this.changelogOverlay = document.createElement('div') as HTMLDivElement
+    this.changelogOverlay.className = 'overlay'
+    this.changelogOverlay.style.display = 'none'
+    this.root.appendChild(this.changelogOverlay)
 
     this.updateHud()
     this.updateHPBar()
@@ -537,7 +549,7 @@ class Game {
       mesh.position.copy(start).add(dir.clone().multiplyScalar(0.12))
       mesh.position.y = 0.5
       this.scene.add(mesh)
-      this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: 0, last: mesh.position.clone() })
+      this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: this.projectilePierce, last: mesh.position.clone() })
     }
     this.audio.playShoot()
   }
@@ -719,7 +731,7 @@ class Game {
   }
 
   isWeapon(name: string) {
-    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl'].includes(name)
+    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall'].includes(name)
   }
 
   addWeapon(name: string) {
@@ -1966,6 +1978,38 @@ class Game {
       `).join('') || '<div class="carddesc">No entries yet</div>'
     } catch {
       // Fallback: nothing
+    }
+  }
+
+  private async showChangelog() {
+    try {
+      const res = await fetch('/CHANGELOG.md')
+      const text = await res.text()
+      const safe = escapeHtml(text)
+      this.changelogOverlay.innerHTML = `
+        <div class="card" style="min-width:420px; max-width:70vw; max-height:70vh; overflow:auto; white-space:pre-wrap;">
+          <strong>Change Log</strong>
+          <div class="carddesc" style="margin:8px 0 12px;">Recent versions and notes</div>
+          <div style="font-family: ui-monospace, monospace; font-size: 12px; line-height:1.4">${safe}</div>
+          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <button id="changelog-close" class="card" style="width:auto; min-height:unset; padding:6px 10px;"><strong>Close</strong></button>
+          </div>
+        </div>
+      `
+      const closeBtn = this.changelogOverlay.querySelector('#changelog-close') as HTMLButtonElement
+      if (closeBtn) closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
+      this.changelogOverlay.style.display = 'flex'
+    } catch {
+      this.changelogOverlay.innerHTML = `
+        <div class="card" style="min-width:320px;">
+          <strong>Change Log</strong>
+          <div class="carddesc" style="margin-top:8px;">Unable to load CHANGELOG.md</div>
+          <button id="changelog-close" class="card" style="margin-top:10px;"><strong>Close</strong></button>
+        </div>
+      `
+      const closeBtn = this.changelogOverlay.querySelector('#changelog-close') as HTMLButtonElement
+      if (closeBtn) closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
+      this.changelogOverlay.style.display = 'flex'
     }
   }
 }

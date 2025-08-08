@@ -105,7 +105,7 @@ html, body {
   box-shadow: 0 0 8px #33d6a6;
 }
 
-#overlay {
+.overlay {
   position: fixed;
   inset: 0;
   display: none;
@@ -115,7 +115,7 @@ html, body {
   background: rgba(0, 0, 0, 0.45);
   z-index: 30;
 }
-#overlay .card {
+.overlay .card {
   width: 260px;
   min-height: 120px;
   padding: 14px;
@@ -127,19 +127,19 @@ html, body {
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial;
   cursor: pointer;
 }
-#overlay .card:hover {
+.overlay .card:hover {
   border-color: #63d2ff;
   box-shadow: 0 0 0 2px rgba(99, 210, 255, 0.15);
 }
-#overlay .card .cardrow {
+.overlay .card .cardrow {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
 }
-#overlay .card .cardicon { font-size: 18px; }
-#overlay .card .carddesc { opacity: 0.85; font-size: 13px; }
-#overlay .card.selected {
+.overlay .card .cardicon { font-size: 18px; }
+.overlay .card .carddesc { opacity: 0.85; font-size: 13px; }
+.overlay .card.selected {
   border-color: #8effe2;
   box-shadow: 0 0 0 2px rgba(142, 255, 226, 0.25);
 }
