@@ -1,3 +1,93 @@
+## Disk Survivor
+
+Arcade “survivor”-style browser game built with Three.js and Vite. Move a heroic floppy disk, pick a web-1.0 theme, collect weapons/upgrades, and survive ever-growing waves.
+
+### Quick start
+
+- **Prereqs**: Node 18+ and npm
+- **Install**:
+  ```bash
+  npm install
+  ```
+- **Dev** (Vite):
+  ```bash
+  npm run dev
+  ```
+- **Build**:
+  ```bash
+  npm run build
+  ```
+- **Preview build**:
+  ```bash
+  npm run preview
+  ```
+
+### Controls
+
+- **Move**: WASD or Arrow keys; Gamepad left stick
+- **Aim/Shoot**: Mouse aim + button, or Gamepad right stick (auto-fires while aiming)
+- **Pause**: P / Esc / Gamepad Start (adjust master/music/SFX volumes)
+- **Menus**: D-pad/left stick to navigate; Enter/A to confirm
+
+### Gameplay loop
+
+- Walk onto a billboard tile to choose a theme (Geocities, Yahoo, Dial-up). The choice sets the ground art, spawns obstacles, and starts theme music.
+- Auto-spawns escalate over time; periodic “giant” elites appear.
+- Defeat enemies to drop XP and occasional pickups (Heal, XP bundle, Vacuum).
+- Level up to pick 1 of 3 randomized choices: new weapons, weapon level-ups, or upgrades.
+
+### Weapons and upgrades (high level)
+
+- **Weapons**: CRT Beam (piercing laser), Dot Matrix (side bullets), Dial-up Burst (shockwave), SCSI Rocket (homing), Tape Whirl (orbiting saws), Magic Lasso (loop damage), Shield Wall (blocking wall). Each can level up.
+- **Upgrades**: Fire rate, multishot, move speed, projectile damage, HP+heal, burst fire, XP magnet, projectile pierce, XP gain.
+
+### Tech stack
+
+- **Rendering**: Three.js with an orthographic, isometric camera
+- **Build**: Vite + TypeScript
+- **Audio**: Web Audio API for SFX, HTMLAudioElement for looping music
+- **Backend**: Netlify Functions + Netlify Blobs for leaderboard
+
+### Project structure
+
+- `index.html`: App entry
+- `src/main.ts`: Boots the game (`runGame`)
+- `src/game.ts`: Core game loop, systems, UI overlays
+- `src/audio.ts`: SFX/music manager with saved volume preferences
+- `src/style.css`: Minimal UI/overlay styles
+- `netlify/functions/leaderboard-submit.ts`: POST submit score/time
+- `netlify/functions/leaderboard-top.ts`: GET top entries
+- `public/` (recommended): static assets (e.g., `public/music/*`, `public/title.png`)
+
+### Assets
+
+- Music files expected at `music/<theme>.mp3|ogg`. With Vite, put them in `public/music/` so they are served at `/music/...`.
+- Title image referenced as `title.png` (optional; a styled text fallback is shown if missing). With Vite, place at `public/title.png`.
+
+### Leaderboard (Netlify)
+
+- The game posts to `/.netlify/functions/leaderboard-submit` and fetches from `/.netlify/functions/leaderboard-top`.
+- On Netlify, functions use a Blobs bucket `leaderboard/entries.json` and sort by time survived, then score.
+- Local dev options:
+  - Easiest: ignore errors (calls are try/catch’d) and play without a leaderboard.
+  - Full: install the Netlify CLI and run `netlify dev` so `/.netlify/functions/*` are available during Vite dev. Configure `NETLIFY_SITE_ID` and `NETLIFY_AUTH_TOKEN` if you want to target a specific site/bucket.
+
+### Scripts
+
+- `npm run dev`: Start Vite dev server
+- `npm run build`: Type-check and build for production
+- `npm run preview`: Preview the production build
+
+### Notes
+
+- The game uses an orthographic, isometric camera mounted on an `isoPivot`, with the player rotated to face the aim vector.
+- Gamepad is supported for movement, aiming, pause, and overlay navigation.
+- SFX volumes and music preferences persist in `localStorage`.
+
+### License
+
+No license specified yet. Add one if you plan to distribute.
+
 # Disk Survivor
 
 Isometric 3D survivor-like built with Vite + TypeScript + Three.js.
@@ -15,3 +105,4 @@ Deployment
 Environment (for Blobs in Functions)
 - `NETLIFY_SITE_ID` = your site API/Project ID
 - `NETLIFY_AUTH_TOKEN` = your personal access token
+

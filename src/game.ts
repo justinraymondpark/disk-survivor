@@ -1112,6 +1112,16 @@ class Game {
 
     this.gameTime += dt
 
+    // Update i-frames early so they expire properly
+    if (this.invulnTimer > 0) {
+      this.invulnTimer = Math.max(0, this.invulnTimer - dt)
+      const flicker = Math.floor(this.gameTime * 20) % 2 === 0
+      this.player.group.visible = flicker
+      if (this.invulnTimer === 0) this.player.group.visible = true
+    } else {
+      this.player.group.visible = true
+    }
+
     if (this.isPausedForLevelUp) {
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
