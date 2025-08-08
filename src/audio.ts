@@ -11,6 +11,7 @@ export class AudioManager {
   private sfxVolume = 0.6
 
   private musicEl: HTMLAudioElement | null = null
+  private musicReqId = 0
 
   constructor() {
     // Load saved volumes
@@ -55,22 +56,23 @@ export class AudioManager {
   stopMusic() {
     if (this.musicEl) {
       try { this.musicEl.pause() } catch {}
-      this.musicEl = null
+      this.musicEl.oncanplay = null
+      this.musicEl.onerror = null
     }
+    this.musicEl = null
   }
 
-  pauseMusic() {
-    if (this.musicEl) { try { this.musicEl.pause() } catch {} }
-  }
-
-  resumeMusic() {
-    if (this.musicEl) { try { this.musicEl.play() } catch {} }
-  }
+  pauseMusic() { if (this.musicEl) { try { this.musicEl.pause() } catch {} } }
+  resumeMusic() { if (this.musicEl) { try { this.musicEl.play() } catch {} } }
 
   startMusic(theme: ThemeKey) {
     this.currentTheme = theme
     if (!this.unlocked) return
 
+    // Invalidate any in-flight loads
+    const reqId = ++this.musicReqId
+
+    // Stop current element
     this.stopMusic()
 
     const base = `music/${theme}`
@@ -83,10 +85,16 @@ export class AudioManager {
 
     let idx = 0
     const tryNext = () => {
+      if (reqId !== this.musicReqId) return // stale
       if (idx >= tryFormats.length) return
       el.src = tryFormats[idx++]
-      el.oncanplay = () => { this.musicEl = el; el.play().catch(() => {}) }
-      el.onerror = () => tryNext()
+      el.oncanplay = () => {
+        if (reqId !== this.musicReqId) { try { el.pause() } catch {}; return }
+        this.musicEl = el
+        el.volume = this.musicVolume * this.masterVolume
+        el.play().catch(() => {})
+      }
+      el.onerror = () => { if (reqId === this.musicReqId) tryNext() }
       el.load()
     }
     tryNext()
