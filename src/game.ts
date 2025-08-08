@@ -98,7 +98,7 @@ class TouchControls {
   private leftEl: HTMLDivElement
   private rightEl: HTMLDivElement
 
-  constructor(_: HTMLCanvasElement, private input: InputManager) {
+  constructor(_: HTMLCanvasElement, private input: InputManager, private isEnabled: () => boolean) {
     // Only enable on touch-capable (coarse pointer) screens
     const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
     if (!coarse) {
@@ -114,6 +114,7 @@ class TouchControls {
     document.body.appendChild(this.rightEl)
 
     const onStart = (e: TouchEvent) => {
+      if (!this.isEnabled()) return
       for (const t of Array.from(e.changedTouches)) {
         const isLeft = t.clientX < window.innerWidth * 0.5
         if (isLeft && this.leftId == null) {
@@ -128,11 +129,20 @@ class TouchControls {
           this.rightEl.style.display = 'block'
           this.rightEl.style.left = `${this.rightStart.x - 60}px`
           this.rightEl.style.top = `${this.rightStart.y - 60}px`
+          this.input.mouseDown = true
         }
       }
       e.preventDefault()
     }
     const onMove = (e: TouchEvent) => {
+      if (!this.isEnabled()) {
+        this.leftEl.style.display = 'none'; this.rightEl.style.display = 'none'
+        this.leftId = this.rightId = null
+        this.input.axesLeft.x = this.input.axesLeft.y = 0
+        this.input.axesRight.x = this.input.axesRight.y = 0
+        this.input.mouseDown = false
+        return
+      }
       for (const t of Array.from(e.changedTouches)) {
         if (t.identifier === this.leftId) {
           const dx = t.clientX - this.leftStart.x
@@ -148,6 +158,8 @@ class TouchControls {
           const ny = Math.max(-1, Math.min(1, dy / this.radius))
           this.input.axesRight.x = nx
           this.input.axesRight.y = ny
+          // treat as firing when aiming with touch
+          this.input.mouseDown = true
         }
       }
       e.preventDefault()
@@ -162,6 +174,7 @@ class TouchControls {
           this.rightId = null
           this.rightEl.style.display = 'none'
           this.input.axesRight.x = 0; this.input.axesRight.y = 0
+          this.input.mouseDown = false
         }
       }
       e.preventDefault()
@@ -598,8 +611,9 @@ class Game {
     this.updateXPBar()
 
     this.input = new InputManager(canvas)
-    // Touch controls (dual virtual sticks) if on mobile
-    new TouchControls(canvas, this.input)
+    // Touch controls (dual virtual sticks) if on mobile and allowed in state
+    const isTouchEnabled = () => !this.showTitle && !this.isPaused && !this.isPausedForLevelUp
+    new TouchControls(canvas, this.input, isTouchEnabled)
 
     // Load options without clobbering defaults
     try {
