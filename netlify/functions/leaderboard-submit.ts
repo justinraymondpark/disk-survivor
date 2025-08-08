@@ -5,13 +5,7 @@ const BUCKET = 'leaderboard'
 const KEY = 'entries.json'
 const TOP_N = 100
 
-interface Entry {
-  name: string
-  timeSurvived: number
-  score: number
-  createdAt: string
-}
-
+interface Entry { name: string; timeSurvived: number; score: number; createdAt: string }
 interface Stored { entries: Entry[] }
 
 function makeStore() {
@@ -19,8 +13,20 @@ function makeStore() {
   const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_TOKEN
   const manual = Boolean(siteID && token)
   console.log('blobs config (submit):', { manual, siteIDPresent: !!siteID, tokenPresent: !!token })
-  if (manual) return getStore(BUCKET, { siteID, token })
-  return getStore(BUCKET)
+  if (!manual) return getStore(BUCKET)
+  const optsVariants = [
+    { siteID, token },
+    { siteId: siteID, token },
+    { siteID, accessToken: token },
+    { siteId: siteID, accessToken: token },
+    { siteID, authToken: token },
+    { siteId: siteID, authToken: token },
+  ] as any[]
+  for (const opts of optsVariants) {
+    try { return getStore(BUCKET, opts) } catch {}
+    try { return getStore({ name: BUCKET, ...opts }) as any } catch {}
+  }
+  return getStore(BUCKET, { siteID, token } as any)
 }
 
 export const handler: Handler = async (event) => {
@@ -34,28 +40,18 @@ export const handler: Handler = async (event) => {
     const timeSurvived = Number(incoming.timeSurvived ?? NaN)
     const score = Number(incoming.score ?? NaN)
 
-    if (!name || !isFinite(timeSurvived) || !isFinite(score)) {
-      return error('Invalid payload', 400)
-    }
+    if (!name || !isFinite(timeSurvived) || !isFinite(score)) return error('Invalid payload', 400)
 
     const trimmedName = name.slice(0, 20)
 
-    const current = (await store.get(KEY, { type: 'json' })) as Stored | null
+    const current = (await (store as any).get(KEY, { type: 'json' })) as Stored | null
     const entries: Entry[] = Array.isArray(current?.entries) ? (current!.entries as Entry[]) : []
 
-    entries.push({
-      name: trimmedName,
-      timeSurvived: Math.max(0, Math.floor(timeSurvived)),
-      score: Math.max(0, Math.floor(score)),
-      createdAt: new Date().toISOString(),
-    })
+    entries.push({ name: trimmedName, timeSurvived: Math.max(0, Math.floor(timeSurvived)), score: Math.max(0, Math.floor(score)), createdAt: new Date().toISOString() })
 
-    const sorted = entries.sort((a, b) => {
-      if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived
-      return b.score - a.score
-    }).slice(0, TOP_N)
+    const sorted = entries.sort((a, b) => (b.timeSurvived - a.timeSurvived) || (b.score - a.score)).slice(0, TOP_N)
 
-    await store.set(KEY, JSON.stringify({ entries: sorted }), { contentType: 'application/json' })
+    await (store as any).set(KEY, JSON.stringify({ entries: sorted }), { contentType: 'application/json' })
 
     return ok(JSON.stringify({ ok: true }))
   } catch (e: any) {
@@ -65,11 +61,7 @@ export const handler: Handler = async (event) => {
 }
 
 function ok(body: string, status = 200, contentType: string = 'application/json') {
-  return {
-    statusCode: status,
-    headers: corsHeaders(contentType),
-    body,
-  }
+  return { statusCode: status, headers: corsHeaders(contentType), body }
 }
 
 function error(message: string, status = 500) {
@@ -77,10 +69,5 @@ function error(message: string, status = 500) {
 }
 
 function corsHeaders(contentType: string) {
-  return {
-    'Content-Type': contentType,
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  }
+  return { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }
 }

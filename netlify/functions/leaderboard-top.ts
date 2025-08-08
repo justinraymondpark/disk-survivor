@@ -5,12 +5,7 @@ const TOP_N = 13
 const BUCKET = 'leaderboard'
 const KEY = 'entries.json'
 
-type Entry = {
-  name: string
-  timeSurvived: number
-  score: number
-  createdAt: string
-}
+type Entry = { name: string; timeSurvived: number; score: number; createdAt: string }
 
 type Stored = { entries: Entry[] }
 
@@ -19,8 +14,22 @@ function makeStore() {
   const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_TOKEN
   const manual = Boolean(siteID && token)
   console.log('blobs config (top):', { manual, siteIDPresent: !!siteID, tokenPresent: !!token })
-  if (manual) return getStore(BUCKET, { siteID, token })
-  return getStore(BUCKET)
+  if (!manual) return getStore(BUCKET)
+  // Try multiple option shapes and overloads
+  const optsVariants = [
+    { siteID, token },
+    { siteId: siteID, token },
+    { siteID, accessToken: token },
+    { siteId: siteID, accessToken: token },
+    { siteID, authToken: token },
+    { siteId: siteID, authToken: token },
+  ] as any[]
+  for (const opts of optsVariants) {
+    try { return getStore(BUCKET, opts) } catch {}
+    try { return getStore({ name: BUCKET, ...opts }) as any } catch {}
+  }
+  // Last resort (will likely throw with clear error)
+  return getStore(BUCKET, { siteID, token } as any)
 }
 
 export const handler: Handler = async (event) => {
@@ -29,12 +38,9 @@ export const handler: Handler = async (event) => {
 
   try {
     const store = makeStore()
-    const json = (await store.get(KEY, { type: 'json' })) as Stored | null
+    const json = (await (store as any).get(KEY, { type: 'json' })) as Stored | null
     const entries = Array.isArray(json?.entries) ? (json!.entries as Entry[]) : []
-    const sorted = [...entries].sort((a, b) => {
-      if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived
-      return b.score - a.score
-    }).slice(0, TOP_N)
+    const sorted = [...entries].sort((a, b) => (b.timeSurvived - a.timeSurvived) || (b.score - a.score)).slice(0, TOP_N)
     return ok(JSON.stringify({ entries: sorted }), 200, 'application/json')
   } catch (e: any) {
     console.error('leaderboard-top error:', e?.message || e)
@@ -43,11 +49,7 @@ export const handler: Handler = async (event) => {
 }
 
 function ok(body: string, status = 200, contentType = 'text/plain') {
-  return {
-    statusCode: status,
-    headers: corsHeaders(contentType),
-    body,
-  }
+  return { statusCode: status, headers: corsHeaders(contentType), body }
 }
 
 function error(message: string, status = 500) {
@@ -55,10 +57,5 @@ function error(message: string, status = 500) {
 }
 
 function corsHeaders(contentType: string) {
-  return {
-    'Content-Type': contentType,
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  }
+  return { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }
 }
