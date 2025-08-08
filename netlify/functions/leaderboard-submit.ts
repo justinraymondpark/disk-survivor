@@ -14,11 +14,18 @@ interface Entry {
 
 interface Stored { entries: Entry[] }
 
+function makeStore() {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID
+  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_TOKEN
+  if (siteID && token) return getStore({ name: BUCKET, siteID, token })
+  return getStore({ name: BUCKET })
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return ok('', 204)
   if (event.httpMethod !== 'POST') return error('Method not allowed', 405)
   try {
-    const store = getStore({ name: BUCKET })
+    const store = makeStore()
     const incoming = JSON.parse(event.body || '{}') as Partial<Entry>
 
     const name = String((incoming.name ?? '').toString())

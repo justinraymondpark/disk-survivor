@@ -14,12 +14,19 @@ type Entry = {
 
 type Stored = { entries: Entry[] }
 
+function makeStore() {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID
+  const token = process.env.NETLIFY_AUTH_TOKEN || process.env.NETLIFY_TOKEN
+  if (siteID && token) return getStore({ name: BUCKET, siteID, token })
+  return getStore({ name: BUCKET })
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return ok('', 204)
   if (event.httpMethod !== 'GET') return error('Method not allowed', 405)
 
   try {
-    const store = getStore({ name: BUCKET })
+    const store = makeStore()
     const json = (await store.get(KEY, { type: 'json' })) as Stored | null
     const entries = Array.isArray(json?.entries) ? (json!.entries as Entry[]) : []
     const sorted = [...entries].sort((a, b) => {
