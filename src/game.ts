@@ -245,6 +245,8 @@ class Game {
   autoFire = true
   hitCount = 0
   hitCounterEl!: HTMLDivElement
+  hitCounterFlip = false
+  submitLocked = false
   showTitle = true
   xpBar: HTMLDivElement
   currentTheme: Theme = 'default'
@@ -364,6 +366,8 @@ class Game {
     this.hitCounterEl.id = 'hitcounter'
     this.root.appendChild(this.hitCounterEl)
     this.updateHitCounter()
+    // Flip label periodically for 90s flair
+    setInterval(() => { this.hitCounterFlip = !this.hitCounterFlip; this.updateHitCounter() }, 1200)
 
     // Level-up overlay
     this.overlay = document.createElement('div') as HTMLDivElement
@@ -1763,6 +1767,7 @@ class Game {
     this.audio.playGameOver()
     this.overlay.innerHTML = ''
     this.overlay.style.display = 'flex'
+    this.submitLocked = false
     const wrap = document.createElement('div')
     wrap.style.display = 'flex'
     wrap.style.gap = '16px'
@@ -1794,6 +1799,9 @@ class Game {
     const submitBtn = goCard.querySelector('#submit-btn') as HTMLButtonElement
     const nameInput = goCard.querySelector('#name-input') as HTMLInputElement
     submitBtn.onclick = async () => {
+      if (this.submitLocked) return
+      this.submitLocked = true
+      submitBtn.disabled = true
       const name = (nameInput.value || '').slice(0, 20)
       try { localStorage.setItem('player.name', name) } catch {}
       await this.submitLeaderboard(name, Math.floor(this.gameTime), this.score)
@@ -2055,7 +2063,7 @@ class Game {
     const digits = String(this.hitCount).padStart(6, '0')
     this.hitCounterEl.innerHTML = `
       <div class="hc-wrap">
-        <span class="hc-label">VISITORS</span>
+        <span class="hc-label">${this.hitCounterFlip ? 'TO MY GUN' : 'VISITORS'}</span>
         ${digits.split('').map((d) => `<span class="hc-digit">${d}</span>`).join('')}
       </div>
     `
