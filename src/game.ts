@@ -89,6 +89,90 @@ class InputManager {
   }
 }
 
+class TouchControls {
+  private leftId: number | null = null
+  private rightId: number | null = null
+  private leftStart = { x: 0, y: 0 }
+  private rightStart = { x: 0, y: 0 }
+  private radius = 70
+  private leftEl: HTMLDivElement
+  private rightEl: HTMLDivElement
+
+  constructor(private canvas: HTMLCanvasElement, private input: InputManager) {
+    // Only enable on touch-capable (coarse pointer) screens
+    const coarse = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+    if (!coarse) {
+      // Create hidden anchors so CSS does not shift
+      this.leftEl = document.createElement('div'); this.rightEl = document.createElement('div')
+      return
+    }
+    this.leftEl = document.createElement('div')
+    this.leftEl.id = 'touch-left'
+    this.rightEl = document.createElement('div')
+    this.rightEl.id = 'touch-right'
+    document.body.appendChild(this.leftEl)
+    document.body.appendChild(this.rightEl)
+
+    const onStart = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        const isLeft = t.clientX < window.innerWidth * 0.5
+        if (isLeft && this.leftId == null) {
+          this.leftId = t.identifier
+          this.leftStart = { x: t.clientX, y: t.clientY }
+          this.leftEl.style.display = 'block'
+          this.leftEl.style.left = `${this.leftStart.x - 60}px`
+          this.leftEl.style.top = `${this.leftStart.y - 60}px`
+        } else if (!isLeft && this.rightId == null) {
+          this.rightId = t.identifier
+          this.rightStart = { x: t.clientX, y: t.clientY }
+          this.rightEl.style.display = 'block'
+          this.rightEl.style.left = `${this.rightStart.x - 60}px`
+          this.rightEl.style.top = `${this.rightStart.y - 60}px`
+        }
+      }
+      e.preventDefault()
+    }
+    const onMove = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        if (t.identifier === this.leftId) {
+          const dx = t.clientX - this.leftStart.x
+          const dy = t.clientY - this.leftStart.y
+          const nx = Math.max(-1, Math.min(1, dx / this.radius))
+          const ny = Math.max(-1, Math.min(1, dy / this.radius))
+          this.input.axesLeft.x = nx
+          this.input.axesLeft.y = ny
+        } else if (t.identifier === this.rightId) {
+          const dx = t.clientX - this.rightStart.x
+          const dy = t.clientY - this.rightStart.y
+          const nx = Math.max(-1, Math.min(1, dx / this.radius))
+          const ny = Math.max(-1, Math.min(1, dy / this.radius))
+          this.input.axesRight.x = nx
+          this.input.axesRight.y = ny
+        }
+      }
+      e.preventDefault()
+    }
+    const onEnd = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        if (t.identifier === this.leftId) {
+          this.leftId = null
+          this.leftEl.style.display = 'none'
+          this.input.axesLeft.x = 0; this.input.axesLeft.y = 0
+        } else if (t.identifier === this.rightId) {
+          this.rightId = null
+          this.rightEl.style.display = 'none'
+          this.input.axesRight.x = 0; this.input.axesRight.y = 0
+        }
+      }
+      e.preventDefault()
+    }
+    window.addEventListener('touchstart', onStart, { passive: false })
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onEnd, { passive: false })
+    window.addEventListener('touchcancel', onEnd, { passive: false })
+  }
+}
+
 class FloppyPlayer {
   group: THREE.Group
   weaponAnchor: THREE.Object3D
@@ -513,6 +597,8 @@ class Game {
     this.updateXPBar()
 
     this.input = new InputManager(canvas)
+    // Touch controls (dual virtual sticks) if on mobile
+    new TouchControls(canvas, this.input)
 
     // Load options without clobbering defaults
     try {
