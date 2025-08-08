@@ -242,6 +242,7 @@ class Game {
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
+  autoFire = false
   showTitle = true
   xpBar: HTMLDivElement
   currentTheme: Theme = 'default'
@@ -382,6 +383,10 @@ class Game {
             <input id="vol-sfx" type="range" min="0" max="1" step="0.01" value="${this.audio.getSfxVolume().toFixed(2)}" style="flex:1;" />
             <span id="vol-sfx-val">${this.audio.getSfxVolume().toFixed(2)}</span>
           </label>
+          <label style="display:flex; align-items:center; gap:8px;">Auto-fire
+            <input id="opt-autofire" type="checkbox" ${this.autoFire ? 'checked' : ''} />
+            <span class="carddesc">Fire main weapon automatically</span>
+          </label>
         </div>
       </div>
       <button class="card selected"><strong>Resume</strong></button>
@@ -394,6 +399,7 @@ class Game {
       const vmVal = this.pauseOverlay.querySelector('#vol-master-val') as HTMLSpanElement
       const vmuVal = this.pauseOverlay.querySelector('#vol-music-val') as HTMLSpanElement
       const vsVal = this.pauseOverlay.querySelector('#vol-sfx-val') as HTMLSpanElement
+      const af = this.pauseOverlay.querySelector('#opt-autofire') as HTMLInputElement
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
         if (vmu && vmuVal) vmuVal.textContent = Number(vmu.value).toFixed(2)
@@ -402,10 +408,12 @@ class Game {
       if (vm) vm.oninput = () => { this.audio.setMasterVolume(Number(vm.value)); syncVals() }
       if (vmu) vmu.oninput = () => { this.audio.setMusicVolume(Number(vmu.value)); syncVals() }
       if (vs) vs.oninput = () => { this.audio.setSfxVolume(Number(vs.value)); syncVals() }
+      if (af) af.onchange = () => { this.autoFire = !!af.checked; try { localStorage.setItem('opt.autofire', this.autoFire ? '1' : '0') } catch {} }
       // Initialize slider positions from current defaults
       if (vm) vm.value = this.audio.getMasterVolume().toFixed(2)
       if (vmu) vmu.value = this.audio.getMusicVolume().toFixed(2)
       if (vs) vs.value = this.audio.getSfxVolume().toFixed(2)
+      if (af) af.checked = this.autoFire
       syncVals()
     }
     hookSliders()
@@ -481,6 +489,9 @@ class Game {
     this.updateXPBar()
 
     this.input = new InputManager(canvas)
+
+    // Load options
+    try { this.autoFire = localStorage.getItem('opt.autofire') === '1' } catch {}
 
     window.addEventListener('resize', () => this.onResize())
     this.onResize()
@@ -659,9 +670,16 @@ class Game {
     this.uiSelectIndex = 0
 
     const choices = this.rollChoices(3)
-    for (const ch of choices) this.overlay.appendChild(ch)
+    for (let i = 0; i < choices.length; i++) {
+      const ch = choices[i]
+      ch.classList.add('appear')
+      ch.style.animationDelay = `${i * 60}ms`
+      ch.disabled = true
+      this.overlay.appendChild(ch)
+    }
     const cards = Array.from(this.overlay.querySelectorAll('.card')) as HTMLButtonElement[]
     cards.forEach((c, i) => c.classList.toggle('selected', i === 0))
+    setTimeout(() => { cards.forEach((c) => (c.disabled = false)) }, 500)
   }
 
   rollChoices(num: number) {
@@ -1186,7 +1204,8 @@ class Game {
 
     // Primary shooting
     this.fireTimer += dt
-    const shouldFire = this.input.mouseDown || this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0
+    const aimActive = this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0
+    const shouldFire = this.autoFire || this.input.mouseDown || aimActive
     if (shouldFire && this.fireTimer >= this.fireInterval) {
       this.fireTimer = 0
       for (let b = 0; b < this.burstCount; b++) {

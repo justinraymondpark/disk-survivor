@@ -143,3 +143,16 @@ html, body {
   border-color: #8effe2;
   box-shadow: 0 0 0 2px rgba(142, 255, 226, 0.25);
 }
+
+/* Animated card entrance */
+@keyframes popFade {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.overlay .card.appear { opacity: 0; animation: popFade 280ms ease-out forwards; }
+
+/* Disabled cards (click lock) */
+.overlay .card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
