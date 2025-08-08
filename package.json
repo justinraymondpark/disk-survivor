@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@netlify/blobs": "^6.5.0",
-    "microjazz": "^1.0.0",
     "three": "^0.179.1"
   }
 }
