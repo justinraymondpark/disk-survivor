@@ -1,4 +1,8 @@
 import * as THREE from 'three'
+// Bundled raw changelog text (Vite)
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import changelogRaw from '../CHANGELOG.md?raw'
 import { AudioManager } from './audio'
 import type { ThemeKey } from './audio'
 
@@ -2064,9 +2068,7 @@ class Game {
     this.changelogOverlay.appendChild(wrap)
     this.changelogOverlay.style.display = 'flex'
     try {
-      const res = await fetch('/CHANGELOG.md')
-      const text = await res.text()
-      pre.textContent = text
+      pre.textContent = String(changelogRaw ?? '')
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }
