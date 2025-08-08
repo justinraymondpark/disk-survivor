@@ -120,16 +120,16 @@ html, body {
   min-height: 120px;
   padding: 14px;
   color: #eaf6ff;
-  background: rgba(8, 12, 24, 0.9);
-  border: 1px solid #1f2a44;
+  background: linear-gradient(#bfc6d1, #9aa4b3);
+  border: 1px solid #2a2f39;
   border-radius: 10px;
   text-align: left;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial;
+  font-family: "Tahoma", "MS Sans Serif", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial;
   cursor: pointer;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.35), inset -1px -1px 0 rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.25);
 }
 .overlay .card:hover {
-  border-color: #63d2ff;
-  box-shadow: 0 0 0 2px rgba(99, 210, 255, 0.15);
+  filter: brightness(1.05);
 }
 .overlay .card .cardrow {
   display: flex;
@@ -140,8 +140,7 @@ html, body {
 .overlay .card .cardicon { font-size: 18px; }
 .overlay .card .carddesc { opacity: 0.85; font-size: 13px; }
 .overlay .card.selected {
-  border-color: #8effe2;
-  box-shadow: 0 0 0 2px rgba(142, 255, 226, 0.25);
+  outline: 2px solid rgba(142, 255, 226, 0.65);
 }
 
 /* Animated card entrance */

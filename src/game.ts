@@ -17,6 +17,7 @@ class InputManager {
   mouse: Vector2 = { x: 0, y: 0 }
   mouseDown = false
   private gamepadIndex: number | null = null
+  private lastMouseMove = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => (this.keys[e.key.toLowerCase()] = true))
@@ -31,6 +32,7 @@ class InputManager {
       const r = rect()
       this.mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1
       this.mouse.y = -(((e.clientY - r.top) / r.height) * 2 - 1)
+      this.lastMouseMove = performance.now()
     })
     window.addEventListener('mousedown', () => (this.mouseDown = true))
     window.addEventListener('mouseup', () => (this.mouseDown = false))
@@ -80,6 +82,10 @@ class InputManager {
     }
     const len = Math.hypot(x, y) || 1
     return { x: x / len, y: y / len }
+  }
+
+  hasRecentMouseMove(thresholdMs = 1500): boolean {
+    return performance.now() - this.lastMouseMove < thresholdMs
   }
 }
 
@@ -744,7 +750,13 @@ class Game {
     addUpgrade('DMA Burst', 'Burst fire', '💥', () => (this.burstCount = Math.min(5, this.burstCount + 1)))
     addUpgrade('Magnet Coil', 'Pull XP farther', '🧲', () => (this.xpMagnetRadius = Math.min(5, this.xpMagnetRadius + 0.7)))
     addUpgrade('Piercing ISA', '+1 projectile pierce', '🧷', () => (this.projectilePierce = Math.min(3, this.projectilePierce + 1)))
-    addUpgrade('XP Amplifier', 'Gain more XP from drops', '📈', () => (this.xpGainMultiplier = Math.min(3.0, this.xpGainMultiplier * 1.1)))
+    addUpgrade('XP Amplifier', 'Gain more XP from drops', '📈', () => {
+      const lvl = (this.ownedUpgrades.get('XP Amplifier') ?? 0) + 1
+      if (lvl <= 1) this.xpGainMultiplier = 1.2
+      else if (lvl === 2) this.xpGainMultiplier = 3
+      else this.xpGainMultiplier = 1 + lvl * 1
+      this.xpGainMultiplier = Math.min(6, this.xpGainMultiplier)
+    })
 
     // Weapon level-ups appear as choices if already owned
     if (this.ownedWeapons.has('CRT Beam')) pool.push({ title: 'CRT Beam (Level up)', desc: '+1 length, +2 DPS, shorter off-time', icon: '📺', apply: () => this.levelUpBeam() })
@@ -1100,8 +1112,8 @@ class Game {
       const hit = new THREE.Vector3()
       this.raycaster.ray.intersectPlane(this.groundPlane, hit)
       aimVector.copy(hit.sub(this.player.group.position)).setY(0).normalize()
-    } else {
-      // Also allow mouse to rotate before selecting a level
+    } else if (this.input.hasRecentMouseMove()) {
+      // Allow mouse to rotate
       this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
       const hitMouse = new THREE.Vector3()
       this.raycaster.ray.intersectPlane(this.groundPlane, hitMouse)
@@ -1217,7 +1229,7 @@ class Game {
       const hitPoint2 = new THREE.Vector3()
       this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint2)
       aimVector.copy(hitPoint2.sub(this.player.group.position)).setY(0).normalize()
-    } else {
+    } else if (this.input.hasRecentMouseMove()) {
       this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
       const hitPoint = new THREE.Vector3()
       this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint)
