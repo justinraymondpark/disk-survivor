@@ -18,6 +18,7 @@ class InputManager {
   mouseDown = false
   private gamepadIndex: number | null = null
   private lastMouseMove = 0
+  private lastTouch = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => (this.keys[e.key.toLowerCase()] = true))
@@ -94,6 +95,9 @@ class InputManager {
   hasRecentMouseMove(thresholdMs = 1500): boolean {
     return performance.now() - this.lastMouseMove < thresholdMs
   }
+
+  markTouch() { this.lastTouch = performance.now() }
+  hasRecentTouch(thresholdMs = 2000): boolean { return performance.now() - this.lastTouch < thresholdMs }
 }
 
 class TouchControls {
@@ -122,6 +126,7 @@ class TouchControls {
 
     const onStart = (e: TouchEvent) => {
       if (!this.isEnabled()) return
+      this.input.markTouch()
       for (const t of Array.from(e.changedTouches)) {
         const isLeft = t.clientX < window.innerWidth * 0.5
         if (isLeft && this.leftId == null) {
@@ -150,6 +155,7 @@ class TouchControls {
         this.input.mouseDown = false
         return
       }
+      this.input.markTouch()
       for (const t of Array.from(e.changedTouches)) {
         if (t.identifier === this.leftId) {
           const dx = t.clientX - this.leftStart.x
@@ -366,6 +372,7 @@ class Game {
   submitLocked = false
   showTitle = true
   xpBar: HTMLDivElement
+  pauseTouchBtn!: HTMLButtonElement
   currentTheme: Theme = 'default'
   themeObstacles: THREE.Object3D[] = []
   themeLocked = false
@@ -483,6 +490,14 @@ class Game {
     this.hitCounterEl.id = 'hitcounter'
     this.root.appendChild(this.hitCounterEl)
     this.updateHitCounter()
+    // Touch pause button (hidden by default)
+    this.pauseTouchBtn = document.createElement('button') as HTMLButtonElement
+    this.pauseTouchBtn.id = 'touch-pause'
+    this.pauseTouchBtn.className = 'ns-button'
+    this.pauseTouchBtn.textContent = 'Pause'
+    this.pauseTouchBtn.style.display = 'none'
+    this.pauseTouchBtn.onclick = () => this.togglePause()
+    this.root.appendChild(this.pauseTouchBtn)
     // Flip label periodically for 90s flair
     setInterval(() => { this.hitCounterFlip = !this.hitCounterFlip; this.updateHitCounter() }, 1200)
 
@@ -1276,6 +1291,8 @@ class Game {
       this.player.group.position.add(new THREE.Vector3(mv.x, 0, mv.y).multiplyScalar(this.player.speed * dt))
       this.checkThemeTiles()
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
+      // Show touch pause only during gameplay
+      if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
       return
@@ -1314,6 +1331,8 @@ class Game {
     }
 
     this.input.updateGamepad()
+    // Toggle touch pause button if touch is the recent modality
+    if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = this.input.hasRecentTouch() ? 'block' : 'none'
 
     const mv = this.input.getMoveVector()
     const moveDir = new THREE.Vector3(mv.x, 0, mv.y)
@@ -1904,6 +1923,7 @@ class Game {
     this.overlay.style.display = 'flex'
     this.submitLocked = false
     const wrap = document.createElement('div')
+    wrap.className = 'go-wrap'
     wrap.style.display = 'flex'
     wrap.style.gap = '16px'
     // Left: Game Over + submit

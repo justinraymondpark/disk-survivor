@@ -74,6 +74,18 @@ html, body {
     align-items: stretch !important;
     gap: 10px !important;
   }
+  /* Game over two-column wrap */
+  .go-wrap { flex-direction: column !important; align-items: stretch !important; }
+}
+
+/* Touch pause button */
+#touch-pause {
+  position: fixed;
+  left: 10px;
+  bottom: 18px;
+  z-index: 22;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 #inventory .slotgroup strong {
   display: block;
