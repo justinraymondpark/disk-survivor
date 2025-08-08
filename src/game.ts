@@ -242,7 +242,9 @@ class Game {
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
-  autoFire = false
+  autoFire = true
+  hitCount = 0
+  hitCounterEl!: HTMLDivElement
   showTitle = true
   xpBar: HTMLDivElement
   currentTheme: Theme = 'default'
@@ -356,6 +358,12 @@ class Game {
     this.xpBar.id = 'xpbar'
     this.xpBar.innerHTML = '<div id="xpfill"></div><div id="xplabel" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font: 12px ui-monospace, monospace; color:#0b0; text-shadow:0 0 6px rgba(0,0,0,0.6)"></div>'
     this.root.appendChild(this.xpBar)
+
+    // 90s hit counter UI
+    this.hitCounterEl = document.createElement('div') as HTMLDivElement
+    this.hitCounterEl.id = 'hitcounter'
+    this.root.appendChild(this.hitCounterEl)
+    this.updateHitCounter()
 
     // Level-up overlay
     this.overlay = document.createElement('div') as HTMLDivElement
@@ -670,12 +678,20 @@ class Game {
     this.uiSelectIndex = 0
 
     const choices = this.rollChoices(3)
+    // Append first, then trigger animation next frame to avoid flash
     for (let i = 0; i < choices.length; i++) {
       const ch = choices[i]
-      ch.classList.add('appear')
-      ch.style.animationDelay = `${i * 60}ms`
       ch.disabled = true
+      ch.style.opacity = '0'
       this.overlay.appendChild(ch)
+      // Stagger
+      const delay = i * 70
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          ch.classList.add('appear')
+          ch.style.opacity = ''
+        }, delay)
+      })
     }
     const cards = Array.from(this.overlay.querySelectorAll('.card')) as HTMLButtonElement[]
     cards.forEach((c, i) => c.classList.toggle('selected', i === 0))
@@ -1799,6 +1815,8 @@ class Game {
 
   onEnemyDown() {
     this.audio.playEnemyDown()
+    this.hitCount += 1
+    this.updateHitCounter()
   }
 
   private spawnExplosion(source: THREE.Mesh) {
@@ -2030,6 +2048,17 @@ class Game {
       if (closeBtn) closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
       this.changelogOverlay.style.display = 'flex'
     }
+  }
+
+  private updateHitCounter() {
+    if (!this.hitCounterEl) return
+    const digits = String(this.hitCount).padStart(6, '0')
+    this.hitCounterEl.innerHTML = `
+      <div class="hc-wrap">
+        <span class="hc-label">VISITORS</span>
+        ${digits.split('').map((d) => `<span class="hc-digit">${d}</span>`).join('')}
+      </div>
+    `
   }
 }
 

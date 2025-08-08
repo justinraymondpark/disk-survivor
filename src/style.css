@@ -146,13 +146,51 @@ html, body {
 
 /* Animated card entrance */
 @keyframes popFade {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: none; }
+  0% { opacity: 0; transform: translateY(14px) scale(0.96); filter: blur(2px); }
+  60% { opacity: 1; transform: translateY(0) scale(1.03); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-.overlay .card.appear { opacity: 0; animation: popFade 280ms ease-out forwards; }
+.overlay .card.appear { animation: popFade 360ms cubic-bezier(.2,.8,.2,1) forwards; }
 
 /* Disabled cards (click lock) */
 .overlay .card:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 90s hit counter */
+#hitcounter {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 28px; /* above XP bar */
+  z-index: 21;
+  font-family: ui-monospace, monospace;
+}
+#hitcounter .hc-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: linear-gradient(#3a3a3a, #2a2a2a);
+  border: 1px solid #111;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 8px rgba(0,0,0,0.5);
+}
+#hitcounter .hc-label {
+  color: #ddd;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+#hitcounter .hc-digit {
+  display: inline-block;
+  min-width: 12px;
+  padding: 2px 2px 1px;
+  text-align: center;
+  color: #9aff9a;
+  font-size: 12px;
+  background: #0a0;
+  border: 1px solid #060;
+  border-radius: 2px;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(0,255,120,0.25);
 }
