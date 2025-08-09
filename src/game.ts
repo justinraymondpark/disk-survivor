@@ -728,11 +728,15 @@ class Game {
   }
 
   spawnEnemy() {
-    // Spawn outside of current view to avoid pop-in on larger displays
+    // Spawn just outside current view to avoid pop-in but keep approach time reasonable
     const angle = Math.random() * Math.PI * 2
-    const base = 14 + Math.random() * 8
-    const extra = 10
-    const dist = base + extra
+    const aspect = window.innerWidth / window.innerHeight
+    const viewSize = 12
+    const viewXHalf = viewSize * aspect
+    const viewZHalf = viewSize
+    const minR = Math.max(viewXHalf, viewZHalf) + 2
+    const maxR = minR + 6
+    const dist = minR + Math.random() * (maxR - minR)
     const x = this.player.group.position.x + Math.cos(angle) * dist
     const z = this.player.group.position.z + Math.sin(angle) * dist
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff55aa }))
@@ -1622,10 +1626,10 @@ class Game {
     // Spawning waves and difficulty ramp
     this.spawnAccumulator += dt
     const minute = Math.floor(this.gameTime / 60)
-    const baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
+    const baseInterval = Math.max(0.45, 2.0 - this.gameTime * 0.035)
     if (this.spawnAccumulator >= baseInterval) {
       this.spawnAccumulator = 0
-      const count = 1 + Math.min(6, Math.floor(this.gameTime / 25))
+      const count = 2 + Math.min(8, Math.floor(this.gameTime / 20))
       const aliveEnemies = this.enemies.filter(e => e.alive).length
       if (aliveEnemies < this.maxEnemies) {
         for (let i = 0; i < count && (this.enemies.filter(e => e.alive).length < this.maxEnemies); i++) this.spawnEnemyByWave(minute)
