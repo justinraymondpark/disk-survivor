@@ -334,6 +334,10 @@ class Game {
   rocketDamage = 3
   xpMagnetRadius = 2.0
   modemWaveDamage = 5
+  // Global XP vacuum effect
+  vacuumActive = false
+  vacuumEndTime = 0
+  vacuumPull = 12
   // CRT Beam
   crtBeam?: THREE.Mesh
   crtBeamGlow?: THREE.Mesh
@@ -769,21 +773,9 @@ class Game {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
       this.updateHPBar()
     } else if (p.kind === 'vacuum') {
-      // Pull in all current XP orbs and XP bundles instantly
-      for (const orb of this.xpOrbs) {
-        if (!orb.alive) continue
-        orb.alive = false
-        this.scene.remove(orb.mesh)
-        this.gainXP(orb.value)
-      }
-      for (const pk of this.pickups) {
-        if (!pk.alive) continue
-        if (pk.kind === 'xp' && pk.xpValue) {
-          pk.alive = false
-          this.scene.remove(pk.mesh)
-          this.gainXP(pk.xpValue)
-        }
-      }
+      // Enable a timed global vacuum that pulls all XP and XP bundles toward the player
+      this.vacuumActive = true
+      this.vacuumEndTime = this.gameTime + 3.0
     }
     if (p.kind === 'xp' && p.xpValue) {
       this.gainXP(p.xpValue)
@@ -1653,9 +1645,12 @@ class Game {
         const toP = this.player.group.position.clone().sub(pk.mesh.position)
         toP.y = 0
         const dist = toP.length()
-        if (dist < this.xpMagnetRadius) {
+        const inMagnet = dist < this.xpMagnetRadius
+        const shouldPull = inMagnet || this.vacuumActive
+        if (shouldPull) {
           toP.normalize()
-          pk.mesh.position.add(toP.multiplyScalar((this.xpMagnetRadius - dist + 0.4) * dt * 6))
+          const pull = this.vacuumActive ? (this.vacuumPull + dist * 2) : (this.xpMagnetRadius - dist + 0.4) * 6
+          pk.mesh.position.add(toP.multiplyScalar(pull * dt))
         }
       }
       if (pk.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.6) ** 2) {
@@ -1664,6 +1659,24 @@ class Game {
         this.applyPickup(pk)
       }
     }
+
+    // Apply magnet/vacuum to XP orbs after movement step
+    for (const orb of this.xpOrbs) {
+      if (!orb.alive) continue
+      const toPlayer = this.player.group.position.clone().sub(orb.mesh.position)
+      toPlayer.y = 0
+      const d = toPlayer.length()
+      const inMagnet = d < this.xpMagnetRadius
+      const shouldPull = inMagnet || this.vacuumActive
+      if (shouldPull) {
+        toPlayer.normalize()
+        const pull = this.vacuumActive ? (this.vacuumPull + d * 2) : (this.xpMagnetRadius - d + 0.4) * 6
+        orb.mesh.position.add(toPlayer.multiplyScalar(pull * dt))
+      }
+    }
+
+    // Auto-expire vacuum after time
+    if (this.vacuumActive && this.gameTime >= this.vacuumEndTime) this.vacuumActive = false
 
     // Theme triggers
     this.checkThemeTiles()
