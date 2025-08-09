@@ -1630,10 +1630,7 @@ class Game {
     if (this.spawnAccumulator >= baseInterval) {
       this.spawnAccumulator = 0
       const count = 2 + Math.min(8, Math.floor(this.gameTime / 20))
-      const aliveEnemies = this.enemies.filter(e => e.alive).length
-      if (aliveEnemies < this.maxEnemies) {
-        for (let i = 0; i < count && (this.enemies.filter(e => e.alive).length < this.maxEnemies); i++) this.spawnEnemyByWave(minute)
-      }
+      for (let i = 0; i < count; i++) this.spawnEnemyByWave(minute)
     }
 
     // Update enemies with different behaviors
