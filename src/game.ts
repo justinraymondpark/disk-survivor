@@ -344,6 +344,8 @@ class Game {
   vacuumActive = false
   vacuumEndTime = 0
   vacuumPull = 12
+  // Level-up magnet tail (real-time ms)
+  levelUpTailUntilMs = 0
   // CRT Beam
   crtBeam?: THREE.Mesh
   crtBeamGlow?: THREE.Mesh
@@ -831,6 +833,8 @@ class Game {
   // Level-up system
   showLevelUp() {
     this.isPausedForLevelUp = true
+    // Allow attraction to continue briefly after level-up
+    this.levelUpTailUntilMs = performance.now() + 500
     this.overlay.innerHTML = ''
     this.overlay.style.display = 'flex'
     this.uiSelectIndex = 0
@@ -1344,6 +1348,55 @@ class Game {
     }
 
     if (this.isPausedForLevelUp) {
+      // While paused for level-up, allow XP to continue pulling toward the player for a short tail window
+      const nowMs = performance.now()
+      if (nowMs < this.levelUpTailUntilMs) {
+        const tailDur = Math.max(1, this.levelUpTailUntilMs - (this.levelUpTailUntilMs - 500))
+        const tailLeft = Math.max(0, this.levelUpTailUntilMs - nowMs)
+        const tailFactor = Math.max(0, Math.min(1, tailLeft / tailDur))
+        const scale = tailFactor * tailFactor
+        // XP bundles
+        for (const pk of this.pickups) {
+          if (!pk.alive) continue
+          if (pk.kind === 'xp') {
+            const toP = this.player.group.position.clone().sub(pk.mesh.position)
+            toP.y = 0
+            const dist = toP.length()
+            const inMagnet = dist < this.xpMagnetRadius
+            const shouldPull = inMagnet || this.vacuumActive
+            if (shouldPull) {
+              toP.normalize()
+              const pull = this.vacuumActive ? (this.vacuumPull + dist * 2) : (this.xpMagnetRadius - dist + 0.4) * 6
+              pk.mesh.position.add(toP.multiplyScalar(pull * dt * scale))
+            }
+            if (pk.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.6) ** 2) {
+              pk.alive = false
+              this.scene.remove(pk.mesh)
+              this.applyPickup(pk)
+            }
+          }
+        }
+        // XP orbs
+        for (const orb of this.xpOrbs) {
+          if (!orb.alive) continue
+          const toPlayer = this.player.group.position.clone().sub(orb.mesh.position)
+          toPlayer.y = 0
+          const d = toPlayer.length()
+          const inMagnet = d < this.xpMagnetRadius
+          const shouldPull = inMagnet || this.vacuumActive
+          if (shouldPull) {
+            toPlayer.normalize()
+            const pull = this.vacuumActive ? (this.vacuumPull + d * 2) : (this.xpMagnetRadius - d + 0.4) * 6
+            orb.mesh.position.add(toPlayer.multiplyScalar(pull * dt * scale))
+          }
+          const d2 = orb.mesh.position.distanceToSquared(this.player.group.position)
+          if (d2 < (this.player.radius + 0.6) ** 2) {
+            orb.alive = false
+            this.scene.remove(orb.mesh)
+            this.gainXP(orb.value)
+          }
+        }
+      }
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
       return
