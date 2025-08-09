@@ -734,7 +734,9 @@ class Game {
     const viewSize = 12
     const viewXHalf = viewSize * aspect
     const viewZHalf = viewSize
-    const minR = Math.max(viewXHalf, viewZHalf) + 2
+    // Spawn just outside the current on-screen rectangle. Using the diagonal ensures it's offscreen
+    const margin = 4
+    const minR = Math.hypot(viewXHalf, viewZHalf) + margin
     const maxR = minR + 6
     const dist = minR + Math.random() * (maxR - minR)
     const x = this.player.group.position.x + Math.cos(angle) * dist
