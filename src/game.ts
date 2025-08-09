@@ -125,6 +125,9 @@ class TouchControls {
     document.body.appendChild(this.rightEl)
 
     const onStart = (e: TouchEvent) => {
+      // Allow UI interactions (pause button, overlays) to receive taps normally
+      const target = e.target as HTMLElement | null
+      if (target && (target.closest('#touch-pause') || target.closest('.overlay'))) return
       if (!this.isEnabled()) return
       this.input.markTouch()
       for (const t of Array.from(e.changedTouches)) {
@@ -147,6 +150,9 @@ class TouchControls {
       e.preventDefault()
     }
     const onMove = (e: TouchEvent) => {
+      // Do not interfere with UI drags on overlays/buttons
+      const target = e.target as HTMLElement | null
+      if (target && (target.closest('#touch-pause') || target.closest('.overlay'))) return
       if (!this.isEnabled()) {
         this.leftEl.style.display = 'none'; this.rightEl.style.display = 'none'
         this.leftId = this.rightId = null

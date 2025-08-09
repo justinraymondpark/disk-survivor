@@ -85,10 +85,11 @@ html, body {
   position: fixed;
   left: 10px;
   bottom: 18px;
-  z-index: 22;
+  z-index: 60;
   padding: 6px 10px;
   font-size: 12px;
   pointer-events: auto;
+  touch-action: manipulation;
 }
 #inventory .slotgroup strong {
   display: block;
