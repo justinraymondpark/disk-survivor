@@ -291,6 +291,12 @@ type Enemy = {
   faceTex?: THREE.CanvasTexture
   faceCanvas?: HTMLCanvasElement
   nextFaceUpdate?: number
+  // Subtle anti-clump hesitation behavior
+  hesitateState?: 'moving' | 'decel' | 'paused' | 'accel'
+  hesitateTimer?: number
+  hesitateDur?: number
+  nextHesitateAt?: number
+  speedScale?: number
 }
 
 type Pickup = {
@@ -383,6 +389,9 @@ class Game {
   lastTime = performance.now()
   gameTime = 0
   spawnAccumulator = 0
+  // Spawn cadence modulation
+  spawnPhase = Math.random() * Math.PI * 2
+  microBurstLeft = 0
   hud: HTMLDivElement
   hpBar!: HTMLDivElement
   inventory!: HTMLDivElement
@@ -1650,14 +1659,35 @@ class Game {
       }
     }
 
-    // Spawning waves and difficulty ramp
+    // Spawning waves and difficulty ramp with cadence modulation
     this.spawnAccumulator += dt
     const minute = Math.floor(this.gameTime / 60)
+    // Baseline spawn interval gets faster over time
     const baseInterval = Math.max(0.45, 2.0 - this.gameTime * 0.035)
-    if (this.spawnAccumulator >= baseInterval) {
+    // Gentle sine modulation (~10% swing)
+    this.spawnPhase += dt * 0.8
+    const sineMod = 1 + 0.12 * Math.sin(this.spawnPhase)
+    // Ensure a hard ceiling on interval so it never stalls
+    const modInterval = Math.max(0.35, baseInterval * sineMod)
+    // Occasional micro-bursts: short-lived faster spawning
+    if (this.microBurstLeft <= 0 && Math.random() < 0.002) {
+      // 1–2 seconds of quicker spawns
+      this.microBurstLeft = 1 + Math.random() * 1
+    }
+    const burstFactor = this.microBurstLeft > 0 ? 0.55 : 1
+    if (this.microBurstLeft > 0) this.microBurstLeft -= dt
+    const effectiveInterval = Math.max(0.25, modInterval * burstFactor)
+    if (this.spawnAccumulator >= effectiveInterval) {
       this.spawnAccumulator = 0
-      const count = 2 + Math.min(8, Math.floor(this.gameTime / 20))
-      for (let i = 0; i < count; i++) this.spawnEnemyByWave(minute)
+      const baseCount = 2 + Math.min(8, Math.floor(this.gameTime / 20))
+      // During micro-bursts, add a couple extra with slight delays
+      const extra = this.microBurstLeft > 0 ? 1 + Math.floor(Math.random() * 2) : 0
+      const total = baseCount + extra
+      for (let i = 0; i < total; i++) {
+        const delay = i < baseCount ? 0 : (i - baseCount + 1) * 120
+        if (delay === 0) this.spawnEnemyByWave(minute)
+        else setTimeout(() => this.spawnEnemyByWave(minute), delay)
+      }
     }
 
     // Update enemies with different behaviors
@@ -1667,6 +1697,53 @@ class Game {
       const toPlayer = this.player.group.position.clone().sub(e.mesh.position)
       toPlayer.y = 0
       let dir = toPlayer.clone().normalize()
+      // Anti-clump hesitation: smooth decel -> brief pause -> accel cycles
+      const nowTime = this.gameTime
+      if (e.hesitateState == null) {
+        e.hesitateState = 'moving'
+        e.hesitateTimer = 0
+        e.speedScale = 1
+        // Schedule first hesitation randomly between 2–6s
+        e.nextHesitateAt = nowTime + 2 + Math.random() * 4
+      }
+      e.hesitateTimer = (e.hesitateTimer ?? 0) + dt
+      if ((e.nextHesitateAt ?? 0) > 0 && nowTime >= (e.nextHesitateAt ?? 0)) {
+        // Begin deceleration phase over ~0.4s
+        e.hesitateState = 'decel'
+        e.hesitateTimer = 0
+        e.hesitateDur = 0.4 + Math.random() * 0.2
+        e.nextHesitateAt = -1
+      }
+      if (e.hesitateState === 'decel') {
+        const durr = e.hesitateDur ?? 0.5
+        const t = Math.min(1, (e.hesitateTimer ?? 0) / durr)
+        e.speedScale = 1 - t * t // ease-out
+        if (t >= 1) { e.hesitateState = 'paused'; e.hesitateTimer = 0; e.hesitateDur = 0.15 + Math.random() * 0.25 }
+      } else if (e.hesitateState === 'paused') {
+        e.speedScale = 0
+        // While paused, slightly random-walk direction to spread clumps
+        const jitter = new THREE.Vector3((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2)
+        dir.add(jitter).normalize()
+        if ((e.hesitateTimer ?? 0) >= (e.hesitateDur ?? 0.25)) {
+          e.hesitateState = 'accel'
+          e.hesitateTimer = 0
+          e.hesitateDur = 0.35 + Math.random() * 0.2
+        }
+      } else if (e.hesitateState === 'accel') {
+        const durr = e.hesitateDur ?? 0.4
+        const t = Math.min(1, (e.hesitateTimer ?? 0) / durr)
+        e.speedScale = t * t // ease-in
+        if (t >= 1) {
+          e.hesitateState = 'moving'
+          e.hesitateTimer = 0
+          e.hesitateDur = undefined
+          // Schedule the next hesitation with randomness (2–6s)
+          e.nextHesitateAt = nowTime + 2 + Math.random() * 4
+          e.speedScale = 1
+        }
+      } else {
+        e.speedScale = 1
+      }
       if (e.type === 'runner') {
         // Accelerate over time, but ~20% slower overall
         e.speed = (2.8 + Math.min(3, this.gameTime * 0.02)) * 0.8
@@ -1724,7 +1801,8 @@ class Game {
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
         dir.addScaledVector(perp, Math.sin(e.timeAlive * 3) * 0.8).normalize()
       }
-      e.mesh.position.add(dir.multiplyScalar(e.speed * dt))
+      const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
+      e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * dt))
 
       // Collide with player
       if (e.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.5) ** 2) {
