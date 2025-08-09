@@ -2227,15 +2227,29 @@ class Game {
     // Decide type by minute
     let type: EnemyType = 'slime'
     // Wave table extended to 10 minutes with unique flavors (merge of upstream + new)
-    if (minute >= 9) type = 'brute'       // wave 10
-    else if (minute >= 8) type = 'weaver'  // wave 9
-    else if (minute >= 7) type = 'teleport'// wave 8
-    else if (minute >= 6) type = 'orbiter' // wave 7
-    else if (minute >= 5) type = 'charger' // wave 6
-    else if (minute >= 4) type = 'spinner' // wave 5 alt (upstream), shooter appears earlier randomly
-    else if (minute >= 3) type = 'tank'
-    else if (minute >= 2) type = 'zigzag'
-    else if (minute >= 1) type = 'runner'
+    if (minute >= 9) {
+      type = 'brute'       // wave 10
+    } else if (minute >= 8) {
+      type = 'weaver'      // wave 9
+    } else if (minute >= 7) {
+      const pool: EnemyType[] = ['teleport', 'sniper'] // wave 8 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 6) {
+      const pool: EnemyType[] = ['orbiter', 'bomber'] // wave 7 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 5) {
+      const pool: EnemyType[] = ['charger', 'splitter'] // wave 6 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 4) {
+      const pool: EnemyType[] = ['spinner', 'shooter'] // wave 5 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 3) {
+      type = 'tank'
+    } else if (minute >= 2) {
+      type = 'zigzag'
+    } else if (minute >= 1) {
+      type = 'runner'
+    }
 
     const spawnPos = this.pickOffscreenSpawn(3, 8)
 
