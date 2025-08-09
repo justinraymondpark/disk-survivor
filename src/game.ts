@@ -377,6 +377,7 @@ class Game {
   hitCounterEl!: HTMLDivElement
   hitCounterFlip = false
   submitLocked = false
+  lastHudSeconds = -1
   showTitle = true
   xpBar: HTMLDivElement
   pauseTouchBtn!: HTMLButtonElement
@@ -793,7 +794,7 @@ class Game {
 
   updateHud() {
     const secs = Math.max(0, (this.gameTime | 0))
-    const digits = String(secs).padStart(6, '0')
+    const digits = String(secs).padStart(4, '0')
     this.hud.innerHTML = `
       <div class="hc-wrap">
         <span class="hc-label">TIME</span>
@@ -1328,6 +1329,8 @@ class Game {
     }
 
     this.gameTime += dt
+    const hudSecs = this.gameTime | 0
+    if (hudSecs !== this.lastHudSeconds) { this.lastHudSeconds = hudSecs; this.updateHud() }
 
     // Update i-frames early so they expire properly
     if (this.invulnTimer > 0) {
@@ -1933,12 +1936,19 @@ class Game {
   // Death handling: controller to restart
   onPlayerDeath() {
     this.isPausedForLevelUp = true
-    this.audio.playGameOver()
+    // Flash + sound
+    const df = document.createElement('div')
+    df.className = 'death-flash'
+    document.body.appendChild(df)
+    ;(df.style as any).animation = 'deathPulse 700ms ease-out 1'
+    setTimeout(() => df.remove(), 720)
+    this.audio.playDeathMoan()
     this.overlay.innerHTML = ''
     this.overlay.style.display = 'flex'
     this.submitLocked = false
     const wrap = document.createElement('div')
     wrap.className = 'go-wrap'
+    wrap.style.animation = 'popFade 360ms ease-out'
     wrap.style.display = 'flex'
     wrap.style.gap = '16px'
     // Left: Game Over + submit

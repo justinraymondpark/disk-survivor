@@ -170,6 +170,20 @@ export class AudioManager {
     osc.stop(t0 + 0.18)
   }
   playGameOver() { this.click(392, 0.2, 0.12, 'sawtooth'); setTimeout(() => this.click(466, 0.2, 0.12, 'sawtooth'), 140); setTimeout(() => this.click(523, 0.24, 0.12, 'sawtooth'), 280) }
+  playDeathMoan() {
+    const ctx = this.ensure()
+    const t0 = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(320, t0)
+    osc.frequency.exponentialRampToValueAtTime(60, t0 + 0.6)
+    gain.gain.setValueAtTime(0.6, t0)
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.65)
+    osc.connect(gain).connect(this.sfxGain!)
+    osc.start()
+    osc.stop(t0 + 0.7)
+  }
 }
 
 function clamp01(n: number) { return Math.max(0, Math.min(1, n)) }
