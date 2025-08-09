@@ -8,7 +8,7 @@ import type { ThemeKey } from './audio'
 
 type Vector2 = { x: number; y: number }
 
-type EnemyType = 'slime' | 'runner' | 'zigzag' | 'tank' | 'shooter' | 'giant'
+type EnemyType = 'slime' | 'runner' | 'zigzag' | 'tank' | 'shooter' | 'giant' | 'spinner' | 'splitter' | 'bomber' | 'sniper' | 'weaver'
 
 class InputManager {
   axesLeft: Vector2 = { x: 0, y: 0 }
@@ -763,22 +763,18 @@ class Game {
     let kind: Pickup['kind']
     if (forceKind) kind = forceKind
     else {
-      if (roll < 0.06) kind = 'vacuum' // rarer than chicken
-      else if (roll < 0.36) kind = 'heal'
+      if (roll < 0.03) kind = 'vacuum' // rarer
+      else if (roll < 0.33) kind = 'heal'
       else kind = 'xp'
     }
     let mesh: THREE.Mesh
     if (kind === 'heal') {
       // Billboard quad with a simple chicken/pie emoji
-      const canvas = document.createElement('canvas')
-      canvas.width = 64; canvas.height = 64
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0,0,64,64)
-      ctx.font = '48px serif'
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillText('🍗', 32, 36)
-      const tex = new THREE.CanvasTexture(canvas)
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshBasicMaterial({ map: tex, transparent: true }))
+      const tri = new THREE.Shape()
+      tri.moveTo(0, 0.35); tri.lineTo(-0.35, -0.35); tri.lineTo(0.35, -0.35); tri.lineTo(0, 0.35)
+      const geo = new THREE.ShapeGeometry(tri)
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffdd77 })
+      mesh = new THREE.Mesh(geo, mat)
     } else if (kind === 'vacuum') {
       // Glowing blue cube
       mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0x66ccff }))
@@ -1660,6 +1656,41 @@ class Game {
           dir = new THREE.Vector3(-dir.z, 0, dir.x)
           if (Math.sin(e.timeAlive * 1.5) < 0) dir.multiplyScalar(-1)
         }
+      } else if (e.type === 'spinner') {
+        // spins while moving toward player
+        e.mesh.rotation.y += dt * 6
+      } else if (e.type === 'splitter') {
+        // on low HP, split into two runners
+        if (e.hp < 2 && e.alive) {
+          e.alive = false
+          this.scene.remove(e.mesh)
+          this.onEnemyDown()
+          for (let i = 0; i < 2; i++) {
+            const child = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffdd55 }))
+            child.position.copy(e.mesh.position).add(new THREE.Vector3((Math.random()-0.5)*0.8, 0.35, (Math.random()-0.5)*0.8))
+            this.scene.add(child)
+            this.enemies.push({ mesh: child, alive: true, speed: 2.6, hp: 2, type: 'runner', timeAlive: 0 })
+          }
+          continue
+        }
+      } else if (e.type === 'bomber') {
+        // accelerates toward player, small explosive knockback when near
+        if (toPlayer.length() < 1.2) {
+          e.alive = false
+          this.spawnExplosion(e.mesh)
+          this.onEnemyDown()
+          this.player.hp = Math.max(0, this.player.hp - 1)
+          this.updateHPBar()
+          if (this.player.hp <= 0) { this.onPlayerDeath(); return }
+        }
+      } else if (e.type === 'sniper') {
+        // keeps long distance
+        const dist = toPlayer.length()
+        if (dist < 9) dir.multiplyScalar(-1)
+      } else if (e.type === 'weaver') {
+        // curvy weave
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+        dir.addScaledVector(perp, Math.sin(e.timeAlive * 3) * 0.8).normalize()
       }
       e.mesh.position.add(dir.multiplyScalar(e.speed * dt))
 
@@ -1932,11 +1963,11 @@ class Game {
     let type: EnemyType = 'slime'
     // Wave table extended to 10 minutes with unique flavors
     if (minute >= 9) type = 'giant'
-    else if (minute >= 8) type = 'shooter'
-    else if (minute >= 7) type = 'tank'
-    else if (minute >= 6) type = 'zigzag'
-    else if (minute >= 5) type = 'runner'
-    else if (minute >= 4) type = 'shooter'
+    else if (minute >= 8) type = 'weaver'
+    else if (minute >= 7) type = 'sniper'
+    else if (minute >= 6) type = 'bomber'
+    else if (minute >= 5) type = 'splitter'
+    else if (minute >= 4) type = 'spinner'
     else if (minute >= 3) type = 'tank'
     else if (minute >= 2) type = 'zigzag'
     else if (minute >= 1) type = 'runner'
@@ -1957,6 +1988,37 @@ class Game {
         hp = 2 + Math.floor(this.gameTime / 35)
         speed = 2.4
         break
+      case 'spinner':
+        geom = new THREE.TetrahedronGeometry(0.55)
+        color = 0x66e0ff
+        hp = 3 + Math.floor(this.gameTime / 30)
+        speed = 2.5
+        break
+      case 'splitter':
+        geom = new THREE.OctahedronGeometry(0.6)
+        color = 0xffaa33
+        hp = 5 + Math.floor(this.gameTime / 28)
+        speed = 1.9
+        break
+      case 'bomber':
+        geom = new THREE.DodecahedronGeometry(0.58)
+        color = 0xcc4455
+        hp = 4 + Math.floor(this.gameTime / 30)
+        speed = 2.2
+        break
+      case 'sniper':
+        geom = new THREE.ConeGeometry(0.45, 0.9, 12)
+        color = 0x44ffaa
+        hp = 4 + Math.floor(this.gameTime / 28)
+        speed = 2.1
+        break
+      case 'weaver':
+        geom = new THREE.TorusKnotGeometry(0.35, 0.09, 64, 8)
+        color = 0xaa66ff
+        hp = 5 + Math.floor(this.gameTime / 26)
+        speed = 2.3
+        break
+      // shooter handled earlier in wave table; fallback not needed here
       case 'zigzag':
         geom = new THREE.IcosahedronGeometry(0.5, 0)
         color = 0x55ffaa
@@ -1968,12 +2030,6 @@ class Game {
         color = 0xff6699
         hp = 6 + Math.floor(this.gameTime / 24)
         speed = 1.5
-        break
-      case 'shooter':
-        geom = new THREE.ConeGeometry(0.4, 0.7, 10)
-        color = 0x66aaff
-        hp = 4 + Math.floor(this.gameTime / 25)
-        speed = 2.0
         break
       default:
         geom = new THREE.SphereGeometry(0.5, 12, 12)
