@@ -557,6 +557,7 @@ class Game {
             <input id="opt-autofire" type="checkbox" ${this.autoFire ? 'checked' : ''} />
             <span class="carddesc">Fire main weapon automatically</span>
           </label>
+          <div class="carddesc" id="pause-debug" style="margin-top:6px; font-family: ui-monospace, monospace;"></div>
         </div>
       </div>
       <button id="btn-resume" class="card selected"><strong>Resume</strong></button>
@@ -571,6 +572,7 @@ class Game {
       const vsVal = this.pauseOverlay.querySelector('#vol-sfx-val') as HTMLSpanElement
       const af = this.pauseOverlay.querySelector('#opt-autofire') as HTMLInputElement
       const resumeBtn = this.pauseOverlay.querySelector('#btn-resume') as HTMLButtonElement
+      const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
         if (vmu && vmuVal) vmuVal.textContent = Number(vmu.value).toFixed(2)
@@ -581,6 +583,16 @@ class Game {
       if (vs) vs.oninput = () => { this.audio.setSfxVolume(Number(vs.value)); syncVals() }
       if (af) af.onchange = () => { this.autoFire = !!af.checked; try { localStorage.setItem('opt.autofire', this.autoFire ? '1' : '0') } catch {} }
       if (resumeBtn) resumeBtn.onclick = () => { this.togglePause() }
+      // Update debug line
+      const updDbg = () => {
+        if (!dbg) return
+        const enemies = this.enemies.filter(e => e.alive).length
+        const proj = this.projectiles.filter(p => p.alive).length
+        const orbs = this.xpOrbs.filter(o => o.alive).length
+        const picks = this.pickups.filter(p => p.alive).length
+        dbg.textContent = `EN:${enemies} PR:${proj} XP:${orbs} PK:${picks}`
+      }
+      updDbg()
       // Initialize slider positions from current defaults
       if (vm) vm.value = this.audio.getMasterVolume().toFixed(2)
       if (vmu) vmu.value = this.audio.getMusicVolume().toFixed(2)
@@ -1900,7 +1912,13 @@ class Game {
   spawnEnemyByWave(minute: number) {
     // Decide type by minute
     let type: EnemyType = 'slime'
-    if (minute >= 4) type = 'shooter'
+    // Wave table extended to 10 minutes with unique flavors
+    if (minute >= 9) type = 'giant'
+    else if (minute >= 8) type = 'shooter'
+    else if (minute >= 7) type = 'tank'
+    else if (minute >= 6) type = 'zigzag'
+    else if (minute >= 5) type = 'runner'
+    else if (minute >= 4) type = 'shooter'
     else if (minute >= 3) type = 'tank'
     else if (minute >= 2) type = 'zigzag'
     else if (minute >= 1) type = 'runner'

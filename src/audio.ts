@@ -12,6 +12,8 @@ export class AudioManager {
 
   private musicEl: HTMLAudioElement | null = null
   private musicReqId = 0
+  private lastImpactAt = 0
+  private impactInterval = 0.05
 
   constructor() {
     // Load saved volumes
@@ -153,7 +155,13 @@ export class AudioManager {
   playShoot() { this.click(950, 0.045, 0.22, 'square') }
   playPickup() { this.click(1700, 0.06, 0.20, 'triangle'); setTimeout(() => this.click(2000, 0.06, 0.18, 'triangle'), 70) }
   playEnemyDown() { this.noiseBurst(0.03, 0.16); this.click(300, 0.05, 0.24, 'square') }
-  playImpact() { this.noiseBurst(0.02, 0.12); this.click(520, 0.035, 0.18, 'square') }
+  playImpact() {
+    const ctx = this.ensure()
+    if (ctx.currentTime - this.lastImpactAt < this.impactInterval) return
+    this.lastImpactAt = ctx.currentTime
+    this.noiseBurst(0.02, 0.12)
+    this.click(520, 0.035, 0.18, 'square')
+  }
   playLevelUp() { this.click(880, 0.1, 0.16, 'square'); setTimeout(() => this.click(1175, 0.1, 0.16, 'square'), 90); setTimeout(() => this.click(1480, 0.12, 0.16, 'square'), 180) }
   playOuch() {
     const ctx = this.ensure()
