@@ -52,17 +52,23 @@ class InputManager {
     if (!gp) return
     const deadZone = 0.15
     const dz = (v: number) => (Math.abs(v) < deadZone ? 0 : v)
-    const currLX = this.axesLeft.x, currLY = this.axesLeft.y
-    const currRX = this.axesRight.x, currRY = this.axesRight.y
     const gpLX = dz(gp.axes[0] ?? 0)
     const gpLY = dz(gp.axes[1] ?? 0)
     const gpRX = dz(gp.axes[2] ?? 0)
     const gpRY = dz(gp.axes[3] ?? 0)
-    // Merge: prefer whichever input has the stronger absolute value per axis
-    this.axesLeft.x = Math.abs(gpLX) > Math.abs(currLX) ? gpLX : currLX
-    this.axesLeft.y = Math.abs(gpLY) > Math.abs(currLY) ? gpLY : currLY
-    this.axesRight.x = Math.abs(gpRX) > Math.abs(currRX) ? gpRX : currRX
-    this.axesRight.y = Math.abs(gpRY) > Math.abs(currRY) ? gpRY : currRY
+    const touchRecent = this.hasRecentTouch()
+    // Left stick: if gamepad has input, use it; otherwise keep touch if recent, else zero
+    if (gpLX !== 0 || gpLY !== 0) {
+      this.axesLeft.x = gpLX; this.axesLeft.y = gpLY
+    } else if (!touchRecent) {
+      this.axesLeft.x = 0; this.axesLeft.y = 0
+    }
+    // Right stick: same logic
+    if (gpRX !== 0 || gpRY !== 0) {
+      this.axesRight.x = gpRX; this.axesRight.y = gpRY
+    } else if (!touchRecent) {
+      this.axesRight.x = 0; this.axesRight.y = 0
+    }
   }
 
   getActiveGamepad(): Gamepad | null {
@@ -1255,6 +1261,9 @@ class Game {
       const hitMouse = new THREE.Vector3()
       this.raycaster.ray.intersectPlane(this.groundPlane, hitMouse)
       aimVector.copy(hitMouse.sub(this.player.group.position)).setY(0).normalize()
+    } else if (this.input.hasRecentTouch()) {
+      // Maintain last facing on touch when sticks are centered
+      aimVector.set(0, 0, 0)
     }
     if (aimVector.lengthSq() > 0) {
       const yaw = Math.atan2(aimVector.x, aimVector.z)
@@ -1379,6 +1388,8 @@ class Game {
       aimVector.copy(hitPoint.sub(this.player.group.position))
       aimVector.y = 0
       aimVector.normalize()
+    } else if (this.input.hasRecentTouch()) {
+      aimVector.set(0, 0, 0)
     }
     if (aimVector.lengthSq() > 0) {
       const yaw = Math.atan2(aimVector.x, aimVector.z)
