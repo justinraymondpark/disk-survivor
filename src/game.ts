@@ -199,7 +199,8 @@ class TouchControls {
           handled = true
         }
       }
-      if (handled || this.isEnabled()) e.preventDefault()
+      // Only prevent default if we actually handled a virtual stick
+      if (handled) e.preventDefault()
     }
     window.addEventListener('touchstart', onStart, { passive: false })
     window.addEventListener('touchmove', onMove, { passive: false })
@@ -791,8 +792,13 @@ class Game {
   }
 
   updateHud() {
-    // HUD condensed: show time only
-    this.hud.innerHTML = `<span class="time-label">Time</span> <span class="time-val">${(this.gameTime | 0)}s</span>`
+    const secs = Math.max(0, (this.gameTime | 0))
+    const digits = String(secs).padStart(6, '0')
+    this.hud.innerHTML = `
+      <div class="hc-wrap">
+        <span class="hc-label">TIME</span>
+        ${digits.split('').map((d) => `<span class=\"hc-digit\">${d}</span>`).join('')}
+      </div>`
   }
 
   updateHPBar() {

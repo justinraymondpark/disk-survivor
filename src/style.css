@@ -15,19 +15,18 @@ html, body {
   position: fixed;
   top: 8px;
   left: 8px;
-  padding: 6px 8px;
-  color: #0b1020;
-  background: linear-gradient(#bfc6d1, #9aa4b3);
-  border: 1px solid #2a2f39;
-  border-radius: 4px;
-  font-family: "Tahoma", "MS Sans Serif", ui-monospace, monospace;
-  font-size: 14px;
-  line-height: 1;
+  padding: 2px 6px;
   pointer-events: none;
   z-index: 20;
 }
-#hud .time-label { font-weight: 700; margin-right: 6px; }
-#hud .time-val { font-variant-numeric: tabular-nums; }
+#hud .hc-wrap {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px;
+  background: linear-gradient(#3a3a3a, #2a2a2a);
+  border: 1px solid #111; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 8px rgba(0,0,0,0.5);
+}
+#hud .hc-label { color: #ddd; font-size: 10px; letter-spacing: 1px; }
+#hud .hc-digit { display:inline-block; min-width:12px; padding:2px 2px 1px; text-align:center; color:#9be3ff; font-size:12px; background:#0b1b2f; border:1px solid #0a1220; border-radius:2px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(100,160,255,0.25); }
 
 #hpbar {
   position: fixed;
