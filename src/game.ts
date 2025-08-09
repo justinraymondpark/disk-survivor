@@ -910,11 +910,23 @@ class Game {
     if (this.ownedWeapons.has('Dot Matrix')) pool.push({ title: 'Dot Matrix (Level up)', desc: 'Stronger side bullets', icon: '🖨️', apply: () => this.levelUpDotMatrix() })
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
 
-    // Randomize and take N
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]
+    // Filter out entries that would be invalid due to caps
+    const isWeaponName = (t: string) => ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall'].includes(t)
+    const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
+    const canApply = (title: string) => {
+      if (isWeaponName(title)) return this.ownedWeapons.size < this.maxWeapons
+      if (isWeaponLevelUp(title)) return true
+      // upgrade entries: allow if we have space or we're leveling an existing upgrade
+      return this.ownedUpgrades.size < this.maxUpgrades || this.ownedUpgrades.has(title)
     }
-    return pool.slice(0, num).map((p) => this.makeChoiceCard(p.title, p.desc, p.icon, p.apply))
+    let filtered = pool.filter(p => canApply(p.title))
+
+    // Randomize and take N
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1)); [filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+    }
+    filtered = filtered.slice(0, num)
+    return filtered.map((p) => this.makeChoiceCard(p.title, p.desc, p.icon, p.apply))
   }
 
   makeChoiceCard(title: string, desc: string, icon: string, apply: () => void) {
@@ -923,8 +935,9 @@ class Game {
     c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}</div>`
     c.onclick = () => {
       // Enforce max counts
+      const isWeaponLevelUp = /(\(\s*Level up\s*\))$/i.test(title)
       if (this.isWeapon(title) && this.ownedWeapons.size >= this.maxWeapons) return
-      if (!this.isWeapon(title) && this.ownedUpgrades.size >= this.maxUpgrades && !this.ownedUpgrades.has(title)) return
+      if (!this.isWeapon(title) && !isWeaponLevelUp && this.ownedUpgrades.size >= this.maxUpgrades && !this.ownedUpgrades.has(title)) return
       apply()
       this.overlay.style.display = 'none'
       this.isPausedForLevelUp = false
