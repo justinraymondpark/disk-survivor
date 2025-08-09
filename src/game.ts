@@ -291,6 +291,8 @@ type Enemy = {
   faceTex?: THREE.CanvasTexture
   faceCanvas?: HTMLCanvasElement
   nextFaceUpdate?: number
+  // Wave index (minute) when this enemy spawned
+  spawnWave: number
 }
 
 type Pickup = {
@@ -358,6 +360,10 @@ class Game {
   // Tape Whirl
   whirlSaws: THREE.Mesh[] = []
   whirlRadius = 2.0
+  // Wave management
+  lastWaveMinute = -1
+  waveCullDelaySeconds = 2
+  waveCullKeepFraction = 0.12
   whirlSpeed = 2.8
   whirlDamage = 16
   // Magic Lasso
@@ -717,7 +723,8 @@ class Game {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff55aa }))
     mesh.position.set(x, 0.5, z)
     this.scene.add(mesh)
-    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0 })
+    const minute = Math.floor(this.gameTime / 60)
+    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0, spawnWave: minute })
   }
 
   shoot() {
@@ -1586,6 +1593,11 @@ class Game {
     // Spawning waves and difficulty ramp
     this.spawnAccumulator += dt
     const minute = Math.floor(this.gameTime / 60)
+    // Detect wave transition and schedule cull of older waves
+    if (minute !== this.lastWaveMinute) {
+      if (minute > this.lastWaveMinute) this.onWaveStart(minute)
+      this.lastWaveMinute = minute
+    }
     const baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
     if (this.spawnAccumulator >= baseInterval) {
       this.spawnAccumulator = 0
@@ -1940,7 +1952,7 @@ class Game {
     face.position.set(x, 0.95, z)
     this.scene.add(face)
 
-    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face })
+    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute })
   }
 
   makeFaceTexture(type: EnemyType) {
@@ -2000,7 +2012,8 @@ class Game {
     this.scene.add(face)
     this.drawAnimatedFace(canvas, 0)
 
-    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now() })
+    const minute = Math.floor(this.gameTime / 60)
+    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now(), spawnWave: minute })
   }
 
   drawAnimatedFace(c: HTMLCanvasElement, frame: number) {
@@ -2355,6 +2368,39 @@ class Game {
         ${digits.split('').map((d) => `<span class="hc-digit">${d}</span>`).join('')}
       </div>
     `
+  }
+
+  private onWaveStart(newMinute: number) {
+    // After a short delay, remove most enemies from two waves prior (no XP, no score)
+    const targetWave = newMinute - 2
+    if (targetWave < 0) return
+    const delayMs = Math.max(0, Math.floor(this.waveCullDelaySeconds * 1000))
+    setTimeout(() => this.cullEnemiesFromWave(targetWave), delayMs)
+  }
+
+  private cullEnemiesFromWave(waveMinute: number) {
+    const group = this.enemies.filter((e) => e.alive && e.spawnWave === waveMinute)
+    if (group.length === 0) return
+    const keepCount = Math.min(
+      group.length,
+      Math.max(2, Math.floor(group.length * this.waveCullKeepFraction))
+    )
+    // Shuffle indices to pick survivors
+    const indices = Array.from({ length: group.length }, (_, i) => i)
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[indices[i], indices[j]] = [indices[j], indices[i]]
+    }
+    const survivorSet = new Set(indices.slice(0, keepCount).map((idx) => group[idx]))
+    for (const enemy of group) {
+      if (survivorSet.has(enemy)) continue
+      enemy.alive = false
+      this.scene.remove(enemy.mesh)
+      if (enemy.face) this.scene.remove(enemy.face)
+      // Intentionally do not award XP or score and do not call onEnemyDown
+    }
+    // Compact enemy list to remove culled entries
+    this.enemies = this.enemies.filter((e) => e.alive)
   }
 }
 
