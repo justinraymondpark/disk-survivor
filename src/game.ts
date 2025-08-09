@@ -726,6 +726,31 @@ class Game {
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(w, h)
   }
+  private pickOffscreenSpawn(minMargin = 3, maxMargin = 8, tries = 12): THREE.Vector3 {
+    const aspect = window.innerWidth / window.innerHeight
+    const viewSize = 12
+    const viewXHalf = viewSize * aspect
+    const viewZHalf = viewSize
+    const center = this.player.group.position
+    const diag = Math.hypot(viewXHalf, viewZHalf)
+    const minR = diag + minMargin
+    const maxR = minR + maxMargin
+    const tmp = new THREE.Vector3()
+    for (let i = 0; i < tries; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const dist = minR + Math.random() * (maxR - minR)
+      const x = center.x + Math.cos(angle) * dist
+      const z = center.z + Math.sin(angle) * dist
+      tmp.set(x, 0.5, z).project(this.camera)
+      if (Math.abs(tmp.x) > 1.02 || Math.abs(tmp.y) > 1.02) {
+        return new THREE.Vector3(x, 0.5, z)
+      }
+    }
+    const angle = Math.random() * Math.PI * 2
+    const x = center.x + Math.cos(angle) * (maxR + 6)
+    const z = center.z + Math.sin(angle) * (maxR + 6)
+    return new THREE.Vector3(x, 0.5, z)
+  }
 
   spawnEnemy() {
     // Spawn just outside current view to avoid pop-in but keep approach time reasonable
@@ -1979,10 +2004,7 @@ class Game {
     else if (minute >= 2) type = 'zigzag'
     else if (minute >= 1) type = 'runner'
 
-    const angle = Math.random() * Math.PI * 2
-    const dist = 14 + Math.random() * 8
-    const x = this.player.group.position.x + Math.cos(angle) * dist
-    const z = this.player.group.position.z + Math.sin(angle) * dist
+    const spawnPos = this.pickOffscreenSpawn(3, 8)
 
     let geom: THREE.BufferGeometry
     let color: number
@@ -2045,7 +2067,7 @@ class Game {
         speed = 2.2
     }
     const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
-    mesh.position.set(x, 0.5, z)
+    mesh.position.copy(spawnPos)
     this.scene.add(mesh)
 
     // Create larger face billboard that tracks the player
@@ -2054,7 +2076,7 @@ class Game {
       new THREE.PlaneGeometry(0.9, 0.9),
       new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
     )
-    face.position.set(x, 0.95, z)
+    face.position.set(spawnPos.x, 0.95, spawnPos.z)
     this.scene.add(face)
 
     this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face })
