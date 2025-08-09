@@ -8,7 +8,19 @@ import type { ThemeKey } from './audio'
 
 type Vector2 = { x: number; y: number }
 
-type EnemyType = 'slime' | 'runner' | 'zigzag' | 'tank' | 'shooter' | 'giant'
+type EnemyType =
+  | 'slime'
+  | 'runner'
+  | 'zigzag'
+  | 'tank'
+  | 'shooter'
+  | 'giant'
+  // New advanced enemies for waves 6–10
+  | 'charger'   // bursts toward player after brief windup
+  | 'orbiter'   // strong strafe around player with inward pressure
+  | 'teleport'  // periodically teleports near player
+  | 'weaver'    // complex weaving motion; harder zigzag
+  | 'brute'     // slow heavy with short rushes
 
 class InputManager {
   axesLeft: Vector2 = { x: 0, y: 0 }
@@ -294,12 +306,17 @@ type Enemy = {
   // Wave index (minute) when this enemy spawned
   spawnWave: number
   // Optional behavior state for AI patterns like run/pause cycles
-  behaviorState?: 'running' | 'paused'
+  behaviorState?: 'running' | 'paused' | 'windup' | 'dash' | 'recover' | 'orbit'
   behaviorTimer?: number
   behaviorRunDuration?: number
   behaviorPauseDuration?: number
   // Shooter-specific: 50% chance to be aggressive (charge player)
   shooterAggressive?: boolean
+  // Generic AI helpers
+  baseSpeed?: number
+  dashRemaining?: number
+  orbitDir?: 1 | -1
+  nextTeleportTime?: number
 }
 
 type Pickup = {
@@ -1678,6 +1695,87 @@ class Game {
             dir.addScaledVector(perp, Math.sin(e.timeAlive * 4) * 0.3).normalize()
           }
         }
+      } else if (e.type === 'charger') {
+        // Winds up, then dashes at high speed, then recovers
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'windup'
+          e.behaviorTimer = 0
+          e.baseSpeed = 2.3
+        }
+        e.behaviorTimer! += dt
+        if (e.behaviorState === 'windup') {
+          e.speed = (e.baseSpeed ?? 2.3) * 0.4
+          if (e.behaviorTimer! > 0.6) {
+            e.behaviorState = 'dash'
+            e.behaviorTimer = 0
+            e.dashRemaining = 0.45
+          }
+        } else if (e.behaviorState === 'dash') {
+          e.speed = 6.0
+          e.dashRemaining! -= dt
+          if (e.dashRemaining! <= 0) {
+            e.behaviorState = 'recover'
+            e.behaviorTimer = 0
+          }
+        } else if (e.behaviorState === 'recover') {
+          e.speed = (e.baseSpeed ?? 2.3) * 0.7
+          if (e.behaviorTimer! > 0.5) {
+            e.behaviorState = 'windup'
+            e.behaviorTimer = 0
+          }
+        }
+      } else if (e.type === 'orbiter') {
+        // Stronger circular strafe with slight inward bias
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'orbit'
+          e.orbitDir = Math.random() < 0.5 ? 1 : -1
+          e.baseSpeed = 2.4
+        }
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+        dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
+        e.speed = e.baseSpeed!
+      } else if (e.type === 'teleport') {
+        // Periodically teleports to a ring near the player, then lunges briefly
+        if (e.nextTeleportTime === undefined) e.nextTeleportTime = this.gameTime + 2 + Math.random() * 2
+        if (this.gameTime >= e.nextTeleportTime) {
+          const angle = Math.random() * Math.PI * 2
+          const radius = 6 + Math.random() * 2
+          const px = this.player.group.position.x + Math.cos(angle) * radius
+          const pz = this.player.group.position.z + Math.sin(angle) * radius
+          e.mesh.position.set(px, e.mesh.position.y, pz)
+          if (e.face) e.face.position.set(px, e.face.position.y, pz)
+          e.nextTeleportTime = this.gameTime + 2.5 + Math.random() * 2.5
+          e.behaviorState = 'dash'
+          e.dashRemaining = 0.3
+        }
+        if (e.behaviorState === 'dash' && e.dashRemaining! > 0) {
+          e.dashRemaining! -= dt
+          e.speed = 4.5
+        } else {
+          e.speed = 2.3
+        }
+      } else if (e.type === 'weaver') {
+        // Complex weaving: combine two sine waves with changing frequency
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+        const t = e.timeAlive
+        const wav = Math.sin(t * 4) * 0.7 + Math.sin(t * 7.3) * 0.3
+        dir.addScaledVector(perp, wav).normalize()
+        e.speed = 2.8
+      } else if (e.type === 'brute') {
+        // Slow approach with occasional short rush
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          e.baseSpeed = 1.6
+        }
+        e.behaviorTimer! += dt
+        if (e.behaviorTimer! > 2.2) {
+          // brief rush
+          e.speed = 4.2
+          if (e.behaviorTimer! > 2.6) e.behaviorTimer = 0
+        } else {
+          e.speed = e.baseSpeed!
+        }
       }
       e.mesh.position.add(dir.multiplyScalar(e.speed * dt))
 
@@ -1948,7 +2046,12 @@ class Game {
   spawnEnemyByWave(minute: number) {
     // Decide type by minute
     let type: EnemyType = 'slime'
-    if (minute >= 4) type = 'shooter'
+    if (minute >= 9) type = 'brute'       // wave 10
+    else if (minute >= 8) type = 'weaver'  // wave 9
+    else if (minute >= 7) type = 'teleport'// wave 8
+    else if (minute >= 6) type = 'orbiter' // wave 7
+    else if (minute >= 5) type = 'charger' // wave 6
+    else if (minute >= 4) type = 'shooter' // wave 5
     else if (minute >= 3) type = 'tank'
     else if (minute >= 2) type = 'zigzag'
     else if (minute >= 1) type = 'runner'
@@ -1987,6 +2090,36 @@ class Game {
         hp = 4 + Math.floor(this.gameTime / 25)
         speed = 2.0
         break
+      case 'charger':
+        geom = new THREE.CapsuleGeometry(0.35, 0.6, 6, 10)
+        color = 0xffaa33
+        hp = 6 + Math.floor(this.gameTime / 22)
+        speed = 2.3
+        break
+      case 'orbiter':
+        geom = new THREE.TorusGeometry(0.42, 0.15, 12, 24)
+        color = 0x33ddff
+        hp = 5 + Math.floor(this.gameTime / 25)
+        speed = 2.4
+        break
+      case 'teleport':
+        geom = new THREE.OctahedronGeometry(0.5, 0)
+        color = 0xcc66ff
+        hp = 5 + Math.floor(this.gameTime / 24)
+        speed = 2.3
+        break
+      case 'weaver':
+        geom = new THREE.DodecahedronGeometry(0.52, 0)
+        color = 0x66ff66
+        hp = 5 + Math.floor(this.gameTime / 24)
+        speed = 2.8
+        break
+      case 'brute':
+        geom = new THREE.BoxGeometry(0.9, 0.9, 0.9)
+        color = 0xdd3333
+        hp = 10 + Math.floor(this.gameTime / 18)
+        speed = 1.6
+        break
       default:
         geom = new THREE.SphereGeometry(0.5, 12, 12)
         color = 0xaa55ff
@@ -1999,15 +2132,16 @@ class Game {
 
     // Create larger face billboard that tracks the player
     const faceTex = this.makeFaceTexture(type)
+    const faceSize = type === 'brute' ? 1.2 : 0.9
     const face = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.9, 0.9),
+      new THREE.PlaneGeometry(faceSize, faceSize),
       new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
     )
     face.position.set(x, 0.95, z)
     this.scene.add(face)
 
     const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
-    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive })
+    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed })
   }
 
   makeFaceTexture(type: EnemyType) {
@@ -2022,7 +2156,7 @@ class Game {
     g.beginPath(); g.arc(40, 58, 20, 0, Math.PI * 2); g.fill()
     g.beginPath(); g.arc(88, 58, 20, 0, Math.PI * 2); g.fill()
     g.fillStyle = '#111'
-    const angry = type === 'runner' || type === 'tank' || type === 'shooter'
+    const angry = type === 'runner' || type === 'tank' || type === 'shooter' || type === 'charger' || type === 'brute'
     g.beginPath(); g.arc(40 + (angry ? 6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
     g.beginPath(); g.arc(88 + (angry ? -6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
     // Brows
