@@ -234,6 +234,7 @@ html, body {
   font-size: 10px;
   letter-spacing: 1px;
 }
+#hitcounter .hc-wrap, #hud .hc-wrap { backdrop-filter: blur(1px); }
 #hitcounter .hc-digit {
   display: inline-block;
   min-width: 12px;

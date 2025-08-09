@@ -350,7 +350,7 @@ class Game {
   lastImpactSfxMs = 0
   impactSfxIntervalMs = 60
   // Spawn/ent caps and debug
-  maxEnemies = 140
+  maxEnemies = 280
   debugLogTimer = 0
   // CRT Beam
   crtBeam?: THREE.Mesh
@@ -1669,7 +1669,7 @@ class Game {
             const child = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffdd55 }))
             child.position.copy(e.mesh.position).add(new THREE.Vector3((Math.random()-0.5)*0.8, 0.35, (Math.random()-0.5)*0.8))
             this.scene.add(child)
-            this.enemies.push({ mesh: child, alive: true, speed: 2.6, hp: 2, type: 'runner', timeAlive: 0 })
+            this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0 })
           }
           continue
         }
@@ -1992,31 +1992,31 @@ class Game {
         geom = new THREE.TetrahedronGeometry(0.55)
         color = 0x66e0ff
         hp = 3 + Math.floor(this.gameTime / 30)
-        speed = 2.5
+        speed = 3.2
         break
       case 'splitter':
         geom = new THREE.OctahedronGeometry(0.6)
         color = 0xffaa33
         hp = 5 + Math.floor(this.gameTime / 28)
-        speed = 1.9
+        speed = 2.6
         break
       case 'bomber':
         geom = new THREE.DodecahedronGeometry(0.58)
         color = 0xcc4455
         hp = 4 + Math.floor(this.gameTime / 30)
-        speed = 2.2
+        speed = 2.9
         break
       case 'sniper':
         geom = new THREE.ConeGeometry(0.45, 0.9, 12)
         color = 0x44ffaa
         hp = 4 + Math.floor(this.gameTime / 28)
-        speed = 2.1
+        speed = 2.7
         break
       case 'weaver':
         geom = new THREE.TorusKnotGeometry(0.35, 0.09, 64, 8)
         color = 0xaa66ff
         hp = 5 + Math.floor(this.gameTime / 26)
-        speed = 2.3
+        speed = 3.1
         break
       // shooter handled earlier in wave table; fallback not needed here
       case 'zigzag':
