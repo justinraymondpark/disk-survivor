@@ -11,6 +11,13 @@
 - Pause: Resume button now clickable
 - Changelog loads from bundle in prod; newest entries appear first
 
+## v0.1.4 (2025-08-08)
+
+- Touch controls: dual virtual sticks; touch pause button; merged with controller input
+- Responsive overlays: title, pause, and game over stack on narrow/tall screens
+- Netscape UI: dithered gradients, dark text, sharper corners
+- HUD: condensed to Time; level shown on XP bar; removed redundant XP/score from top-left
+
 ## v0.1.2 (2025-08-08)
 
 - Scrollable Change Log modal with proper markdown-as-text rendering

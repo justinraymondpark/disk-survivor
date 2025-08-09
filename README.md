@@ -28,6 +28,7 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - **Aim/Shoot**: Mouse aim + button, or Gamepad right stick (auto-fires while aiming)
 - **Pause**: P / Esc / Gamepad Start (adjust master/music/SFX volumes)
 - **Menus**: D-pad/left stick to navigate; Enter/A to confirm
+- **Mobile**: Dual virtual sticks (left move, right aim). A small “Pause” button appears bottom-left when touch was used recently. Touch, keyboard/mouse, and controller can be used interchangeably.
 
 ### Gameplay loop
 
@@ -83,6 +84,16 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - The game uses an orthographic, isometric camera mounted on an `isoPivot`, with the player rotated to face the aim vector.
 - Gamepad is supported for movement, aiming, pause, and overlay navigation.
 - SFX volumes and music preferences persist in `localStorage`.
+- Mobile touch controls are enabled only during gameplay, not on overlays; touch and controller inputs are merged so either can drive movement/aim at any time.
+
+### Maintainer tips (for future sessions)
+
+- Keep `README.md`, `DEV_NOTES.md`, and `CHANGELOG.md` updated with each change; commits should be frequent and descriptive.
+- When adding UI overlays, avoid duplicate ids; prefer classes (e.g., `.overlay`) and hold element references in code.
+- For production: prefer bundling static text (like `CHANGELOG.md`) via Vite `?raw` imports to avoid platform routing/404s.
+- Input system: `InputManager` merges gamepad and touch/mouse per-axis; don’t hard-disable one when another is present.
+- Styling: we’re iterating toward a Netscape-era UI. Favor chunky gradients, subtle dithering, and smaller corner radii (4px). Keep text dark on light cards.
+- Mobile: responsive CSS stacks overlay cards on narrow/tall screens; title button row uses `.title-buttons` and stacks in portrait.
 
 ### License
 
