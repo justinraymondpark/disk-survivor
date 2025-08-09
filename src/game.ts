@@ -482,7 +482,7 @@ class Game {
     // XP bar UI
     this.xpBar = document.createElement('div') as HTMLDivElement
     this.xpBar.id = 'xpbar'
-    this.xpBar.innerHTML = '<div id="xpfill"></div><div id="xplabel" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font: 12px ui-monospace, monospace; color:#0b0; text-shadow:0 0 6px rgba(0,0,0,0.6)"></div>'
+    this.xpBar.innerHTML = '<div id="xpfill"></div><div id="xplabel" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); font: 12px ui-monospace, monospace; color:#0b0; text-shadow:0 0 6px rgba(0,0,0,0.6)"></div><div id="levellabel" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); font: 12px Tahoma, ui-sans-serif; color:#0b1020;"></div>'
     this.root.appendChild(this.xpBar)
 
     // 90s hit counter UI
@@ -785,7 +785,8 @@ class Game {
   }
 
   updateHud() {
-    this.hud.textContent = `Lvl ${this.level}  XP ${this.xp.toFixed(1)}/${this.xpToLevel.toFixed(1)}  Score ${this.score}  Time ${(this.gameTime | 0)}s`
+    // HUD condensed: show time only
+    this.hud.innerHTML = `<span class="time-label">Time</span> <span class="time-val">${(this.gameTime | 0)}s</span>`
   }
 
   updateHPBar() {
@@ -1008,6 +1009,8 @@ class Game {
     if (el) el.style.width = `${fill * 100}%`
     const lab = this.xpBar.querySelector('#xplabel') as HTMLDivElement
     if (lab) lab.textContent = `${this.xp.toFixed(1)}/${this.xpToLevel.toFixed(1)}`
+    const lvl = this.xpBar.querySelector('#levellabel') as HTMLDivElement
+    if (lvl) lvl.textContent = `Lvl ${this.level}`
   }
 
   showXPToast(text: string) {

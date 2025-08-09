@@ -16,16 +16,18 @@ html, body {
   top: 8px;
   left: 8px;
   padding: 6px 8px;
-  color: #9be3ff;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid #1f2a44;
-  border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #0b1020;
+  background: linear-gradient(#bfc6d1, #9aa4b3);
+  border: 1px solid #2a2f39;
+  border-radius: 4px;
+  font-family: "Tahoma", "MS Sans Serif", ui-monospace, monospace;
   font-size: 14px;
   line-height: 1;
   pointer-events: none;
   z-index: 20;
 }
+#hud .time-label { font-weight: 700; margin-right: 6px; }
+#hud .time-val { font-variant-numeric: tabular-nums; }
 
 #hpbar {
   position: fixed;
@@ -86,6 +88,7 @@ html, body {
   z-index: 22;
   padding: 6px 10px;
   font-size: 12px;
+  pointer-events: auto;
 }
 #inventory .slotgroup strong {
   display: block;
