@@ -298,6 +298,8 @@ type Enemy = {
   behaviorTimer?: number
   behaviorRunDuration?: number
   behaviorPauseDuration?: number
+  // Shooter-specific: 50% chance to be aggressive (charge player)
+  shooterAggressive?: boolean
 }
 
 type Pickup = {
@@ -1659,9 +1661,23 @@ class Game {
       } else if (e.type === 'tank') {
         // Slow but more HP; already handled at spawn
       } else if (e.type === 'shooter') {
-        // Keeps distance
+        // 50% aggressive: always close in; 50% keep-distance
         const dist = toPlayer.length()
-        if (dist < 5) dir.multiplyScalar(-1)
+        if (e.shooterAggressive) {
+          // Keep moving toward the player; if extremely close, slightly damp speed but do not flee
+          if (dist < 1.2) e.speed *= 0.9
+        } else {
+          // Keeps distance with a soft comfort band
+          if (dist < 5) {
+            dir.multiplyScalar(-1)
+          } else if (dist > 6.5) {
+            // move toward to re-engage
+          } else {
+            // small lateral strafe to avoid perfect orbit feel
+            const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+            dir.addScaledVector(perp, Math.sin(e.timeAlive * 4) * 0.3).normalize()
+          }
+        }
       }
       e.mesh.position.add(dir.multiplyScalar(e.speed * dt))
 
@@ -1990,7 +2006,8 @@ class Game {
     face.position.set(x, 0.95, z)
     this.scene.add(face)
 
-    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute })
+    const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
+    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive })
   }
 
   makeFaceTexture(type: EnemyType) {
