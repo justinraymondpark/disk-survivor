@@ -346,6 +346,12 @@ class Game {
   vacuumPull = 12
   // Level-up magnet tail (real-time ms)
   levelUpTailUntilMs = 0
+  // SFX throttling to avoid audio spam and perf spikes
+  lastImpactSfxMs = 0
+  impactSfxIntervalMs = 60
+  // Spawn/ent caps and debug
+  maxEnemies = 140
+  debugLogTimer = 0
   // CRT Beam
   crtBeam?: THREE.Mesh
   crtBeamGlow?: THREE.Mesh
@@ -1590,7 +1596,10 @@ class Game {
     if (this.spawnAccumulator >= baseInterval) {
       this.spawnAccumulator = 0
       const count = 1 + Math.min(6, Math.floor(this.gameTime / 25))
-      for (let i = 0; i < count; i++) this.spawnEnemyByWave(minute)
+      const aliveEnemies = this.enemies.filter(e => e.alive).length
+      if (aliveEnemies < this.maxEnemies) {
+        for (let i = 0; i < count && (this.enemies.filter(e => e.alive).length < this.maxEnemies); i++) this.spawnEnemyByWave(minute)
+      }
     }
 
     // Update enemies with different behaviors
@@ -1609,9 +1618,18 @@ class Game {
       } else if (e.type === 'tank') {
         // Slow but more HP; already handled at spawn
       } else if (e.type === 'shooter') {
-        // Keeps distance
+        // Ring behavior with strafing so they don't stall
         const dist = toPlayer.length()
-        if (dist < 5) dir.multiplyScalar(-1)
+        const prefer = 7
+        const band = 1.2
+        if (dist < prefer - band) {
+          dir.multiplyScalar(-1)
+        } else if (dist > prefer + band) {
+          // keep dir toward
+        } else {
+          dir = new THREE.Vector3(-dir.z, 0, dir.x)
+          if (Math.sin(e.timeAlive * 1.5) < 0) dir.multiplyScalar(-1)
+        }
       }
       e.mesh.position.add(dir.multiplyScalar(e.speed * dt))
 
