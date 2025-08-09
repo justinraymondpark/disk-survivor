@@ -8,7 +8,24 @@ import type { ThemeKey } from './audio'
 
 type Vector2 = { x: number; y: number }
 
-type EnemyType = 'slime' | 'runner' | 'zigzag' | 'tank' | 'shooter' | 'giant' | 'spinner' | 'splitter' | 'bomber' | 'sniper' | 'weaver'
+type EnemyType =
+  | 'slime'
+  | 'runner'
+  | 'zigzag'
+  | 'tank'
+  | 'shooter'
+  | 'giant'
+  // Upstream unique enemies
+  | 'spinner'
+  | 'splitter'
+  | 'bomber'
+  | 'sniper'
+  | 'weaver'
+  // New advanced enemies for waves 6–10
+  | 'charger'   // bursts toward player after brief windup
+  | 'orbiter'   // strong strafe around player with inward pressure
+  | 'teleport'  // periodically teleports near player
+  | 'brute'     // slow heavy with short rushes
 
 class InputManager {
   axesLeft: Vector2 = { x: 0, y: 0 }
@@ -297,6 +314,20 @@ type Enemy = {
   hesitateDur?: number
   nextHesitateAt?: number
   speedScale?: number
+  // Wave index (minute) when this enemy spawned
+  spawnWave: number
+  // Optional behavior state for AI patterns like run/pause cycles
+  behaviorState?: 'running' | 'paused' | 'windup' | 'dash' | 'recover' | 'orbit'
+  behaviorTimer?: number
+  behaviorRunDuration?: number
+  behaviorPauseDuration?: number
+  // Shooter-specific: 50% chance to be aggressive (charge player)
+  shooterAggressive?: boolean
+  // Generic AI helpers
+  baseSpeed?: number
+  dashRemaining?: number
+  orbitDir?: 1 | -1
+  nextTeleportTime?: number
 }
 
 type Pickup = {
@@ -370,6 +401,10 @@ class Game {
   // Tape Whirl
   whirlSaws: THREE.Mesh[] = []
   whirlRadius = 2.0
+  // Wave management
+  lastWaveMinute = -1
+  waveCullDelaySeconds = 2
+  waveCullKeepFraction = 0.12
   whirlSpeed = 2.8
   whirlDamage = 16
   // Magic Lasso
@@ -778,7 +813,8 @@ class Game {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff55aa }))
     mesh.position.set(x, 0.5, z)
     this.scene.add(mesh)
-    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0 })
+    const minute = Math.floor(this.gameTime / 60)
+    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0, spawnWave: minute })
   }
 
   shoot() {
@@ -1662,6 +1698,11 @@ class Game {
     // Spawning waves and difficulty ramp with cadence modulation
     this.spawnAccumulator += dt
     const minute = Math.floor(this.gameTime / 60)
+    // Detect wave transition and schedule cull of older waves
+    if (minute !== this.lastWaveMinute) {
+      if (minute > this.lastWaveMinute) this.onWaveStart(minute)
+      this.lastWaveMinute = minute
+    }
     // Baseline spawn interval gets faster over time
     const baseInterval = Math.max(0.45, 2.0 - this.gameTime * 0.035)
     // Gentle sine modulation (~10% swing)
@@ -1746,24 +1787,61 @@ class Game {
       }
       if (e.type === 'runner') {
         // Accelerate over time, but ~20% slower overall
-        e.speed = (2.8 + Math.min(3, this.gameTime * 0.02)) * 0.8
+        const baseRunnerSpeed = (2.8 + Math.min(3, this.gameTime * 0.02)) * 0.8
+        // Introduce brief pauses for wave-2 runners (spawnWave === 1)
+        if (e.behaviorState === undefined) {
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          // Wave 2 pauses slightly more; later waves pause less
+          e.behaviorRunDuration = isWaveTwo
+            ? 0.8 + Math.random() * 0.55 // 0.8–1.35s running
+            : 1.1 + Math.random() * 0.7  // 1.1–1.8s running
+          e.behaviorPauseDuration = isWaveTwo
+            ? 0.35 + Math.random() * 0.2  // 0.35–0.55s pause
+            : 0.15 + Math.random() * 0.2  // 0.15–0.35s pause
+        }
+        // Advance behavior timer and toggle states
+        e.behaviorTimer! += dt
+        if (e.behaviorState === 'running' && e.behaviorTimer! >= (e.behaviorRunDuration ?? 1.2)) {
+          e.behaviorState = 'paused'
+          e.behaviorTimer = 0
+          // Resample next pause for subtle variation
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorPauseDuration = isWaveTwo
+            ? 0.35 + Math.random() * 0.2
+            : 0.15 + Math.random() * 0.2
+        } else if (e.behaviorState === 'paused' && e.behaviorTimer! >= (e.behaviorPauseDuration ?? 0.25)) {
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          // Resample next run duration
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorRunDuration = isWaveTwo
+            ? 0.8 + Math.random() * 0.55
+            : 1.1 + Math.random() * 0.7
+        }
+        e.speed = e.behaviorState === 'paused' ? 0 : baseRunnerSpeed
       } else if (e.type === 'zigzag') {
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
         dir.addScaledVector(perp, Math.sin(e.timeAlive * 6) * 0.6).normalize()
       } else if (e.type === 'tank') {
         // Slow but more HP; already handled at spawn
       } else if (e.type === 'shooter') {
-        // Ring behavior with strafing so they don't stall
+        // Blend upstream ring strafing with bravery toggle
         const dist = toPlayer.length()
-        const prefer = 7
-        const band = 1.2
-        if (dist < prefer - band) {
-          dir.multiplyScalar(-1)
-        } else if (dist > prefer + band) {
-          // keep dir toward
+        if (e.shooterAggressive) {
+          if (dist < 1.2) e.speed *= 0.9
         } else {
-          dir = new THREE.Vector3(-dir.z, 0, dir.x)
-          if (Math.sin(e.timeAlive * 1.5) < 0) dir.multiplyScalar(-1)
+          const prefer = 7
+          const band = 1.2
+          if (dist < prefer - band) {
+            dir.multiplyScalar(-1)
+          } else if (dist > prefer + band) {
+            // keep dir toward
+          } else {
+            dir = new THREE.Vector3(-dir.z, 0, dir.x)
+            if (Math.sin(e.timeAlive * 1.5) < 0) dir.multiplyScalar(-1)
+          }
         }
       } else if (e.type === 'spinner') {
         // spins while moving toward player
@@ -1778,7 +1856,7 @@ class Game {
             const child = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffdd55 }))
             child.position.copy(e.mesh.position).add(new THREE.Vector3((Math.random()-0.5)*0.8, 0.35, (Math.random()-0.5)*0.8))
             this.scene.add(child)
-            this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0 })
+            this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0, spawnWave: e.spawnWave })
           }
           continue
         }
@@ -1797,9 +1875,86 @@ class Game {
         const dist = toPlayer.length()
         if (dist < 9) dir.multiplyScalar(-1)
       } else if (e.type === 'weaver') {
-        // curvy weave
+        // Combine upstream weave with enhanced weave speed
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
-        dir.addScaledVector(perp, Math.sin(e.timeAlive * 3) * 0.8).normalize()
+        const t = e.timeAlive
+        const wav = Math.sin(t * 3) * 0.8
+        dir.addScaledVector(perp, wav).normalize()
+        e.speed = 2.8
+      } else if (e.type === 'charger') {
+        // Winds up, then dashes at high speed, then recovers
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'windup'
+          e.behaviorTimer = 0
+          e.baseSpeed = 2.3
+        }
+        e.behaviorTimer! += dt
+        if (e.behaviorState === 'windup') {
+          e.speed = (e.baseSpeed ?? 2.3) * 0.4
+          if (e.behaviorTimer! > 0.6) {
+            e.behaviorState = 'dash'
+            e.behaviorTimer = 0
+            e.dashRemaining = 0.45
+          }
+        } else if (e.behaviorState === 'dash') {
+          e.speed = 6.0
+          e.dashRemaining! -= dt
+          if (e.dashRemaining! <= 0) {
+            e.behaviorState = 'recover'
+            e.behaviorTimer = 0
+          }
+        } else if (e.behaviorState === 'recover') {
+          e.speed = (e.baseSpeed ?? 2.3) * 0.7
+          if (e.behaviorTimer! > 0.5) {
+            e.behaviorState = 'windup'
+            e.behaviorTimer = 0
+          }
+        }
+      } else if (e.type === 'orbiter') {
+        // Stronger circular strafe with slight inward bias
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'orbit'
+          e.orbitDir = Math.random() < 0.5 ? 1 : -1
+          e.baseSpeed = 2.4
+        }
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+        dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
+        e.speed = e.baseSpeed!
+      } else if (e.type === 'teleport') {
+        // Periodically teleports to a ring near the player, then lunges briefly
+        if (e.nextTeleportTime === undefined) e.nextTeleportTime = this.gameTime + 2 + Math.random() * 2
+        if (this.gameTime >= e.nextTeleportTime) {
+          const angle = Math.random() * Math.PI * 2
+          const radius = 6 + Math.random() * 2
+          const px = this.player.group.position.x + Math.cos(angle) * radius
+          const pz = this.player.group.position.z + Math.sin(angle) * radius
+          e.mesh.position.set(px, e.mesh.position.y, pz)
+          if (e.face) e.face.position.set(px, e.face.position.y, pz)
+          e.nextTeleportTime = this.gameTime + 2.5 + Math.random() * 2.5
+          e.behaviorState = 'dash'
+          e.dashRemaining = 0.3
+        }
+        if (e.behaviorState === 'dash' && e.dashRemaining! > 0) {
+          e.dashRemaining! -= dt
+          e.speed = 4.5
+        } else {
+          e.speed = 2.3
+        }
+      } else if (e.type === 'brute') {
+        // Slow approach with occasional short rush
+        if (e.behaviorState === undefined) {
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          e.baseSpeed = 1.6
+        }
+        e.behaviorTimer! += dt
+        if (e.behaviorTimer! > 2.2) {
+          // brief rush
+          e.speed = 4.2
+          if (e.behaviorTimer! > 2.6) e.behaviorTimer = 0
+        } else {
+          e.speed = e.baseSpeed!
+        }
       }
       const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
       e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * dt))
@@ -2071,13 +2226,13 @@ class Game {
   spawnEnemyByWave(minute: number) {
     // Decide type by minute
     let type: EnemyType = 'slime'
-    // Wave table extended to 10 minutes with unique flavors
-    if (minute >= 9) type = 'giant'
-    else if (minute >= 8) type = 'weaver'
-    else if (minute >= 7) type = 'sniper'
-    else if (minute >= 6) type = 'bomber'
-    else if (minute >= 5) type = 'splitter'
-    else if (minute >= 4) type = 'spinner'
+    // Wave table extended to 10 minutes with unique flavors (merge of upstream + new)
+    if (minute >= 9) type = 'brute'       // wave 10
+    else if (minute >= 8) type = 'weaver'  // wave 9
+    else if (minute >= 7) type = 'teleport'// wave 8
+    else if (minute >= 6) type = 'orbiter' // wave 7
+    else if (minute >= 5) type = 'charger' // wave 6
+    else if (minute >= 4) type = 'spinner' // wave 5 alt (upstream), shooter appears earlier randomly
     else if (minute >= 3) type = 'tank'
     else if (minute >= 2) type = 'zigzag'
     else if (minute >= 1) type = 'runner'
@@ -2125,7 +2280,6 @@ class Game {
         hp = 5 + Math.floor(this.gameTime / 26)
         speed = 3.1
         break
-      // shooter handled earlier in wave table; fallback not needed here
       case 'zigzag':
         geom = new THREE.IcosahedronGeometry(0.5, 0)
         color = 0x55ffaa
@@ -2137,6 +2291,36 @@ class Game {
         color = 0xff6699
         hp = 6 + Math.floor(this.gameTime / 24)
         speed = 1.5
+        break
+      case 'shooter':
+        geom = new THREE.ConeGeometry(0.4, 0.7, 10)
+        color = 0x66aaff
+        hp = 4 + Math.floor(this.gameTime / 25)
+        speed = 2.0
+        break
+      case 'charger':
+        geom = new THREE.CapsuleGeometry(0.35, 0.6, 6, 10)
+        color = 0xffaa33
+        hp = 6 + Math.floor(this.gameTime / 22)
+        speed = 2.3
+        break
+      case 'orbiter':
+        geom = new THREE.TorusGeometry(0.42, 0.15, 12, 24)
+        color = 0x33ddff
+        hp = 5 + Math.floor(this.gameTime / 25)
+        speed = 2.4
+        break
+      case 'teleport':
+        geom = new THREE.OctahedronGeometry(0.5, 0)
+        color = 0xcc66ff
+        hp = 5 + Math.floor(this.gameTime / 24)
+        speed = 2.3
+        break
+      case 'brute':
+        geom = new THREE.BoxGeometry(0.9, 0.9, 0.9)
+        color = 0xdd3333
+        hp = 10 + Math.floor(this.gameTime / 18)
+        speed = 1.6
         break
       default:
         geom = new THREE.SphereGeometry(0.5, 12, 12)
@@ -2150,14 +2334,16 @@ class Game {
 
     // Create larger face billboard that tracks the player
     const faceTex = this.makeFaceTexture(type)
+    const faceSize = type === 'brute' ? 1.2 : 0.9
     const face = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.9, 0.9),
+      new THREE.PlaneGeometry(faceSize, faceSize),
       new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
     )
     face.position.set(spawnPos.x, 0.95, spawnPos.z)
     this.scene.add(face)
 
-    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face })
+    const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
+    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed })
   }
 
   makeFaceTexture(type: EnemyType) {
@@ -2172,7 +2358,7 @@ class Game {
     g.beginPath(); g.arc(40, 58, 20, 0, Math.PI * 2); g.fill()
     g.beginPath(); g.arc(88, 58, 20, 0, Math.PI * 2); g.fill()
     g.fillStyle = '#111'
-    const angry = type === 'runner' || type === 'tank' || type === 'shooter'
+    const angry = type === 'runner' || type === 'tank' || type === 'shooter' || type === 'charger' || type === 'brute'
     g.beginPath(); g.arc(40 + (angry ? 6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
     g.beginPath(); g.arc(88 + (angry ? -6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
     // Brows
@@ -2217,7 +2403,8 @@ class Game {
     this.scene.add(face)
     this.drawAnimatedFace(canvas, 0)
 
-    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now() })
+    const minute = Math.floor(this.gameTime / 60)
+    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now(), spawnWave: minute })
   }
 
   drawAnimatedFace(c: HTMLCanvasElement, frame: number) {
@@ -2572,6 +2759,39 @@ class Game {
         ${digits.split('').map((d) => `<span class="hc-digit">${d}</span>`).join('')}
       </div>
     `
+  }
+
+  private onWaveStart(newMinute: number) {
+    // After a short delay, remove most enemies from two waves prior (no XP, no score)
+    const targetWave = newMinute - 2
+    if (targetWave < 0) return
+    const delayMs = Math.max(0, Math.floor(this.waveCullDelaySeconds * 1000))
+    setTimeout(() => this.cullEnemiesFromWave(targetWave), delayMs)
+  }
+
+  private cullEnemiesFromWave(waveMinute: number) {
+    const group = this.enemies.filter((e) => e.alive && e.spawnWave === waveMinute)
+    if (group.length === 0) return
+    const keepCount = Math.min(
+      group.length,
+      Math.max(2, Math.floor(group.length * this.waveCullKeepFraction))
+    )
+    // Shuffle indices to pick survivors
+    const indices = Array.from({ length: group.length }, (_, i) => i)
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[indices[i], indices[j]] = [indices[j], indices[i]]
+    }
+    const survivorSet = new Set(indices.slice(0, keepCount).map((idx) => group[idx]))
+    for (const enemy of group) {
+      if (survivorSet.has(enemy)) continue
+      enemy.alive = false
+      this.scene.remove(enemy.mesh)
+      if (enemy.face) this.scene.remove(enemy.face)
+      // Intentionally do not award XP or score and do not call onEnemyDown
+    }
+    // Compact enemy list to remove culled entries
+    this.enemies = this.enemies.filter((e) => e.alive)
   }
 }
 

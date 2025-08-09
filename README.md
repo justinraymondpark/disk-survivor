@@ -147,3 +147,8 @@ Environment (for Blobs in Functions)
 - `NETLIFY_SITE_ID` = your site API/Project ID
 - `NETLIFY_AUTH_TOKEN` = your personal access token
 
+### Test deployment
+
+- This line exists to verify CI/CD deploy triggers on README edits.
+- Safe to remove later.
+
