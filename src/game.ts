@@ -293,6 +293,11 @@ type Enemy = {
   nextFaceUpdate?: number
   // Wave index (minute) when this enemy spawned
   spawnWave: number
+  // Optional behavior state for AI patterns like run/pause cycles
+  behaviorState?: 'running' | 'paused'
+  behaviorTimer?: number
+  behaviorRunDuration?: number
+  behaviorPauseDuration?: number
 }
 
 type Pickup = {
@@ -1614,7 +1619,40 @@ class Game {
       let dir = toPlayer.clone().normalize()
       if (e.type === 'runner') {
         // Accelerate over time, but ~20% slower overall
-        e.speed = (2.8 + Math.min(3, this.gameTime * 0.02)) * 0.8
+        const baseRunnerSpeed = (2.8 + Math.min(3, this.gameTime * 0.02)) * 0.8
+        // Introduce brief pauses for wave-2 runners (spawnWave === 1)
+        if (e.behaviorState === undefined) {
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          // Wave 2 pauses slightly more; later waves pause less
+          e.behaviorRunDuration = isWaveTwo
+            ? 0.8 + Math.random() * 0.55 // 0.8–1.35s running
+            : 1.1 + Math.random() * 0.7  // 1.1–1.8s running
+          e.behaviorPauseDuration = isWaveTwo
+            ? 0.35 + Math.random() * 0.2  // 0.35–0.55s pause
+            : 0.15 + Math.random() * 0.2  // 0.15–0.35s pause
+        }
+        // Advance behavior timer and toggle states
+        e.behaviorTimer! += dt
+        if (e.behaviorState === 'running' && e.behaviorTimer! >= (e.behaviorRunDuration ?? 1.2)) {
+          e.behaviorState = 'paused'
+          e.behaviorTimer = 0
+          // Resample next pause for subtle variation
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorPauseDuration = isWaveTwo
+            ? 0.35 + Math.random() * 0.2
+            : 0.15 + Math.random() * 0.2
+        } else if (e.behaviorState === 'paused' && e.behaviorTimer! >= (e.behaviorPauseDuration ?? 0.25)) {
+          e.behaviorState = 'running'
+          e.behaviorTimer = 0
+          // Resample next run duration
+          const isWaveTwo = e.spawnWave === 1
+          e.behaviorRunDuration = isWaveTwo
+            ? 0.8 + Math.random() * 0.55
+            : 1.1 + Math.random() * 0.7
+        }
+        e.speed = e.behaviorState === 'paused' ? 0 : baseRunnerSpeed
       } else if (e.type === 'zigzag') {
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
         dir.addScaledVector(perp, Math.sin(e.timeAlive * 6) * 0.6).normalize()
