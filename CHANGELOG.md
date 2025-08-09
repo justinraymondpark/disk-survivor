@@ -1,3 +1,9 @@
+## v0.1.6 (2025-08-08)
+
+- Spawn: enemies now spawn strictly offscreen using camera projection to avoid on-screen pop-in
+- Cadence: gentle sine-modulated baseline spawns with occasional micro-bursts (staggered) to add variety without lapses
+- Enemies: added smooth hesitation cycles (decelerate → brief pause with direction jitter → accelerate) to reduce clumping
+
 ## v0.1.1 (2025-08-08)
 
 - Change Log button on title screen opens this file in an overlay

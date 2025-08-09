@@ -95,6 +95,36 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - Styling: we’re iterating toward a Netscape-era UI. Favor chunky gradients, subtle dithering, and smaller corner radii (4px). Keep text dark on light cards.
 - Mobile: responsive CSS stacks overlay cards on narrow/tall screens; title button row uses `.title-buttons` and stacks in portrait.
 
+### Maintainer quick-brief (what a future chat should know)
+
+- Core files: `src/game.ts` (loop, systems, UI), `src/audio.ts` (SFX/music), `src/style.css` (UI), Netlify Functions in `netlify/functions/*`.
+- Spawning/offscreen:
+  - Enemies spawn strictly offscreen using `pickOffscreenSpawn(minMargin,maxMargin)` which projects candidate points against the camera and rejects anything visible.
+  - Spawn cadence is a mostly steady stream with subtle variation: baseline interval ramps with time, gently modulated by a sine, plus rare micro-bursts that add a few staggered spawns.
+- Anti-clump behavior:
+  - Each enemy occasionally runs a hesitation cycle: decelerate (ease-out) → brief pause (with slight direction jitter) → accelerate (ease-in). State is stored on `Enemy` as `hesitateState/Timer/Dur/nextHesitateAt/speedScale`.
+- Input:
+  - `InputManager` merges keyboard, mouse, gamepad, and touch per-axis; touch/gamepad can be used simultaneously. Touch controls are enabled only during gameplay; a small `Pause` button appears when touch was used recently.
+- HUD/UI:
+  - Time HUD updates each second (4 digits). Hit counter flips its label periodically. Level is shown at the XP bar. Overlays use the `.overlay` class; cards are styled with a Netscape-inspired look.
+- XP/vacuum:
+  - XP magnet upgrade increases pull radius. Vacuum pickup pulls XP/bundles for ~3s. Magnet continues ~0.5s into level-up with easing.
+- Weapons/enemies:
+  - Weapons: CRT Beam, Dot Matrix, Dial-up Burst, SCSI Rocket, Tape Whirl, Magic Lasso, Shield Wall. New enemy types include spinner, splitter, bomber, sniper, weaver; shooters strafe at a preferred distance.
+- Audio:
+  - Louder SFX, softer music by default; impact SFX is throttled. Player death plays a synth "death moan" and triggers a maroon flash before the Game Over UI fades in.
+- Debugging/perf:
+  - Pause overlay shows live counts: enemies, projectiles, XP orbs, pickups. Consider adding a “near” enemies metric (within N units) to compare total vs. on-screen density.
+- Changelog:
+  - `CHANGELOG.md` is bundled via Vite `?raw` and shown in a modal. Keep newest entries at the top; mirror commit summaries.
+
+### Pending / next ideas
+
+- Add a “near” enemy count to the pause debug line to reflect on-screen pressure.
+- Guard against floor texture flicker; consider WebGL context loss handling.
+- Optionally tune spawn margins by DPI/zoom for ultra-dense displays.
+- Continue mobile UI refinements; evaluate controller navigation consistency on all overlays.
+
 ### License
 
 No license specified yet. Add one if you plan to distribute.
