@@ -18,6 +18,16 @@
 - Netscape UI: dithered gradients, dark text, sharper corners
 - HUD: condensed to Time; level shown on XP bar; removed redundant XP/score from top-left
 
+## v0.1.5 (2025-08-08)
+
+- Controller/touch: prevent right-stick angle from “sticking” on mobile; keep last facing on touch
+- XP Vacuum: pulls XP/bundles toward player over 3s; magnet continues 0.5s into level-up with easing
+- Time HUD: 4-digit counter; updates every second
+- Death polish: maroon flash + synth moan; Game Over UI animates in
+- Waves: extended unique enemy waves up to minute 10; shooters strafe in a ring
+- Perf: cap active enemies (~140); throttle impact SFX to 50ms min
+- Pause: shows a small debug line with entity counts
+
 ## v0.1.2 (2025-08-08)
 
 - Scrollable Change Log modal with proper markdown-as-text rendering

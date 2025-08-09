@@ -1321,6 +1321,7 @@ class Game {
         const vmVal = this.pauseOverlay.querySelector('#vol-master-val') as HTMLSpanElement
         const vmuVal = this.pauseOverlay.querySelector('#vol-music-val') as HTMLSpanElement
         const vsVal = this.pauseOverlay.querySelector('#vol-sfx-val') as HTMLSpanElement
+        const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
         const syncVals = () => {
           if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
           if (vmu && vmuVal) vmuVal.textContent = Number(vmu.value).toFixed(2)
@@ -1332,6 +1333,14 @@ class Game {
         if (vmu2) vmu2.oninput = () => { this.audio.setMusicVolume(Number(vmu2.value)); syncVals() }
         if (vs2) vs2.oninput = () => { this.audio.setSfxVolume(Number(vs2.value)); syncVals() }
         syncVals()
+        // Update debug numbers when pause opens
+        if (dbg) {
+          const enemies = this.enemies.filter(e => e.alive).length
+          const proj = this.projectiles.filter(p => p.alive).length
+          const orbs = this.xpOrbs.filter(o => o.alive).length
+          const picks = this.pickups.filter(p => p.alive).length
+          dbg.textContent = `EN:${enemies} PR:${proj} XP:${orbs} PK:${picks}`
+        }
       }
       this.togglePause()
     }
@@ -1359,6 +1368,15 @@ class Game {
       const pausePressed = !!(start2 || p2 || esc2)
       if (pausePressed && !this.pausePrev) this.togglePause()
       this.pausePrev = pausePressed
+      // Refresh debug counts each frame while paused
+      const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
+      if (dbg) {
+        const enemies = this.enemies.filter(e => e.alive).length
+        const proj = this.projectiles.filter(p => p.alive).length
+        const orbs = this.xpOrbs.filter(o => o.alive).length
+        const picks = this.pickups.filter(p => p.alive).length
+        dbg.textContent = `EN:${enemies} PR:${proj} XP:${orbs} PK:${picks}`
+      }
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
       return
