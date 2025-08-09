@@ -350,7 +350,7 @@ class Game {
   lastImpactSfxMs = 0
   impactSfxIntervalMs = 60
   // Spawn/ent caps and debug
-  maxEnemies = 280
+  maxEnemies = 400
   debugLogTimer = 0
   // CRT Beam
   crtBeam?: THREE.Mesh
@@ -728,8 +728,11 @@ class Game {
   }
 
   spawnEnemy() {
+    // Spawn outside of current view to avoid pop-in on larger displays
     const angle = Math.random() * Math.PI * 2
-    const dist = 14 + Math.random() * 8
+    const base = 14 + Math.random() * 8
+    const extra = 10
+    const dist = base + extra
     const x = this.player.group.position.x + Math.cos(angle) * dist
     const z = this.player.group.position.z + Math.sin(angle) * dist
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff55aa }))
@@ -769,12 +772,13 @@ class Game {
     }
     let mesh: THREE.Mesh
     if (kind === 'heal') {
-      // Billboard quad with a simple chicken/pie emoji
+      // 3D triangular prism (more visible)
       const tri = new THREE.Shape()
       tri.moveTo(0, 0.35); tri.lineTo(-0.35, -0.35); tri.lineTo(0.35, -0.35); tri.lineTo(0, 0.35)
-      const geo = new THREE.ShapeGeometry(tri)
-      const mat = new THREE.MeshBasicMaterial({ color: 0xffdd77 })
-      mesh = new THREE.Mesh(geo, mat)
+      const prism = new THREE.ExtrudeGeometry(tri, { depth: 0.2, bevelEnabled: false })
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffe38a })
+      mesh = new THREE.Mesh(prism, mat)
+      mesh.rotation.x = -Math.PI / 2
     } else if (kind === 'vacuum') {
       // Glowing blue cube
       mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0x66ccff }))
