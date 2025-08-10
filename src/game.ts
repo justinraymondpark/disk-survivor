@@ -470,6 +470,7 @@ class Game {
     }
     const wrap = document.createElement('div')
     wrap.className = 'card'
+    wrap.classList.add('debug-panel')
     wrap.style.minWidth = '540px'
     wrap.style.maxWidth = '80vw'
     wrap.style.maxHeight = '80vh'
@@ -489,7 +490,7 @@ class Game {
     scroll.appendChild(form)
     const makeRow = (label: string, kind: 'weapon' | 'upgrade') => {
       const row = document.createElement('div')
-      row.className = 'card'
+      row.className = 'card dbg-row'
       row.style.padding = '8px'
       const name = document.createElement('div'); name.innerHTML = `<strong>${label}</strong>`
       const controls = document.createElement('div')
@@ -577,6 +578,22 @@ class Game {
     }
     focusables.push(backBtn as HTMLButtonElement, startBtn as HTMLButtonElement)
     let sel = 0
+    // Smooth scroll helper
+    const smoothScrollTo = (container: HTMLDivElement, to: number, duration = 240) => {
+      const start = container.scrollTop
+      const max = Math.max(0, container.scrollHeight - container.clientHeight)
+      const target = Math.max(0, Math.min(max, to))
+      const delta = target - start
+      const t0 = performance.now()
+      const ease = (t: number) => (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, t)))) / 2
+      const step = () => {
+        const t = (performance.now() - t0) / duration
+        container.scrollTop = start + delta * ease(t)
+        if (t < 1) requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    }
+
     const highlight = () => {
       // Clear row and element highlights
       rows.forEach((r) => r.classList.remove('selected'))
@@ -589,7 +606,15 @@ class Game {
       ;(el as HTMLElement).classList.add('ui-selected')
       // Ensure in view
       const container = scroll
-      if (container && typeof (el as any).scrollIntoView === 'function') (el as any).scrollIntoView({ block: 'nearest' })
+      const elRect = (el as HTMLElement).getBoundingClientRect()
+      const cRect = container.getBoundingClientRect()
+      if (elRect.top < cRect.top + 8) {
+        const offset = container.scrollTop + (elRect.top - cRect.top) - 8
+        smoothScrollTo(container, offset)
+      } else if (elRect.bottom > cRect.bottom - 8) {
+        const offset = container.scrollTop + (elRect.bottom - cRect.bottom) + 8
+        smoothScrollTo(container, offset)
+      }
     }
     highlight()
     let prevLeft = false, prevRight = false, prevUp = false, prevDown = false, prevA = false, prevB = false
@@ -2354,8 +2379,7 @@ class Game {
             this.updateHud()
             this.spawnXP(e.mesh.position.clone())
             if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
-            // Rocket AoE explosion on kill
-            if (p.kind === 'rocket') this.explodeAt(e.mesh.position.clone(), this.rocketBlastRadius, p.damage)
+            
           }
           else {
             this.audio.playImpact()
@@ -2363,8 +2387,7 @@ class Game {
           if (p.pierce > 0) {
             p.pierce -= 1
           } else {
-            // Rocket AoE explosion on first impact
-            if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
+            
             p.alive = false
             this.scene.remove(p.mesh)
           }

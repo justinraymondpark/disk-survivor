@@ -200,6 +200,14 @@ html, body {
   outline-offset: 2px;
 }
 
+/* Debug panel compaction */
+.debug-panel { max-width: 720px; }
+.debug-panel .carddesc { font-size: 12px; }
+.dbg-row { padding: 6px !important; }
+.dbg-row strong { font-size: 13px; }
+.dbg-row input[type="number"] { height: 22px; font-size: 12px; }
+.dbg-row input[type="checkbox"] { width: 16px; height: 16px; }
+
 /* Animated card entrance */
 @keyframes popFade {
   0% { opacity: 0; transform: translateY(14px) scale(0.96); filter: blur(2px); }

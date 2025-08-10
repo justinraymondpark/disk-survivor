@@ -1,3 +1,8 @@
+## v0.1.17 (2025-08-10)
+
+- Debug Mode: smooth scroll on controller navigation; more compact rows and slightly smaller font
+- Rocket: fully reverted to original simple homing; removed AoE behavior
+
 ## v0.1.16 (2025-08-10)
 
 - Debug Mode: clearer element highlighting; controller vertical navigation scrolls the list; A/B access Back/Start buttons
