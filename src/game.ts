@@ -457,6 +457,8 @@ class Game {
   autoFire = true
   hitCount = 0
   hitCounterEl!: HTMLDivElement
+  // Pending level-ups to resolve sequentially
+  pendingLevelUps = 0
   hitCounterFlip = false
   submitLocked = false
   lastHudSeconds = -1
@@ -1073,6 +1075,13 @@ class Game {
       apply()
       this.overlay.style.display = 'none'
       this.isPausedForLevelUp = false
+      if (this.pendingLevelUps > 0) {
+        this.pendingLevelUps -= 1
+        if (this.pendingLevelUps > 0) {
+          // Queue next level-up selection immediately
+          setTimeout(() => this.showLevelUp(), 0)
+        }
+      }
     }
     return c
   }
@@ -1180,10 +1189,13 @@ class Game {
     const gained = amount * this.xpGainMultiplier
     this.xp += gained
     this.showXPToast(`+${gained.toFixed(1)} XP`)
-    if (this.xp >= this.xpToLevel) {
+    while (this.xp >= this.xpToLevel) {
       this.xp -= this.xpToLevel
       this.level += 1
       this.xpToLevel = Math.floor(this.xpToLevel * 1.5)
+      this.pendingLevelUps += 1
+    }
+    if (this.pendingLevelUps > 0 && !this.isPausedForLevelUp) {
       this.showLevelUp()
       this.audio.playLevelUp()
     }
@@ -2369,13 +2381,13 @@ class Game {
     this.scene.add(mesh)
     const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 4.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     // Visible trail
-    const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, 0.4, 6), new THREE.MeshBasicMaterial({ color: 0xffcc99, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }))
+    const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.16, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0xffcc99, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }))
     trail.rotation.x = Math.PI / 2
     mesh.add(trail)
     this.projectiles.push(rocket)
     // Phase timings
-    const boostDuration = 0.35
-    const pauseDuration = 0.18
+    const boostDuration = 0.45
+    const pauseDuration = 0.24
     const startTime = this.gameTime
     const initialDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
     const runUpdate = () => {
@@ -2383,16 +2395,16 @@ class Game {
       const tSince = this.gameTime - startTime
       if (tSince < boostDuration) {
         // Initial forward boost
-        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 1.4), 0.4)
+        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.9), 0.35)
       } else if (tSince < boostDuration + pauseDuration) {
         // Hesitate/lock-on phase
-        rocket.velocity.multiplyScalar(0.92)
+        rocket.velocity.multiplyScalar(0.88)
       } else {
         // Homing chase burst
         const target = this.enemies.find((e) => e.alive)
         if (target) {
           const dir = target.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 1.35), Math.min(0.5, this.rocketTurn * 1.5))
+          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.95), Math.min(0.35, this.rocketTurn * 1.2))
           rocket.mesh.lookAt(target.mesh.position.clone().setY(rocket.mesh.position.y))
         }
       }
@@ -2784,35 +2796,37 @@ class Game {
   }
 
   private spawnZapEffect(a: THREE.Vector3, b: THREE.Vector3, intensity = 1) {
-    // Simple additive line segments to simulate a zap between two points
-    const segs = 5
-    const pts: THREE.Vector3[] = []
-    for (let i = 0; i <= segs; i++) {
-      const t = i / segs
-      const p = new THREE.Vector3().lerpVectors(a, b, t)
-      if (i > 0 && i < segs) {
-        const jitter = new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2)
-        p.addScaledVector(jitter, intensity)
+    // Brighter, thicker lightning bolt with branching
+    const drawBolt = (from: THREE.Vector3, to: THREE.Vector3, width: number, color: number, lifeMs: number) => {
+      const segs = 8
+      const pts: THREE.Vector3[] = []
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs
+        const p = new THREE.Vector3().lerpVectors(from, to, t)
+        if (i > 0 && i < segs) {
+          const jitter = new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+          p.addScaledVector(jitter, intensity)
+        }
+        pts.push(p)
       }
-      pts.push(p)
-    }
-    const geo = new THREE.BufferGeometry().setFromPoints(pts)
-    const mat = new THREE.LineBasicMaterial({ color: 0x99ddff, transparent: true, opacity: Math.min(1, 0.9 * intensity), blending: THREE.AdditiveBlending })
-    const line = new THREE.Line(geo, mat)
-    this.scene.add(line)
-    // Fade and remove quickly
-    const start = performance.now()
-    const dur = 120
-    const fade = () => {
-      const t = (performance.now() - start) / dur
-      ;(line.material as THREE.LineBasicMaterial).opacity = Math.max(0, 1 - t)
-      if (t < 1) requestAnimationFrame(fade)
-      else {
-        this.scene.remove(line)
-        geo.dispose(); (line.material as THREE.Material).dispose?.()
+      const geo = new THREE.BufferGeometry().setFromPoints(pts)
+      const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: Math.min(1, 0.95 * intensity), linewidth: width as any, blending: THREE.AdditiveBlending })
+      const line = new THREE.Line(geo, mat)
+      this.scene.add(line)
+      const start = performance.now()
+      const fade = () => {
+        const t = (performance.now() - start) / lifeMs
+        ;(line.material as THREE.LineBasicMaterial).opacity = Math.max(0, 1 - t)
+        if (t < 1) requestAnimationFrame(fade)
+        else { this.scene.remove(line); geo.dispose(); (line.material as THREE.Material).dispose?.() }
       }
+      fade()
     }
-    fade()
+    drawBolt(a, b, 3, 0xccffff, 180)
+    // Small branch
+    const mid = new THREE.Vector3().lerpVectors(a, b, 0.6)
+    const branch = mid.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6))
+    drawBolt(mid, branch, 2, 0x88eeff, 140)
   }
 
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {

@@ -1,3 +1,9 @@
+## v0.1.13 (2025-08-10)
+
+- Level-ups: XP overflow now queues multiple level-up selections sequentially
+- Rocket: significantly slower and more visible flight with larger trail
+- Sata Tail: much more pronounced electric zap effect on contact
+
 ## v0.1.12 (2025-08-10)
 
 - Rocket: restored visible flight with trail; adjusted pacing to feel readable (boost/pause/chase retained)
