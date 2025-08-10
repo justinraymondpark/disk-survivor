@@ -1,3 +1,8 @@
+## v0.1.18 (2025-08-10)
+
+- Rocket: AoE restored on impact; homing remains simple with brief hesitate
+- Dial-up Burst: emits a single shockwave per cycle; level-ups increase radius/damage
+
 ## v0.1.17 (2025-08-10)
 
 - Debug Mode: smooth scroll on controller navigation; more compact rows and slightly smaller font

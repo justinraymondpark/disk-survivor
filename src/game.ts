@@ -2003,11 +2003,8 @@ class Game {
       this.modemWaveTimer += dt
       if (this.modemWaveTimer >= this.modemWaveInterval) {
         this.modemWaveTimer = 0
-        // Multi-pulse shockwave
-        const pulses = Math.max(1, this.modemWavePulses)
-        for (let i = 0; i < pulses; i++) {
-          setTimeout(() => this.emitShockwave(), i * this.modemWavePulseGap * 1000)
-        }
+        // Single shockwave per cycle
+        this.emitShockwave()
       }
     }
     if (this.ownedWeapons.has('SCSI Rocket')) {
@@ -2387,7 +2384,7 @@ class Game {
           if (p.pierce > 0) {
             p.pierce -= 1
           } else {
-            
+            if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
             p.alive = false
             this.scene.remove(p.mesh)
           }
