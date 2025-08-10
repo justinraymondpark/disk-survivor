@@ -380,7 +380,7 @@ class Game {
   burstLevel = 0
   rocketInterval = 1.8
   rocketTimer = 0
-  rocketSpeed = 10
+  rocketSpeed = 5
   rocketTurn = 0.2
   rocketDamage = 3
   rocketBlastRadius = 2.6
@@ -2582,13 +2582,13 @@ class Game {
     const update = () => {
       if (!rocket.alive) return
       ticks++
-      if (ticks < 6) {
-        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.8), 0.25)
+      if (ticks < 10) {
+        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.6), 0.18)
       } else {
         const t = this.enemies.find((e) => e.alive)
         if (t) {
           const dir = t.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed), this.rocketTurn)
+          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.8), Math.min(0.12, this.rocketTurn * 0.6))
           rocket.mesh.lookAt(t.mesh.position.clone().setY(rocket.mesh.position.y))
         }
       }
