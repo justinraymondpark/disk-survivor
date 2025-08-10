@@ -1159,7 +1159,6 @@ class Game {
 
     // Filter out entries that would be invalid due to caps
     const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail']
-    const allUpgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
     const isWeaponName = (t: string) => allWeapons.includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
