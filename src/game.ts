@@ -578,11 +578,18 @@ class Game {
     focusables.push(backBtn as HTMLButtonElement, startBtn as HTMLButtonElement)
     let sel = 0
     const highlight = () => {
-      // Clear
+      // Clear row and element highlights
       rows.forEach((r) => r.classList.remove('selected'))
+      for (const el of focusables) (el as HTMLElement).classList.remove('ui-selected')
       const el = focusables[sel]
+      // Row background hint
       const row = el.closest('.card') as HTMLDivElement | null
       if (row) row.classList.add('selected')
+      // Exact element highlight
+      ;(el as HTMLElement).classList.add('ui-selected')
+      // Ensure in view
+      const container = scroll
+      if (container && typeof (el as any).scrollIntoView === 'function') (el as any).scrollIntoView({ block: 'nearest' })
     }
     highlight()
     let prevLeft = false, prevRight = false, prevUp = false, prevDown = false, prevA = false, prevB = false
@@ -607,8 +614,9 @@ class Game {
         if (up && !prevUp) { (curr as HTMLInputElement).stepUp(); }
         if (down && !prevDown) { (curr as HTMLInputElement).stepDown(); }
       } else {
-        if (up && !prevUp) { sel = (sel - 2 + focusables.length) % focusables.length; highlight() }
-        if (down && !prevDown) { sel = (sel + 2) % focusables.length; highlight() }
+        // Move vertically by 2 to traverse grid of rows; clamp within range
+        if (up && !prevUp) { sel = Math.max(0, sel - 2); highlight() }
+        if (down && !prevDown) { sel = Math.min(focusables.length - 1, sel + 2); highlight() }
       }
       if (a && !prevA) {
         if (isChk) (curr as HTMLInputElement).checked = !(curr as HTMLInputElement).checked

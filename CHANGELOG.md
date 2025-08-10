@@ -1,3 +1,9 @@
+## v0.1.16 (2025-08-10)
+
+- Debug Mode: clearer element highlighting; controller vertical navigation scrolls the list; A/B access Back/Start buttons
+- Start screen: 2x2 grid layout on wide/short displays (e.g., Fold unfolded)
+- HUD: digits now use a pixel mono font for a retro look
+
 ## v0.1.15 (2025-08-10)
 
 - Debug Mode: controller-friendly navigation (select rows, toggle with A, adjust numbers with up/down, Back with B)
