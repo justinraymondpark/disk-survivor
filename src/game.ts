@@ -56,6 +56,7 @@ class InputManager {
     window.addEventListener('mouseup', () => (this.mouseDown = false))
   }
 
+  
   updateGamepad() {
     // Try to find a connected gamepad if we don't have one yet
     if (this.gamepadIndex == null) {
@@ -452,6 +453,7 @@ class Game {
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
+    debugOverlay?: HTMLDivElement
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -459,6 +461,112 @@ class Game {
   hitCounterEl!: HTMLDivElement
   // Pending level-ups to resolve sequentially
   pendingLevelUps = 0
+
+  private showDebugPanel() {
+    if (!this.debugOverlay) {
+      this.debugOverlay = document.createElement('div') as HTMLDivElement
+      this.debugOverlay.className = 'overlay'
+      this.root.appendChild(this.debugOverlay)
+    }
+    const wrap = document.createElement('div')
+    wrap.className = 'card'
+    wrap.style.minWidth = '540px'
+    wrap.style.maxWidth = '80vw'
+    wrap.style.maxHeight = '80vh'
+    wrap.style.display = 'flex'
+    ;(wrap.style as any).flexDirection = 'column'
+    wrap.style.overflow = 'hidden'
+    const title = document.createElement('strong')
+    title.textContent = 'Debug Loadout'
+    const info = document.createElement('div')
+    info.className = 'carddesc'
+    info.textContent = 'Toggle weapons/upgrades and set levels. Max 5 weapons and 5 upgrades.'
+    const scroll = document.createElement('div')
+    scroll.style.flex = '1 1 auto'
+    scroll.style.overflow = 'auto'
+    const form = document.createElement('div')
+    form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '12px'
+    scroll.appendChild(form)
+    const makeRow = (label: string, kind: 'weapon' | 'upgrade') => {
+      const row = document.createElement('div')
+      row.className = 'card'
+      row.style.padding = '8px'
+      const name = document.createElement('div'); name.innerHTML = `<strong>${label}</strong>`
+      const controls = document.createElement('div')
+      controls.style.display = 'flex'; controls.style.gap = '8px'; controls.style.alignItems = 'center'
+      const chk = document.createElement('input'); chk.type = 'checkbox'
+      const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = '1'; lvl.style.width = '64px'
+      controls.appendChild(chk); controls.appendChild(document.createTextNode('Lv')); controls.appendChild(lvl)
+      row.appendChild(name); row.appendChild(controls)
+      ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
+      return row
+    }
+    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail']
+    const upgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
+    weapons.forEach(w => form.appendChild(makeRow(w, 'weapon')))
+    upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
+    const btnRow = document.createElement('div')
+    btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'space-between'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '12px'
+    const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.innerHTML = '<strong>Back</strong>'
+    const startBtn = document.createElement('button'); startBtn.className = 'card'; startBtn.innerHTML = '<strong>Start with Loadout</strong>'
+    btnRow.appendChild(backBtn); btnRow.appendChild(startBtn)
+    wrap.append(title, info, scroll, btnRow)
+    this.debugOverlay!.innerHTML = ''
+    this.debugOverlay!.appendChild(wrap)
+    this.debugOverlay!.style.display = 'flex'
+    // B closes
+    const onKey = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'b') backBtn.click() }
+    window.addEventListener('keydown', onKey, { once: true })
+    backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
+    startBtn.onclick = () => {
+      // Collect selections
+      const rows = Array.from(form.children) as any[]
+      const selectedWeapons = rows.filter(r => r.__kind === 'weapon' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
+      const selectedUpgrades = rows.filter(r => r.__kind === 'upgrade' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
+      // Enforce caps
+      if (selectedWeapons.length > this.maxWeapons) selectedWeapons.length = this.maxWeapons
+      if (selectedUpgrades.length > this.maxUpgrades) selectedUpgrades.length = this.maxUpgrades
+      // Start game
+      this.titleOverlay.style.display = 'none'; this.showTitle = false
+      this.audio.startMusic('default' as ThemeKey)
+      // Apply loadout
+      for (const w of selectedWeapons) {
+        this.addWeapon(w.name)
+        for (let i = 1; i < w.lvl; i++) {
+          if (w.name === 'CRT Beam') this.levelUpBeam()
+          else if (w.name === 'Dial-up Burst') this.levelUpBurst()
+          else if (w.name === 'SCSI Rocket') this.levelUpRocket()
+          else if (w.name === 'Dot Matrix') this.levelUpDotMatrix()
+          else if (w.name === 'Tape Whirl') this.levelUpWhirl()
+          else if (w.name === 'Magic Lasso') this.levelUpLasso()
+          else if (w.name === 'Shield Wall') this.levelUpShield()
+          else if (w.name === 'Sata Cable Tail') this.levelUpSataTail()
+        }
+      }
+      for (const u of selectedUpgrades) {
+        for (let i = 0; i < u.lvl; i++) {
+          if (u.name === 'Turbo CPU') this.fireInterval = Math.max(0.06, this.fireInterval * 0.88)
+          else if (u.name === 'SCSI Splitter') this.multishot = Math.min(6, this.multishot + 1)
+          else if (u.name === 'Overclocked Bus') this.player.speed = Math.min(13, this.player.speed + 0.6)
+          else if (u.name === 'Copper Heatsink') this.projectileDamage += 1
+          else if (u.name === 'ECC Memory') { this.player.maxHp += 1; this.player.hp = Math.min(this.player.maxHp, this.player.hp + Math.ceil(this.player.maxHp * 0.5)); this.updateHPBar() }
+          else if (u.name === 'DMA Burst') this.burstCount = Math.min(5, this.burstCount + 1)
+          else if (u.name === 'Magnet Coil') this.xpMagnetRadius = Math.min(5, this.xpMagnetRadius + 0.7)
+          else if (u.name === 'Piercing ISA') this.projectilePierce = Math.min(3, this.projectilePierce + 1)
+          else if (u.name === 'XP Amplifier') {
+            const lvl = (this.ownedUpgrades.get('XP Amplifier') ?? 0) + 1
+            if (lvl <= 1) this.xpGainMultiplier = 1.2
+            else if (lvl === 2) this.xpGainMultiplier = 3
+            else this.xpGainMultiplier = Math.min(6, 1 + lvl * 1)
+            this.ownedUpgrades.set('XP Amplifier', lvl)
+          }
+        }
+        if (u.name !== 'XP Amplifier') this.ownedUpgrades.set(u.name, u.lvl)
+      }
+      this.updateInventoryUI()
+      this.debugOverlay!.style.display = 'none'
+    }
+  }
   hitCounterFlip = false
   submitLocked = false
   lastHudSeconds = -1
@@ -710,9 +818,13 @@ class Game {
     const chgBtn = document.createElement('button') as HTMLButtonElement
     chgBtn.className = 'card'
     chgBtn.innerHTML = '<strong>Change Log</strong>'
+    const dbgBtn = document.createElement('button') as HTMLButtonElement
+    dbgBtn.className = 'card'
+    dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
     btnRow.appendChild(startBtn)
     btnRow.appendChild(optBtn)
     btnRow.appendChild(chgBtn)
+    btnRow.appendChild(dbgBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -729,6 +841,7 @@ class Game {
       setTimeout(() => (optBtn.innerHTML = '<strong>Options</strong>'), 1200)
     }
     chgBtn.onclick = () => this.showChangelog()
+    dbgBtn.onclick = () => this.showDebugPanel()
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -1045,7 +1158,9 @@ class Game {
     if (this.ownedWeapons.has('Sata Cable Tail')) pool.push({ title: 'Sata Cable Tail (Level up)', desc: 'Longer, stronger tail', icon: '🔌', apply: () => this.levelUpSataTail() })
 
     // Filter out entries that would be invalid due to caps
-    const isWeaponName = (t: string) => ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail'].includes(t)
+    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail']
+    const allUpgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
+    const isWeaponName = (t: string) => allWeapons.includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
       if (isWeaponName(title)) return this.ownedWeapons.size < this.maxWeapons
@@ -2747,11 +2862,35 @@ class Game {
       }
     }
     window.addEventListener('keydown', handler, { once: true })
-    // Initialize controller selection on Game Over buttons
+    // Initialize controller selection on Game Over buttons and add own nav loop
     const goBtns = Array.from(goCard.querySelectorAll('#go-buttons .card')) as HTMLButtonElement[]
     if (goBtns.length > 0) {
       this.uiSelectIndex = 0
       goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+      let prevLeft = false, prevRight = false, prevA = false
+      const navLoop = () => {
+        if (this.overlay.style.display !== 'flex') return
+        const pad = this.input.getActiveGamepad()
+        const left = !!pad && (pad.axes?.[0] ?? 0) < -0.5 || !!pad && !!pad.buttons?.[14]?.pressed
+        const right = !!pad && (pad.axes?.[0] ?? 0) > 0.5 || !!pad && !!pad.buttons?.[15]?.pressed
+        const a = !!pad && !!pad.buttons?.[0]?.pressed
+        if (left && !prevLeft) {
+          this.uiSelectIndex = (this.uiSelectIndex - 1 + goBtns.length) % goBtns.length
+          goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+        }
+        if (right && !prevRight) {
+          this.uiSelectIndex = (this.uiSelectIndex + 1) % goBtns.length
+          goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+        }
+        if (a && !prevA) {
+          const chosen = goBtns[this.uiSelectIndex]
+          if (chosen) chosen.click()
+          return
+        }
+        prevLeft = left; prevRight = right; prevA = a
+        requestAnimationFrame(navLoop)
+      }
+      requestAnimationFrame(navLoop)
     }
   }
 
