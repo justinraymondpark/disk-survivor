@@ -1,3 +1,14 @@
+## v0.1.15 (2025-08-10)
+
+- Debug Mode: controller-friendly navigation (select rows, toggle with A, adjust numbers with up/down, Back with B)
+- Rocket: reverted to simpler homing with slight initial hesitate for readability
+- Fonts: added Google Fonts (Press Start 2P, VT323) and documented self-hosting option
+
+## v0.1.14 (2025-08-10)
+
+- UX: Controller selection works on Game Over (d-pad/left stick + A)
+- Feature: Debug Mode on Start screen to pre-select weapons/upgrades with level caps
+
 ## v0.1.13 (2025-08-10)
 
 - Level-ups: XP overflow now queues multiple level-up selections sequentially

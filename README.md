@@ -95,6 +95,18 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - Styling: we’re iterating toward a Netscape-era UI. Favor chunky gradients, subtle dithering, and smaller corner radii (4px). Keep text dark on light cards.
 - Mobile: responsive CSS stacks overlay cards on narrow/tall screens; title button row uses `.title-buttons` and stacks in portrait.
 
+### Debug mode
+
+- Available from the Start screen as a fourth button: Debug Mode.
+- Lets you toggle any weapon or upgrade and set desired levels before starting a run.
+- Enforces the same caps as gameplay: max 5 weapons and 5 upgrades.
+- Use B on a controller or the Back button to return to the Start screen.
+
+### Fonts
+
+- The app includes Google Fonts `Press Start 2P` (UI cards) and `VT323` (inventory/body) via `<link>` tags in `index.html`.
+- If you prefer self-hosted fonts, place files in `public/fonts/` and update `src/style.css` font-family declarations accordingly.
+
 ### Maintainer quick-brief (what a future chat should know)
 
 - Core files: `src/game.ts` (loop, systems, UI), `src/audio.ts` (SFX/music), `src/style.css` (UI), Netlify Functions in `netlify/functions/*`.

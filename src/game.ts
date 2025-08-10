@@ -566,6 +566,60 @@ class Game {
       this.updateInventoryUI()
       this.debugOverlay!.style.display = 'none'
     }
+    // Controller navigation for Debug panel
+    const focusables: (HTMLInputElement | HTMLButtonElement)[] = []
+    const rows = Array.from(form.children) as HTMLDivElement[]
+    for (const r of rows) {
+      const chk = (r as any).__chk as HTMLInputElement
+      const lvl = (r as any).__lvl as HTMLInputElement
+      if (chk) focusables.push(chk)
+      if (lvl) focusables.push(lvl)
+    }
+    focusables.push(backBtn as HTMLButtonElement, startBtn as HTMLButtonElement)
+    let sel = 0
+    const highlight = () => {
+      // Clear
+      rows.forEach((r) => r.classList.remove('selected'))
+      const el = focusables[sel]
+      const row = el.closest('.card') as HTMLDivElement | null
+      if (row) row.classList.add('selected')
+    }
+    highlight()
+    let prevLeft = false, prevRight = false, prevUp = false, prevDown = false, prevA = false, prevB = false
+    const nav = () => {
+      if (!this.debugOverlay || this.debugOverlay.style.display !== 'flex') return
+      const pad = this.input.getActiveGamepad()
+      const axX = pad ? (pad.axes?.[0] ?? 0) : 0
+      const axY = pad ? (pad.axes?.[1] ?? 0) : 0
+      const left = axX < -0.5 || !!pad?.buttons?.[14]?.pressed
+      const right = axX > 0.5 || !!pad?.buttons?.[15]?.pressed
+      const up = axY < -0.5 || !!pad?.buttons?.[12]?.pressed
+      const down = axY > 0.5 || !!pad?.buttons?.[13]?.pressed
+      const a = !!pad?.buttons?.[0]?.pressed
+      const b = !!pad?.buttons?.[1]?.pressed
+      const curr = focusables[sel]
+      const isNum = curr instanceof HTMLInputElement && curr.type === 'number'
+      const isChk = curr instanceof HTMLInputElement && curr.type === 'checkbox'
+      const isBtn = curr instanceof HTMLButtonElement
+      if (left && !prevLeft) { sel = (sel - 1 + focusables.length) % focusables.length; highlight() }
+      if (right && !prevRight) { sel = (sel + 1) % focusables.length; highlight() }
+      if (isNum) {
+        if (up && !prevUp) { (curr as HTMLInputElement).stepUp(); }
+        if (down && !prevDown) { (curr as HTMLInputElement).stepDown(); }
+      } else {
+        if (up && !prevUp) { sel = (sel - 2 + focusables.length) % focusables.length; highlight() }
+        if (down && !prevDown) { sel = (sel + 2) % focusables.length; highlight() }
+      }
+      if (a && !prevA) {
+        if (isChk) (curr as HTMLInputElement).checked = !(curr as HTMLInputElement).checked
+        else if (isBtn) (curr as HTMLButtonElement).click()
+        else if (isNum) (curr as HTMLInputElement).stepUp()
+      }
+      if (b && !prevB) backBtn.click()
+      prevLeft = left; prevRight = right; prevUp = up; prevDown = down; prevA = a; prevB = b
+      requestAnimationFrame(nav)
+    }
+    requestAnimationFrame(nav)
   }
   hitCounterFlip = false
   submitLocked = false
@@ -2486,45 +2540,33 @@ class Game {
   }
 
   launchRocket() {
-    // Homing rocket with 3-phase behavior and AoE on impact
+    // Simple homing rocket with slight initial hesitate
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
     const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 10), new THREE.MeshBasicMaterial({ color: 0xff8844 }))
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
-    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 4.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
-    // Visible trail
-    const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.16, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0xffcc99, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }))
-    trail.rotation.x = Math.PI / 2
-    mesh.add(trail)
+    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 3.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     this.projectiles.push(rocket)
-    // Phase timings
-    const boostDuration = 0.45
-    const pauseDuration = 0.24
-    const startTime = this.gameTime
     const initialDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
-    const runUpdate = () => {
+    let ticks = 0
+    const update = () => {
       if (!rocket.alive) return
-      const tSince = this.gameTime - startTime
-      if (tSince < boostDuration) {
-        // Initial forward boost
-        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.9), 0.35)
-      } else if (tSince < boostDuration + pauseDuration) {
-        // Hesitate/lock-on phase
-        rocket.velocity.multiplyScalar(0.88)
+      ticks++
+      if (ticks < 6) {
+        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.8), 0.25)
       } else {
-        // Homing chase burst
-        const target = this.enemies.find((e) => e.alive)
-        if (target) {
-          const dir = target.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.95), Math.min(0.35, this.rocketTurn * 1.2))
-          rocket.mesh.lookAt(target.mesh.position.clone().setY(rocket.mesh.position.y))
+        const t = this.enemies.find((e) => e.alive)
+        if (t) {
+          const dir = t.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
+          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed), this.rocketTurn)
+          rocket.mesh.lookAt(t.mesh.position.clone().setY(rocket.mesh.position.y))
         }
       }
-      setTimeout(runUpdate, 50)
+      setTimeout(update, 50)
     }
-    runUpdate()
+    update()
   }
 
   spawnEnemyByWave(minute: number) {
