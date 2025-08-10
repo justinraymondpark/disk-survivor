@@ -1,5 +1,6 @@
-## v0.1.7 (2025-08-10)
+## v0.1.8 (2025-08-10)
 
+- Changelog overlay respects file order and opens at the top
 - Docs: README Quick start clarifies Node 18+ (or 20+) supported
 
 ## v0.1.6 (2025-08-08)

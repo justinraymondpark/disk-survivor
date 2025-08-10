@@ -2960,19 +2960,13 @@ class Game {
     this.changelogOverlay.appendChild(wrap)
     this.changelogOverlay.style.display = 'flex'
     try {
-      // Ensure newest entries are first by simple section split if possible
       const raw = String(changelogRaw ?? '')
-      const sections = raw.split(/\n## /g)
-      if (sections.length > 1) {
-        const head = sections.shift() || ''
-        const sorted = sections.map(s => '## ' + s.trim()).filter(Boolean)
-        pre.textContent = [sorted.join('\n\n'), head.trim()].filter(Boolean).join('\n\n')
-      } else {
-        pre.textContent = raw
-      }
-      // Ensure scroll position starts at the top when opening
-      wrap.scrollTop = 0
-      pre.scrollTop = 0
+      pre.textContent = raw
+      pre.style.paddingTop = '8px'
+      requestAnimationFrame(() => {
+        wrap.scrollTop = 0
+        pre.scrollTop = 0
+      })
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }
