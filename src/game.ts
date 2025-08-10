@@ -406,7 +406,7 @@ class Game {
   sataTailSegments: THREE.Mesh[] = []
   sataTailLength = 2.0
   sataTailDps = 10
-  sataTailAmp = 0.25
+  sataTailAmp = 0.18
   sataTailFreq = 8.0
   sataTailLevel = 0
   // Wave management
@@ -1096,20 +1096,23 @@ class Game {
     }
     if (name === 'Sata Cable Tail' && !this.sataTailGroup) {
       const group = new THREE.Group()
-      group.position.set(0, 0.15, -0.3) // behind player
+      // Anchor firmly to player's backside in LOCAL space (do not set world each frame)
+      group.position.set(0, 0.12, -0.35)
       this.player.group.add(group)
       this.sataTailGroup = group
-      // Build segments (cylinders) with slight gradient color
-      const segs = 10
+      // Build flat ribbon-like segments (boxes) for a SATA vibe
+      const segs = 12
       this.sataTailSegments = []
+      const segLen = Math.max(0.08, this.sataTailLength / (segs - 1))
       for (let i = 0; i < segs; i++) {
-        const t = i / (segs - 1)
-        const r = 0.08 * (1 - 0.5 * t)
-        const g = new THREE.CapsuleGeometry(r, 0.05, 4, 6)
-        const col = new THREE.Color().setHSL(0.03 + 0.04 * t, 0.8, 0.55)
-        const m = new THREE.MeshBasicMaterial({ color: col.getHex() })
-        const seg = new THREE.Mesh(g, m)
-        seg.position.set(0, 0, -t * this.sataTailLength)
+        const k = i / (segs - 1)
+        const w = 0.12 * (1 - 0.15 * k)
+        const h = 0.03
+        const d = Math.max(0.06, segLen * 0.9)
+        const geom = new THREE.BoxGeometry(w, h, d)
+        const color = new THREE.MeshBasicMaterial({ color: 0xcc3344 }) // red SATA cable
+        const seg = new THREE.Mesh(geom, color)
+        seg.position.set(0, 0, -k * this.sataTailLength)
         group.add(seg)
         this.sataTailSegments.push(seg)
       }
@@ -1720,36 +1723,29 @@ class Game {
 
     // Sata Cable Tail update (follow and flap)
     if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
-      // Place base at player's rear
-      const rear = new THREE.Vector3(0, 0.15, -0.3).applyQuaternion(this.player.group.quaternion).add(this.player.group.position)
-      this.sataTailGroup.position.copy(rear)
-      this.sataTailGroup.quaternion.copy(this.player.group.quaternion)
-      // Simple sine flap chain
-      const baseDir = new THREE.Vector3(0, 0, -1)
+      // Keep tail anchored to player local, and just animate local offsets for a floppy feel
       const tNow = this.gameTime
       for (let i = 0; i < this.sataTailSegments.length; i++) {
         const seg = this.sataTailSegments[i]
         const k = i / (this.sataTailSegments.length - 1)
-        const sway = Math.sin(tNow * this.sataTailFreq + k * 2.2) * this.sataTailAmp * (1 - 0.2 * k)
-        const lift = Math.cos(tNow * (this.sataTailFreq * 0.6) + k * 1.8) * 0.04 * (1 - 0.3 * k)
-        const offset = baseDir.clone().multiplyScalar(k * this.sataTailLength)
-        const side = new THREE.Vector3(1, 0, 0).applyQuaternion(this.player.group.quaternion)
-        const up = new THREE.Vector3(0, 1, 0)
-        seg.position.set(0, 0, 0)
-        seg.position.add(offset)
-        seg.position.addScaledVector(side, sway)
-        seg.position.addScaledVector(up, lift)
+        const sway = Math.sin(tNow * this.sataTailFreq + k * 2.3) * this.sataTailAmp * (1 - 0.15 * k)
+        const lift = Math.cos(tNow * (this.sataTailFreq * 0.55) + k * 2.0) * 0.02 * (1 - 0.25 * k)
+        seg.position.set(sway, lift, -k * this.sataTailLength)
+        // Slight yaw to accentuate ribbon effect
+        seg.rotation.y = 0.15 * Math.sin(tNow * (this.sataTailFreq * 0.8) + k * 2.6)
       }
       // Damage tick: distance check around segments
       const dps = this.sataTailDps
       for (const e of this.enemies) {
         if (!e.alive) continue
-        const p = e.mesh.position
-        if (p.distanceToSquared(this.sataTailGroup.position) > (this.sataTailLength + 1) ** 2) continue
+        const p = e.mesh.position.clone(); p.y = 0
+        // Quick reject relative to player position (tail never far from player)
+        const pr = this.player.group.position.clone(); pr.y = 0
+        if (p.distanceToSquared(pr) > (this.sataTailLength + 1.2) ** 2) continue
         for (const seg of this.sataTailSegments) {
-          const wp = seg.getWorldPosition(new THREE.Vector3())
+          const wp = seg.getWorldPosition(new THREE.Vector3()); wp.y = 0
           const dist = p.distanceTo(wp)
-          if (dist < 0.45) {
+          if (dist < 0.5) {
             e.hp -= dps * dt
             if (e.hp <= 0) {
               e.alive = false
