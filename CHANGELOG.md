@@ -1,3 +1,7 @@
+## v0.1.9 (2025-08-10)
+
+- Changelog modal: Close button always visible; no scroll needed to access it
+
 ## v0.1.8 (2025-08-10)
 
 - Changelog overlay respects file order and opens at the top

@@ -2931,7 +2931,9 @@ class Game {
     wrap.style.minWidth = '420px'
     wrap.style.maxWidth = '70vw'
     wrap.style.maxHeight = '70vh'
-    wrap.style.overflow = 'auto'
+    wrap.style.display = 'flex'
+    ;(wrap.style as any).flexDirection = 'column'
+    wrap.style.overflow = 'hidden'
     const title = document.createElement('strong')
     title.textContent = 'Change Log'
     const desc = document.createElement('div')
@@ -2943,6 +2945,11 @@ class Game {
     pre.style.fontFamily = 'ui-monospace, monospace'
     pre.style.fontSize = '12px'
     pre.style.lineHeight = '1.4'
+    pre.style.margin = '0'
+    const content = document.createElement('div')
+    content.style.flex = '1 1 auto'
+    content.style.overflow = 'auto'
+    content.appendChild(pre)
     const btnRow = document.createElement('div')
     btnRow.style.display = 'flex'
     btnRow.style.justifyContent = 'flex-end'
@@ -2955,7 +2962,7 @@ class Game {
     closeBtn.innerHTML = '<strong>Close</strong>'
     closeBtn.onclick = () => { this.changelogOverlay.style.display = 'none' }
     btnRow.appendChild(closeBtn)
-    wrap.append(title, desc, pre, btnRow)
+    wrap.append(title, desc, content, btnRow)
     this.changelogOverlay.innerHTML = ''
     this.changelogOverlay.appendChild(wrap)
     this.changelogOverlay.style.display = 'flex'
@@ -2964,8 +2971,8 @@ class Game {
       pre.textContent = raw
       pre.style.paddingTop = '8px'
       requestAnimationFrame(() => {
+        content.scrollTop = 0
         wrap.scrollTop = 0
-        pre.scrollTop = 0
       })
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
