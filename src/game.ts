@@ -2970,6 +2970,9 @@ class Game {
       } else {
         pre.textContent = raw
       }
+      // Ensure scroll position starts at the top when opening
+      wrap.scrollTop = 0
+      pre.scrollTop = 0
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }

@@ -1,4 +1,4 @@
-## Unreleased
+## v0.1.7 (2025-08-10)
 
 - Docs: README Quick start clarifies Node 18+ (or 20+) supported
 
