@@ -404,7 +404,8 @@ class Game {
   // Wave management
   lastWaveMinute = -1
   waveCullDelaySeconds = 2
-  waveCullKeepFraction = 0.12
+  waveCullKeepFraction = 0.03
+  maxActiveEnemies = 1000
   whirlSpeed = 2.8
   whirlDamage = 16
   // Magic Lasso
@@ -1721,28 +1722,33 @@ class Game {
       if (minute > this.lastWaveMinute) this.onWaveStart(minute)
       this.lastWaveMinute = minute
     }
-    // Baseline spawn interval gets faster over time
-    const baseInterval = Math.max(0.45, 2.0 - this.gameTime * 0.035)
+    // Baseline spawn interval gets faster over time (softened for perf)
+    const baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
     // Gentle sine modulation (~10% swing)
     this.spawnPhase += dt * 0.8
-    const sineMod = 1 + 0.12 * Math.sin(this.spawnPhase)
+    const sineMod = 1 + 0.1 * Math.sin(this.spawnPhase)
     // Ensure a hard ceiling on interval so it never stalls
-    const modInterval = Math.max(0.35, baseInterval * sineMod)
+    const modInterval = Math.max(0.5, baseInterval * sineMod)
     // Occasional micro-bursts: short-lived faster spawning
-    if (this.microBurstLeft <= 0 && Math.random() < 0.002) {
+    if (this.microBurstLeft <= 0 && Math.random() < 0.001) {
       // 1–2 seconds of quicker spawns
       this.microBurstLeft = 1 + Math.random() * 1
     }
-    const burstFactor = this.microBurstLeft > 0 ? 0.55 : 1
+    const burstFactor = this.microBurstLeft > 0 ? 0.65 : 1
     if (this.microBurstLeft > 0) this.microBurstLeft -= dt
-    const effectiveInterval = Math.max(0.25, modInterval * burstFactor)
+    const effectiveInterval = Math.max(0.45, modInterval * burstFactor)
     if (this.spawnAccumulator >= effectiveInterval) {
       this.spawnAccumulator = 0
-      const baseCount = 2 + Math.min(8, Math.floor(this.gameTime / 20))
+      // Slow the ramp of simultaneous spawns for perf
+      const baseCount = 2 + Math.min(6, Math.floor(this.gameTime / 30))
       // During micro-bursts, add a couple extra with slight delays
-      const extra = this.microBurstLeft > 0 ? 1 + Math.floor(Math.random() * 2) : 0
+      const extra = this.microBurstLeft > 0 ? 1 : 0
       const total = baseCount + extra
-      for (let i = 0; i < total; i++) {
+      // Enforce global cap by limiting scheduled spawns
+      const aliveNow = this.enemies.filter(e => e.alive).length
+      const remainingCapacity = Math.max(0, this.maxActiveEnemies - aliveNow)
+      const toSpawn = Math.min(total, remainingCapacity)
+      for (let i = 0; i < toSpawn; i++) {
         const delay = i < baseCount ? 0 : (i - baseCount + 1) * 120
         if (delay === 0) this.spawnEnemyByWave(minute)
         else setTimeout(() => this.spawnEnemyByWave(minute), delay)
@@ -2821,10 +2827,8 @@ class Game {
   private cullEnemiesFromWave(waveMinute: number) {
     const group = this.enemies.filter((e) => e.alive && e.spawnWave === waveMinute)
     if (group.length === 0) return
-    const keepCount = Math.min(
-      group.length,
-      Math.max(2, Math.floor(group.length * this.waveCullKeepFraction))
-    )
+    // Be more aggressive: keep a small sliver only
+    const keepCount = Math.min(group.length, Math.max(1, Math.floor(group.length * this.waveCullKeepFraction)))
     // Shuffle indices to pick survivors
     const indices = Array.from({ length: group.length }, (_, i) => i)
     for (let i = indices.length - 1; i > 0; i--) {
