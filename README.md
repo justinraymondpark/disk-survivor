@@ -4,7 +4,7 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 
 ### Quick start
 
-- **Prereqs**: Node 18+ and npm
+- **Prereqs**: Node 18+ (or 20+) and npm
 - **Install**:
   ```bash
   npm install

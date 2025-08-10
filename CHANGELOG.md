@@ -1,3 +1,7 @@
+## Unreleased
+
+- Docs: README Quick start clarifies Node 18+ (or 20+) supported
+
 ## v0.1.6 (2025-08-08)
 
 - Spawn: enemies now spawn strictly offscreen using camera projection to avoid on-screen pop-in
