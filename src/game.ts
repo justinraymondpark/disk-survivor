@@ -3105,7 +3105,6 @@ class Game {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }
     // Controller B closes the changelog
-    const gp = this.input.getActiveGamepad()
     const onKey = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'b') closeBtn.click() }
     const onAnim = () => {
       const pad = this.input.getActiveGamepad()
