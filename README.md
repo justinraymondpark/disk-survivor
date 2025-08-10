@@ -151,4 +151,5 @@ Environment (for Blobs in Functions)
 
 - This line exists to verify CI/CD deploy triggers on README edits.
 - Safe to remove later.
+- Additional README touch to test push workflow (2025-08-10).
 
