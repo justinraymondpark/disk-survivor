@@ -434,7 +434,7 @@ class Game {
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
-  // Title art element reference for subtle float animation
+  // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
   hitCount = 0
@@ -665,7 +665,7 @@ class Game {
     img.style.width = '256px'
     img.style.height = '256px'
     ;(img.style as any).imageRendering = 'pixelated'
-    img.style.willChange = 'transform'
+    // Keep static for now; animation disabled
     this.titleImgEl = img
     const fallbackText = document.createElement('div')
     fallbackText.style.color = '#9be3ff'
@@ -893,6 +893,19 @@ class Game {
   updateHud() {
     const secs = Math.max(0, (this.gameTime | 0))
     const digits = String(secs).padStart(4, '0')
+    // Ensure wave element exists
+    let waveEl = document.querySelector<HTMLDivElement>('#wave')
+    if (!waveEl) {
+      waveEl = document.createElement('div') as HTMLDivElement
+      waveEl.id = 'wave'
+      document.body.appendChild(waveEl)
+    }
+    const waveNum = Math.max(1, Math.floor(this.gameTime / 60) + 1)
+    waveEl.innerHTML = `
+      <div class="hc-wrap">
+        <span class="hc-label">WAVE</span>
+        ${String(waveNum).padStart(2, '0').split('').map((d) => `<span class=\"hc-digit\">${d}</span>`).join('')}
+      </div>`
     this.hud.innerHTML = `
       <div class="hc-wrap">
         <span class="hc-label">TIME</span>
@@ -1354,14 +1367,7 @@ class Game {
       if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
       this.uiDpadPrevLeft = dpadLeft
       this.uiDpadPrevRight = dpadRight
-      // Subtle floating animation for title art
-      if (this.titleImgEl) {
-        const t = now * 0.001
-        const dx = Math.sin(t * 0.6) * 6
-        const dy = Math.cos(t * 0.8) * 4
-        const rot = Math.sin(t * 0.5) * 2
-        this.titleImgEl.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`
-      }
+      // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
@@ -1946,7 +1952,12 @@ class Game {
           e.behaviorState = 'dash'
           e.dashRemaining = 0.3
         }
-        if (e.behaviorState === 'dash' && e.dashRemaining! > 0) {
+        // On fresh spawn, optionally carry a short initial burst that decays quickly
+        if ((e as any).dashRemaining === undefined && e.timeAlive < 0.5 && (e as any).spawnBurstApplied !== true) {
+          ;(e as any).dashRemaining = 0.35
+          ;(e as any).spawnBurstApplied = true
+        }
+        if (e.behaviorState === 'dash' && e.dashRemaining! > 0 || (e as any).dashRemaining > 0) {
           e.dashRemaining! -= dt
           e.speed = 4.5
         } else {
@@ -2263,7 +2274,7 @@ class Game {
       type = 'runner'
     }
 
-    const spawnPos = this.pickOffscreenSpawn(3, 8)
+    let spawnPos = this.pickOffscreenSpawn(3, 8)
 
     let geom: THREE.BufferGeometry
     let color: number
@@ -2369,7 +2380,19 @@ class Game {
     this.scene.add(face)
 
     const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
-    this.enemies.push({ mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed })
+    // Unique spawn burst for teleport type: initial speed boost with quick decay
+    if (type === 'teleport') {
+      // Nudge spawn position a bit farther than baseline to reinforce offscreen entry
+      const toPlayer = this.player.group.position.clone().sub(spawnPos).setY(0)
+      const farther = toPlayer.length() > 0 ? spawnPos.clone().add(toPlayer.normalize().multiplyScalar(-1.5)) : spawnPos
+      spawnPos = farther
+    }
+    const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed }
+    if (type === 'teleport') {
+      // Mark a brief high-speed phase on spawn
+      ;(enemy as any).dashRemaining = 0.35
+    }
+    this.enemies.push(enemy)
   }
 
   makeFaceTexture(type: EnemyType) {
