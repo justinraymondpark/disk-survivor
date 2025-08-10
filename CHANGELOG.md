@@ -1,3 +1,9 @@
+## v0.1.12 (2025-08-10)
+
+- Rocket: restored visible flight with trail; adjusted pacing to feel readable (boost/pause/chase retained)
+- Dial-up Burst: beefier visual ring, thump SFX, and hop effect on surviving enemies
+- Controller: B button closes Change Log modal
+
 ## v0.1.11 (2025-08-10)
 
 - UX: Game Over screen supports controller selection for Submit/Restart

@@ -2295,14 +2295,14 @@ class Game {
   emitShockwave() {
     // Damage nearby enemies in ring (supports multi-pulse)
     // Visual ring
-    const ringGeom = new THREE.RingGeometry(this.modemWaveRadius * 0.2, this.modemWaveRadius * 0.22, 32)
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.6, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+    const ringGeom = new THREE.RingGeometry(this.modemWaveRadius * 0.25, this.modemWaveRadius * 0.33, 64)
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
     const ring = new THREE.Mesh(ringGeom, ringMat)
     ring.rotation.x = -Math.PI / 2
     ring.position.copy(this.player.group.position).setY(0.02)
     this.scene.add(ring)
     const start = performance.now()
-    const duration = 350
+    const duration = 420
     const initR = this.modemWaveRadius * 0.2
     const endR = this.modemWaveRadius
     const anim = () => {
@@ -2310,11 +2310,13 @@ class Game {
       if (t >= 1) { this.scene.remove(ring); ringGeom.dispose(); (ring.material as THREE.Material).dispose?.(); return }
       const r = initR + (endR - initR) * t
       ring.geometry.dispose()
-      ring.geometry = new THREE.RingGeometry(r * 0.98, r, 48)
-      ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - t)
+      ring.geometry = new THREE.RingGeometry(Math.max(0.01, r * 0.85), r, 72)
+      ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t)
       requestAnimationFrame(anim)
     }
     anim()
+    // Play thump
+    this.audio.playShockwave()
     const applyPulse = () => {
       for (const e of this.enemies) {
         if (!e.alive) continue
@@ -2325,6 +2327,19 @@ class Game {
           const dir = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize()
           const strength = Math.max(0.12, (this.modemWaveRadius - d) * 0.08)
           e.mesh.position.add(dir.multiplyScalar(strength))
+          // Hop effect
+          const startY = e.mesh.position.y
+          const hopPeak = 0.35
+          const hopStart = performance.now()
+          const hopDur = 180
+          const hop = () => {
+            const ht = (performance.now() - hopStart) / hopDur
+            if (ht >= 1) { e.mesh.position.y = startY; return }
+            const y = Math.sin(Math.PI * Math.min(1, ht)) * hopPeak
+            e.mesh.position.y = startY + y
+            requestAnimationFrame(hop)
+          }
+          hop()
           // Brief slow
           e.burstSlowUntil = this.gameTime + 0.6
           e.burstSlowFactor = 0.6
@@ -2353,6 +2368,10 @@ class Game {
     mesh.position.y = 0.6
     this.scene.add(mesh)
     const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 4.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
+    // Visible trail
+    const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, 0.4, 6), new THREE.MeshBasicMaterial({ color: 0xffcc99, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }))
+    trail.rotation.x = Math.PI / 2
+    mesh.add(trail)
     this.projectiles.push(rocket)
     // Phase timings
     const boostDuration = 0.35
@@ -3085,6 +3104,16 @@ class Game {
     } catch {
       pre.textContent = 'Unable to load CHANGELOG.md'
     }
+    // Controller B closes the changelog
+    const gp = this.input.getActiveGamepad()
+    const onKey = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'b') closeBtn.click() }
+    const onAnim = () => {
+      const pad = this.input.getActiveGamepad()
+      if (pad && pad.buttons[1]?.pressed) closeBtn.click()
+      if (this.changelogOverlay.style.display === 'flex') requestAnimationFrame(onAnim)
+    }
+    window.addEventListener('keydown', onKey, { once: true })
+    requestAnimationFrame(onAnim)
   }
 
   private updateHitCounter() {

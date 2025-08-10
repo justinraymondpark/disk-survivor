@@ -192,6 +192,23 @@ export class AudioManager {
     osc.start()
     osc.stop(t0 + 0.7)
   }
+  // Deep thump for shockwave
+  playShockwave() {
+    const ctx = this.ensure()
+    const t0 = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(120, t0)
+    osc.frequency.exponentialRampToValueAtTime(50, t0 + 0.2)
+    gain.gain.setValueAtTime(0.7 * this.sfxVolume * this.masterVolume, t0)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22)
+    osc.connect(gain).connect(this.sfxGain!)
+    osc.start()
+    osc.stop(t0 + 0.24)
+    // Add a brief noise smack
+    this.noiseBurst(0.04, 0.18)
+  }
 }
 
 function clamp01(n: number) { return Math.max(0, Math.min(1, n)) }
