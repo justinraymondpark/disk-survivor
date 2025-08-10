@@ -405,7 +405,7 @@ class Game {
   sataTailGroup?: THREE.Group
   sataTailSegments: THREE.Mesh[] = []
   sataTailLength = 2.0
-  sataTailDps = 10
+  sataTailDps = 20
   sataTailAmp = 0.18
   sataTailFreq = 8.0
   sataTailLevel = 0
@@ -1725,14 +1725,18 @@ class Game {
     if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
       // Keep tail anchored to player local, and just animate local offsets for a floppy feel
       const tNow = this.gameTime
+      // Movement-driven flop: zero when standing still, increases with speed toward tail end
+      const mv = this.input.getMoveVector()
+      const moveMag = Math.min(1, Math.hypot(mv.x, mv.y))
       for (let i = 0; i < this.sataTailSegments.length; i++) {
         const seg = this.sataTailSegments[i]
         const k = i / (this.sataTailSegments.length - 1)
-        const sway = Math.sin(tNow * this.sataTailFreq + k * 2.3) * this.sataTailAmp * (1 - 0.15 * k)
-        const lift = Math.cos(tNow * (this.sataTailFreq * 0.55) + k * 2.0) * 0.02 * (1 - 0.25 * k)
+        const endWeight = k * k // more at tail end; near base ~0
+        const sway = Math.sin(tNow * this.sataTailFreq + k * 2.3) * this.sataTailAmp * endWeight * moveMag
+        const lift = Math.cos(tNow * (this.sataTailFreq * 0.55) + k * 2.0) * 0.02 * endWeight * moveMag
         seg.position.set(sway, lift, -k * this.sataTailLength)
         // Slight yaw to accentuate ribbon effect
-        seg.rotation.y = 0.15 * Math.sin(tNow * (this.sataTailFreq * 0.8) + k * 2.6)
+        seg.rotation.y = 0.15 * Math.sin(tNow * (this.sataTailFreq * 0.8) + k * 2.6) * endWeight * moveMag
       }
       // Damage tick: distance check around segments
       const dps = this.sataTailDps
@@ -1755,6 +1759,11 @@ class Game {
               this.score += 1
               this.updateHud()
               this.spawnXP(e.mesh.position.clone())
+              // Zap effect on kill
+              this.spawnZapEffect(wp, e.mesh.position.clone())
+            } else {
+              // Minor zap on hit
+              this.spawnZapEffect(wp, e.mesh.position.clone(), 0.5)
             }
             break
           }
@@ -2702,6 +2711,38 @@ class Game {
       else for (const s of shards) this.scene.remove(s.m)
     }
     tick()
+  }
+
+  private spawnZapEffect(a: THREE.Vector3, b: THREE.Vector3, intensity = 1) {
+    // Simple additive line segments to simulate a zap between two points
+    const segs = 5
+    const pts: THREE.Vector3[] = []
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs
+      const p = new THREE.Vector3().lerpVectors(a, b, t)
+      if (i > 0 && i < segs) {
+        const jitter = new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2)
+        p.addScaledVector(jitter, intensity)
+      }
+      pts.push(p)
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts)
+    const mat = new THREE.LineBasicMaterial({ color: 0x99ddff, transparent: true, opacity: Math.min(1, 0.9 * intensity), blending: THREE.AdditiveBlending })
+    const line = new THREE.Line(geo, mat)
+    this.scene.add(line)
+    // Fade and remove quickly
+    const start = performance.now()
+    const dur = 120
+    const fade = () => {
+      const t = (performance.now() - start) / dur
+      ;(line.material as THREE.LineBasicMaterial).opacity = Math.max(0, 1 - t)
+      if (t < 1) requestAnimationFrame(fade)
+      else {
+        this.scene.remove(line)
+        geo.dispose(); (line.material as THREE.Material).dispose?.()
+      }
+    }
+    fade()
   }
 
   private updateLasso() {
