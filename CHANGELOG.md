@@ -1,3 +1,8 @@
+## v0.1.10 (2025-08-10)
+
+- Balance: Dial-up Burst now scales with multi-pulse blasts, larger radius, faster cycle, and brief slow on hit
+- Balance: Tape Whirl adds more saws at higher levels, with increased radius, speed, and DPS
+
 ## v0.1.9 (2025-08-10)
 
 - Changelog modal: Close button always visible; no scroll needed to access it

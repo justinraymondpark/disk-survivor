@@ -328,6 +328,9 @@ type Enemy = {
   dashRemaining?: number
   orbitDir?: 1 | -1
   nextTeleportTime?: number
+  // Temporary slow from Dial-up Burst
+  burstSlowUntil?: number
+  burstSlowFactor?: number
 }
 
 type Pickup = {
@@ -370,6 +373,9 @@ class Game {
   modemWaveInterval = 3
   modemWaveTimer = 0
   modemWaveRadius = 3.2
+  modemWavePulses = 1
+  modemWavePulseGap = 0.18
+  burstLevel = 0
   rocketInterval = 1.8
   rocketTimer = 0
   rocketSpeed = 10
@@ -401,6 +407,7 @@ class Game {
   // Tape Whirl
   whirlSaws: THREE.Mesh[] = []
   whirlRadius = 2.0
+  whirlLevel = 0
   // Sata Cable Tail
   sataTailGroup?: THREE.Group
   sataTailSegments: THREE.Mesh[] = []
@@ -1027,7 +1034,7 @@ class Game {
     if (this.ownedWeapons.has('CRT Beam')) pool.push({ title: 'CRT Beam (Level up)', desc: '+1 length, +2 DPS, shorter off-time', icon: '📺', apply: () => this.levelUpBeam() })
     if (this.hasLasso) pool.push({ title: 'Magic Lasso (Level up)', desc: '+2s duration, +2 damage', icon: '🪢', apply: () => this.levelUpLasso() })
     if (this.hasShield) pool.push({ title: 'Shield Wall (Level up)', desc: '+1 length, wider, longer uptime', icon: '🛡️', apply: () => this.levelUpShield() })
-    if (this.ownedWeapons.has('Dial-up Burst')) pool.push({ title: 'Dial-up Burst (Level up)', desc: 'Bigger radius, faster cycle', icon: '📞', apply: () => this.levelUpBurst() })
+    if (this.ownedWeapons.has('Dial-up Burst')) pool.push({ title: 'Dial-up Burst (Level up)', desc: 'Bigger radius, faster cycle, multi-pulse', icon: '📞', apply: () => this.levelUpBurst() })
     if (this.ownedWeapons.has('SCSI Rocket')) pool.push({ title: 'SCSI Rocket (Level up)', desc: 'Faster, stronger rockets', icon: '🚀', apply: () => this.levelUpRocket() })
     if (this.ownedWeapons.has('Dot Matrix')) pool.push({ title: 'Dot Matrix (Level up)', desc: 'Stronger side bullets', icon: '🖨️', apply: () => this.levelUpDotMatrix() })
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
@@ -1094,6 +1101,10 @@ class Game {
       this.crtBeamTimer = 0
       this.crtBeamOn = true
     }
+    if (name === 'Dial-up Burst') {
+      this.burstLevel = 1
+      this.modemWavePulses = 1
+    }
     if (name === 'Sata Cable Tail' && !this.sataTailGroup) {
       const group = new THREE.Group()
       // Anchor firmly to player's backside in LOCAL space (do not set world each frame)
@@ -1123,6 +1134,7 @@ class Game {
       const s1 = createSaw(), s2 = createSaw(), s3 = createSaw()
       this.scene.add(s1, s2, s3)
       this.whirlSaws.push(s1, s2, s3)
+      this.whirlLevel = 1
     }
     if (name === 'Magic Lasso' && !this.hasLasso) {
       this.hasLasso = true
@@ -1776,7 +1788,11 @@ class Game {
       this.modemWaveTimer += dt
       if (this.modemWaveTimer >= this.modemWaveInterval) {
         this.modemWaveTimer = 0
-        this.emitShockwave()
+        // Multi-pulse shockwave
+        const pulses = Math.max(1, this.modemWavePulses)
+        for (let i = 0; i < pulses; i++) {
+          setTimeout(() => this.emitShockwave(), i * this.modemWavePulseGap * 1000)
+        }
       }
     }
     if (this.ownedWeapons.has('SCSI Rocket')) {
@@ -1893,6 +1909,10 @@ class Game {
         }
       } else {
         e.speedScale = 1
+      }
+      // Apply temporary slow from Dial-up Burst
+      if ((e.burstSlowUntil ?? 0) > this.gameTime) {
+        e.speedScale *= e.burstSlowFactor ?? 0.7
       }
       if (e.type === 'runner') {
         // Accelerate over time, but ~20% slower overall
@@ -2267,7 +2287,7 @@ class Game {
   }
 
   emitShockwave() {
-    // Damage nearby enemies in ring
+    // Damage nearby enemies in ring (supports multi-pulse)
     // Visual ring
     const ringGeom = new THREE.RingGeometry(this.modemWaveRadius * 0.2, this.modemWaveRadius * 0.22, 32)
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.6, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
@@ -2289,27 +2309,33 @@ class Game {
       requestAnimationFrame(anim)
     }
     anim()
-    for (const e of this.enemies) {
-      if (!e.alive) continue
-      const d = e.mesh.position.distanceTo(this.player.group.position)
-      if (d < this.modemWaveRadius) {
-        e.hp -= this.modemWaveDamage + Math.floor(this.gameTime / 60)
-        // Knockback away from player, stronger near center
-        const dir = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize()
-        const strength = Math.max(0.12, (this.modemWaveRadius - d) * 0.08)
-        e.mesh.position.add(dir.multiplyScalar(strength))
-        if (e.hp <= 0) {
-          e.alive = false
-          this.spawnExplosion(e.mesh)
-          if (e.face) this.scene.remove(e.face)
-          this.onEnemyDown()
-          this.score += 1
-          this.spawnXP(e.mesh.position.clone())
-        } else {
-          this.audio.playImpact()
+    const applyPulse = () => {
+      for (const e of this.enemies) {
+        if (!e.alive) continue
+        const d = e.mesh.position.distanceTo(this.player.group.position)
+        if (d < this.modemWaveRadius) {
+          e.hp -= this.modemWaveDamage + Math.floor(this.gameTime / 60)
+          // Knockback away from player, stronger near center
+          const dir = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize()
+          const strength = Math.max(0.12, (this.modemWaveRadius - d) * 0.08)
+          e.mesh.position.add(dir.multiplyScalar(strength))
+          // Brief slow
+          e.burstSlowUntil = this.gameTime + 0.6
+          e.burstSlowFactor = 0.6
+          if (e.hp <= 0) {
+            e.alive = false
+            this.spawnExplosion(e.mesh)
+            if (e.face) this.scene.remove(e.face)
+            this.onEnemyDown()
+            this.score += 1
+            this.spawnXP(e.mesh.position.clone())
+          } else {
+            this.audio.playImpact()
+          }
         }
       }
     }
+    applyPulse()
   }
 
   launchRocket() {
@@ -2862,9 +2888,15 @@ class Game {
   }
 
   private levelUpBurst() {
-    this.modemWaveRadius = Math.min(6.5, this.modemWaveRadius + 0.6)
-    this.modemWaveInterval = Math.max(1.3, this.modemWaveInterval - 0.2)
-    this.modemWaveDamage += 1
+    // Improve radius and cycle, and add pulses on milestones
+    this.burstLevel += 1
+    this.modemWaveRadius = Math.min(8.0, this.modemWaveRadius + 0.7)
+    this.modemWaveInterval = Math.max(0.9, this.modemWaveInterval - 0.2)
+    this.modemWaveDamage += 2
+    // Every two levels (Lv2, Lv4), add another pulse up to 3 total
+    if (this.burstLevel === 2 || this.burstLevel === 4) {
+      this.modemWavePulses = Math.min(3, this.modemWavePulses + 1)
+    }
   }
 
   private levelUpRocket() {
@@ -2878,8 +2910,17 @@ class Game {
   }
 
   private levelUpWhirl() {
-    this.whirlRadius = Math.min(3.2, this.whirlRadius + 0.25)
-    this.whirlDamage += 4
+    this.whirlLevel += 1
+    this.whirlRadius = Math.min(3.8, this.whirlRadius + 0.3)
+    this.whirlDamage += 6
+    this.whirlSpeed = Math.min(4.2, this.whirlSpeed + 0.2)
+    // Add more saws at key levels up to 6
+    if (this.whirlSaws.length < 6 && (this.whirlLevel === 2 || this.whirlLevel === 4)) {
+      const createSaw = () => new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 8, 16), new THREE.MeshBasicMaterial({ color: 0xffcc66 }))
+      const s = createSaw()
+      this.scene.add(s)
+      this.whirlSaws.push(s)
+    }
   }
 
   private levelUpSataTail() {
