@@ -295,6 +295,7 @@ type Projectile = {
   damage: number
   pierce: number
   last: THREE.Vector3
+    kind?: 'rocket'
 }
 
 type Enemy = {
@@ -381,6 +382,7 @@ class Game {
   rocketSpeed = 10
   rocketTurn = 0.2
   rocketDamage = 3
+  rocketBlastRadius = 2.6
   xpMagnetRadius = 2.0
   modemWaveDamage = 5
   // Global XP vacuum effect
@@ -2164,6 +2166,8 @@ class Game {
             this.updateHud()
             this.spawnXP(e.mesh.position.clone())
             if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
+            // Rocket AoE explosion on kill
+            if (p.kind === 'rocket') this.explodeAt(e.mesh.position.clone(), this.rocketBlastRadius, p.damage)
           }
           else {
             this.audio.playImpact()
@@ -2171,6 +2175,8 @@ class Game {
           if (p.pierce > 0) {
             p.pierce -= 1
           } else {
+            // Rocket AoE explosion on first impact
+            if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
             p.alive = false
             this.scene.remove(p.mesh)
           }
@@ -2339,28 +2345,41 @@ class Game {
   }
 
   launchRocket() {
-    // Simple homing rocket toward nearest enemy
-    const target = this.enemies.find((e) => e.alive)
-    if (!target) return
+    // Homing rocket with 3-phase behavior and AoE on impact
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
     const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 10), new THREE.MeshBasicMaterial({ color: 0xff8844 }))
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
-    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 3.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone() }
+    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 4.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     this.projectiles.push(rocket)
-    const update = () => {
+    // Phase timings
+    const boostDuration = 0.35
+    const pauseDuration = 0.18
+    const startTime = this.gameTime
+    const initialDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
+    const runUpdate = () => {
       if (!rocket.alive) return
-      const t = this.enemies.find((e) => e.alive)
-      if (t) {
-        const dir = t.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-        rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed), this.rocketTurn)
-        rocket.mesh.lookAt(t.mesh.position.clone().setY(rocket.mesh.position.y))
+      const tSince = this.gameTime - startTime
+      if (tSince < boostDuration) {
+        // Initial forward boost
+        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 1.4), 0.4)
+      } else if (tSince < boostDuration + pauseDuration) {
+        // Hesitate/lock-on phase
+        rocket.velocity.multiplyScalar(0.92)
+      } else {
+        // Homing chase burst
+        const target = this.enemies.find((e) => e.alive)
+        if (target) {
+          const dir = target.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
+          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 1.35), Math.min(0.5, this.rocketTurn * 1.5))
+          rocket.mesh.lookAt(target.mesh.position.clone().setY(rocket.mesh.position.y))
+        }
       }
-      setTimeout(update, 50)
+      setTimeout(runUpdate, 50)
     }
-    update()
+    runUpdate()
   }
 
   spawnEnemyByWave(minute: number) {
@@ -2658,7 +2677,7 @@ class Game {
       <div class="carddesc" style="margin-bottom:8px;">Time: ${this.gameTime.toFixed(1)}s • Score: ${this.score}</div>
       <label class="carddesc" style="display:block;margin-bottom:6px;">Name (max 20):</label>
       <input id="name-input" maxlength="20" value="${lastName.replace(/"/g, '&quot;')}" style="width:100%; padding:6px; background:rgba(255,255,255,0.06); border:1px solid #1f2a44; color:#eaf6ff; border-radius:6px;" />
-      <div style="display:flex; gap:8px; margin-top:10px;">
+      <div id="go-buttons" style="display:flex; gap:8px; margin-top:10px;">
         <button id="submit-btn" class="card" style="flex:1; text-align:center;"><strong>Submit</strong></button>
         <button id="restart-btn" class="card" style="flex:1; text-align:center;"><strong>Restart</strong></button>
       </div>
@@ -2697,6 +2716,12 @@ class Game {
       }
     }
     window.addEventListener('keydown', handler, { once: true })
+    // Initialize controller selection on Game Over buttons
+    const goBtns = Array.from(goCard.querySelectorAll('#go-buttons .card')) as HTMLButtonElement[]
+    if (goBtns.length > 0) {
+      this.uiSelectIndex = 0
+      goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+    }
   }
 
   onEnemyDown() {
@@ -2769,6 +2794,48 @@ class Game {
       }
     }
     fade()
+  }
+
+  private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
+    // Visual flash ring similar to shockwave
+    const ringGeom = new THREE.RingGeometry(radius * 0.6, radius * 0.62, 32)
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffaa66, transparent: true, opacity: 0.7, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+    const ring = new THREE.Mesh(ringGeom, ringMat)
+    ring.rotation.x = -Math.PI / 2
+    ring.position.copy(center).setY(0.03)
+    this.scene.add(ring)
+    const start = performance.now()
+    const duration = 280
+    const anim = () => {
+      const t = (performance.now() - start) / duration
+      if (t >= 1) { this.scene.remove(ring); ringGeom.dispose(); (ring.material as THREE.Material).dispose?.(); return }
+      const r = radius * (0.6 + 0.4 * t)
+      ring.geometry.dispose()
+      ring.geometry = new THREE.RingGeometry(r * 0.98, r, 48)
+      ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - t)
+      requestAnimationFrame(anim)
+    }
+    anim()
+    // Apply damage and minor knockback
+    for (const e of this.enemies) {
+      if (!e.alive) continue
+      const d = e.mesh.position.distanceTo(center)
+      if (d < radius) {
+        e.hp -= Math.ceil(baseDamage * 0.8)
+        const dir = e.mesh.position.clone().sub(center).setY(0).normalize()
+        e.mesh.position.add(dir.multiplyScalar(Math.max(0.08, (radius - d) * 0.05)))
+        if (e.hp <= 0) {
+          e.alive = false
+          this.spawnExplosion(e.mesh)
+          if (e.face) this.scene.remove(e.face)
+          this.onEnemyDown()
+          this.score += 1
+          this.spawnXP(e.mesh.position.clone())
+        } else {
+          this.audio.playImpact()
+        }
+      }
+    }
   }
 
   private updateLasso() {

@@ -1,3 +1,8 @@
+## v0.1.11 (2025-08-10)
+
+- UX: Game Over screen supports controller selection for Submit/Restart
+- Weapon: SCSI Rocket reworked with boost→lock-on→chase behavior and AoE explosion on impact
+
 ## v0.1.10 (2025-08-10)
 
 - Balance: Dial-up Burst now scales with multi-pulse blasts, larger radius, faster cycle, and brief slow on hit
