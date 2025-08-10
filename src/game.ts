@@ -434,6 +434,8 @@ class Game {
   pauseOverlay: HTMLDivElement
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
+  // Title art element reference for subtle float animation
+  titleImgEl?: HTMLImageElement
   autoFire = true
   hitCount = 0
   hitCounterEl!: HTMLDivElement
@@ -663,6 +665,8 @@ class Game {
     img.style.width = '256px'
     img.style.height = '256px'
     ;(img.style as any).imageRendering = 'pixelated'
+    img.style.willChange = 'transform'
+    this.titleImgEl = img
     const fallbackText = document.createElement('div')
     fallbackText.style.color = '#9be3ff'
     fallbackText.style.fontFamily = 'ui-monospace, monospace'
@@ -1350,6 +1354,14 @@ class Game {
       if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
       this.uiDpadPrevLeft = dpadLeft
       this.uiDpadPrevRight = dpadRight
+      // Subtle floating animation for title art
+      if (this.titleImgEl) {
+        const t = now * 0.001
+        const dx = Math.sin(t * 0.6) * 6
+        const dy = Math.cos(t * 0.8) * 4
+        const rot = Math.sin(t * 0.5) * 2
+        this.titleImgEl.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`
+      }
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
