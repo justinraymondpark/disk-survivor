@@ -401,6 +401,14 @@ class Game {
   // Tape Whirl
   whirlSaws: THREE.Mesh[] = []
   whirlRadius = 2.0
+  // Sata Cable Tail
+  sataTailGroup?: THREE.Group
+  sataTailSegments: THREE.Mesh[] = []
+  sataTailLength = 2.0
+  sataTailDps = 10
+  sataTailAmp = 0.25
+  sataTailFreq = 8.0
+  sataTailLevel = 0
   // Wave management
   lastWaveMinute = -1
   waveCullDelaySeconds = 2
@@ -987,6 +995,8 @@ class Game {
         pool.push({ title: 'SCSI Rocket', desc: 'Homing rockets', icon: '🚀', apply: () => this.addWeapon('SCSI Rocket') })
       if (!this.ownedWeapons.has('Tape Whirl'))
         pool.push({ title: 'Tape Whirl', desc: 'Orbiting saws', icon: '📼', apply: () => this.addWeapon('Tape Whirl') })
+      if (!this.ownedWeapons.has('Sata Cable Tail'))
+        pool.push({ title: 'Sata Cable Tail', desc: 'Flapping rear tail', icon: '🔌', apply: () => this.addWeapon('Sata Cable Tail') })
       if (!this.ownedWeapons.has('Magic Lasso'))
         pool.push({ title: 'Magic Lasso', desc: 'Draw a loop to damage inside', icon: '🪢', apply: () => this.addWeapon('Magic Lasso') })
       if (!this.ownedWeapons.has('Shield Wall'))
@@ -1021,9 +1031,10 @@ class Game {
     if (this.ownedWeapons.has('SCSI Rocket')) pool.push({ title: 'SCSI Rocket (Level up)', desc: 'Faster, stronger rockets', icon: '🚀', apply: () => this.levelUpRocket() })
     if (this.ownedWeapons.has('Dot Matrix')) pool.push({ title: 'Dot Matrix (Level up)', desc: 'Stronger side bullets', icon: '🖨️', apply: () => this.levelUpDotMatrix() })
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
+    if (this.ownedWeapons.has('Sata Cable Tail')) pool.push({ title: 'Sata Cable Tail (Level up)', desc: 'Longer, stronger tail', icon: '🔌', apply: () => this.levelUpSataTail() })
 
     // Filter out entries that would be invalid due to caps
-    const isWeaponName = (t: string) => ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall'].includes(t)
+    const isWeaponName = (t: string) => ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail'].includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
       if (isWeaponName(title)) return this.ownedWeapons.size < this.maxWeapons
@@ -1058,7 +1069,7 @@ class Game {
   }
 
   isWeapon(name: string) {
-    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall'].includes(name)
+    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall', 'Sata Cable Tail'].includes(name)
   }
 
   addWeapon(name: string) {
@@ -1082,6 +1093,27 @@ class Game {
       this.crtBeamGlow = glow
       this.crtBeamTimer = 0
       this.crtBeamOn = true
+    }
+    if (name === 'Sata Cable Tail' && !this.sataTailGroup) {
+      const group = new THREE.Group()
+      group.position.set(0, 0.15, -0.3) // behind player
+      this.player.group.add(group)
+      this.sataTailGroup = group
+      // Build segments (cylinders) with slight gradient color
+      const segs = 10
+      this.sataTailSegments = []
+      for (let i = 0; i < segs; i++) {
+        const t = i / (segs - 1)
+        const r = 0.08 * (1 - 0.5 * t)
+        const g = new THREE.CapsuleGeometry(r, 0.05, 4, 6)
+        const col = new THREE.Color().setHSL(0.03 + 0.04 * t, 0.8, 0.55)
+        const m = new THREE.MeshBasicMaterial({ color: col.getHex() })
+        const seg = new THREE.Mesh(g, m)
+        seg.position.set(0, 0, -t * this.sataTailLength)
+        group.add(seg)
+        this.sataTailSegments.push(seg)
+      }
+      this.sataTailLevel = 1
     }
     if (name === 'Tape Whirl' && this.whirlSaws.length === 0) {
       const createSaw = () => new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 8, 16), new THREE.MeshBasicMaterial({ color: 0xffcc66 }))
@@ -1686,6 +1718,54 @@ class Game {
       }
     }
 
+    // Sata Cable Tail update (follow and flap)
+    if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
+      // Place base at player's rear
+      const rear = new THREE.Vector3(0, 0.15, -0.3).applyQuaternion(this.player.group.quaternion).add(this.player.group.position)
+      this.sataTailGroup.position.copy(rear)
+      this.sataTailGroup.quaternion.copy(this.player.group.quaternion)
+      // Simple sine flap chain
+      const baseDir = new THREE.Vector3(0, 0, -1)
+      const tNow = this.gameTime
+      for (let i = 0; i < this.sataTailSegments.length; i++) {
+        const seg = this.sataTailSegments[i]
+        const k = i / (this.sataTailSegments.length - 1)
+        const sway = Math.sin(tNow * this.sataTailFreq + k * 2.2) * this.sataTailAmp * (1 - 0.2 * k)
+        const lift = Math.cos(tNow * (this.sataTailFreq * 0.6) + k * 1.8) * 0.04 * (1 - 0.3 * k)
+        const offset = baseDir.clone().multiplyScalar(k * this.sataTailLength)
+        const side = new THREE.Vector3(1, 0, 0).applyQuaternion(this.player.group.quaternion)
+        const up = new THREE.Vector3(0, 1, 0)
+        seg.position.set(0, 0, 0)
+        seg.position.add(offset)
+        seg.position.addScaledVector(side, sway)
+        seg.position.addScaledVector(up, lift)
+      }
+      // Damage tick: distance check around segments
+      const dps = this.sataTailDps
+      for (const e of this.enemies) {
+        if (!e.alive) continue
+        const p = e.mesh.position
+        if (p.distanceToSquared(this.sataTailGroup.position) > (this.sataTailLength + 1) ** 2) continue
+        for (const seg of this.sataTailSegments) {
+          const wp = seg.getWorldPosition(new THREE.Vector3())
+          const dist = p.distanceTo(wp)
+          if (dist < 0.45) {
+            e.hp -= dps * dt
+            if (e.hp <= 0) {
+              e.alive = false
+              this.scene.remove(e.mesh)
+              if (e.face) this.scene.remove(e.face)
+              this.onEnemyDown()
+              this.score += 1
+              this.updateHud()
+              this.spawnXP(e.mesh.position.clone())
+            }
+            break
+          }
+        }
+      }
+    }
+
     // Special weapons passive timers
     if (this.ownedWeapons.has('Dial-up Burst')) {
       this.modemWaveTimer += dt
@@ -2256,7 +2336,35 @@ class Game {
     // Decide type by minute
     let type: EnemyType = 'slime'
     // Wave table extended to 10 minutes with unique flavors (merge of upstream + new)
-    if (minute >= 9) {
+    if (minute >= 10) {
+      // Post-wave 10: cycle earlier waves with twists so each feels unique
+      const cycle = (minute - 10) % 6 // cycles through 0..5 mapping to waves 4..9 flavors
+      switch (cycle) {
+        case 0: {
+          const pool: EnemyType[] = ['spinner', 'shooter']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          // Twist applied later: slight speed buff
+          break
+        }
+        case 1: {
+          const pool: EnemyType[] = ['charger', 'splitter']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 2: {
+          const pool: EnemyType[] = ['orbiter', 'bomber']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 3: {
+          const pool: EnemyType[] = ['teleport', 'sniper']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 4: type = 'weaver'; break
+        case 5: type = 'brute'; break
+      }
+    } else if (minute >= 9) {
       type = 'brute'       // wave 10
     } else if (minute >= 8) {
       type = 'weaver'      // wave 9
@@ -2394,6 +2502,16 @@ class Game {
       spawnPos = farther
     }
     const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed }
+    // Post-10 twists: modest buffs per cycle so waves feel unique
+    if (minute >= 10) {
+      const cycle = (minute - 10) % 6
+      if (cycle === 0) enemy.speed *= 1.1 // spinner/shooter faster
+      if (cycle === 1) enemy.hp += 1       // charger/splitter tankier
+      if (cycle === 2) enemy.baseSpeed = (enemy.baseSpeed ?? enemy.speed) * 1.15 // orbiter/bomber faster orbit/approach
+      if (cycle === 3) enemy.speed *= 1.15 // teleport/sniper faster between actions
+      if (cycle === 4) enemy.hp += 2       // weaver tougher
+      if (cycle === 5) enemy.hp += 3       // brute much tougher
+    }
     if (type === 'teleport') {
       // Mark a brief high-speed phase on spawn
       ;(enemy as any).dashRemaining = 0.35
@@ -2725,6 +2843,21 @@ class Game {
   private levelUpWhirl() {
     this.whirlRadius = Math.min(3.2, this.whirlRadius + 0.25)
     this.whirlDamage += 4
+  }
+
+  private levelUpSataTail() {
+    this.sataTailLevel += 1
+    // Prioritize damage scaling, then modest length increase
+    this.sataTailDps += 6
+    this.sataTailLength = Math.min(4.0, this.sataTailLength + 0.25)
+    // Reposition segments along new length
+    if (this.sataTailSegments.length > 0) {
+      const segs = this.sataTailSegments.length
+      for (let i = 0; i < segs; i++) {
+        const k = i / (segs - 1)
+        this.sataTailSegments[i].position.z = -k * this.sataTailLength
+      }
+    }
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {
