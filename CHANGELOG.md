@@ -7,6 +7,8 @@
  - Debug: reduce card min-height, grid gap, and enforce flex row layout for tighter boxes
  - Tape Whirl: adds dusty magnetic hit effect; knockback always away from player
  - SCSI Rocket: update descriptions to emphasize blast radius instead of homing
+ - SCSI Rocket: level-ups now increase blast radius, fire rate, and damage
+ - Inventory: weapons now show their level in the HUD list
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
 
 ## v0.1.19 (2025-08-10)

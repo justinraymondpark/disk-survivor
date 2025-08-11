@@ -1210,7 +1210,16 @@ class Game {
     wslots.innerHTML = ''
     uslots.innerHTML = ''
     for (const w of this.ownedWeapons) {
-      wslots.appendChild(this.makeSlotIcon(w))
+      const lvl =
+        w === 'CRT Beam' ? Math.max(1, Math.floor((this.crtBeamDps - 6) / 2) + 1) :
+        w === 'Tape Whirl' ? Math.max(1, this.whirlLevel || 1) :
+        w === 'SCSI Rocket' ? Math.max(1, this.rocketLevel || 1) :
+        w === 'Magic Lasso' ? Math.max(1, this.lassoLevel || 1) :
+        w === 'Shield Wall' ? Math.max(1, this.shieldLevel || 1) :
+        w === 'Sata Cable Tail' ? Math.max(1, this.sataTailLevel || 1) :
+        w === 'Dial-up Burst' ? Math.max(1, this.burstLevel || 1) :
+        w === 'Dot Matrix' ? (this.sideBullets ? 1 + 0 : 1) : 1
+      wslots.appendChild(this.makeSlotIcon(`${w} Lv.${lvl}`))
     }
     for (const [u, lvl] of this.ownedUpgrades) {
       uslots.appendChild(this.makeSlotIcon(`${u} Lv.${lvl}`))
@@ -3322,7 +3331,10 @@ class Game {
 
   private levelUpRocket() {
     this.rocketLevel += 1
+    // Primary scaling knobs: bigger AoE, more frequent, and damage
     this.rocketDamage += 1
+    this.rocketBlastRadius = Math.min(5.0, this.rocketBlastRadius + 0.4)
+    this.rocketInterval = Math.max(0.9, this.rocketInterval * 0.92)
     // Add a second rocket from level 2 onward
     if (this.rocketLevel >= 2) {
       const fire = () => this.launchRocket()
