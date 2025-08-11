@@ -380,9 +380,10 @@ class Game {
   burstLevel = 0
   rocketInterval = 1.8
   rocketTimer = 0
-  rocketSpeed = 2
-  rocketTurn = 0.1
+  rocketSpeed = 3.5
+  rocketTurn = 0.15
   rocketDamage = 3
+  rocketLevel = 0
   rocketBlastRadius = 2.6
   xpMagnetRadius = 2.0
   modemWaveDamage = 5
@@ -3221,9 +3222,17 @@ class Game {
   }
 
   private levelUpRocket() {
+    this.rocketLevel += 1
     this.rocketDamage += 1
-    this.rocketSpeed += 1
-    this.rocketTurn = Math.min(0.35, this.rocketTurn + 0.03)
+    // Add a second rocket from level 2 onward
+    if (this.rocketLevel >= 2) {
+      const fire = () => this.launchRocket()
+      // Launch a second rocket with a small stagger
+      setTimeout(fire, 150)
+    }
+    // Slightly improve speed/turn with level, but keep conservative to avoid landmine behavior at Lv1
+    this.rocketSpeed = Math.min(5, this.rocketSpeed + 0.4)
+    this.rocketTurn = Math.min(0.25, this.rocketTurn + 0.02)
   }
 
   private levelUpDotMatrix() {
