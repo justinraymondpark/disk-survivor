@@ -380,8 +380,8 @@ class Game {
   burstLevel = 0
   rocketInterval = 1.8
   rocketTimer = 0
-  rocketSpeed = 5
-  rocketTurn = 0.2
+  rocketSpeed = 2
+  rocketTurn = 0.1
   rocketDamage = 3
   rocketBlastRadius = 2.6
   xpMagnetRadius = 2.0
@@ -2575,21 +2575,34 @@ class Game {
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
-    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 3.5, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
+    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 5.0, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     this.projectiles.push(rocket)
     const initialDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
+    // Select a random target within a radius around the player (fallback to any alive if none)
+    const targetRadius = 10
+    const pickRandomTarget = (): Enemy | null => {
+      const r2 = targetRadius * targetRadius
+      const candidates = this.enemies.filter((e) => e.alive && e.mesh.position.distanceToSquared(this.player.group.position) < r2)
+      if (candidates.length === 0) {
+        const any = this.enemies.find((e) => e.alive)
+        return any ?? null
+      }
+      const idx = Math.floor(Math.random() * candidates.length)
+      return candidates[idx]!
+    }
+    let target: Enemy | null = pickRandomTarget()
     let ticks = 0
     const update = () => {
       if (!rocket.alive) return
       ticks++
-      if (ticks < 10) {
-        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.6), 0.18)
+      if (ticks < 12) {
+        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.5), 0.12)
       } else {
-        const t = this.enemies.find((e) => e.alive)
-        if (t) {
-          const dir = t.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.8), Math.min(0.12, this.rocketTurn * 0.6))
-          rocket.mesh.lookAt(t.mesh.position.clone().setY(rocket.mesh.position.y))
+        if (!target || !target.alive) target = pickRandomTarget()
+        if (target) {
+          const dir = target.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
+          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.7), this.rocketTurn)
+          rocket.mesh.lookAt(target.mesh.position.clone().setY(rocket.mesh.position.y))
         }
       }
       setTimeout(update, 50)

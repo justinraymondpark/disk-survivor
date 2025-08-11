@@ -1,3 +1,7 @@
+## v0.1.19 (2025-08-10)
+
+- Rocket: targets a random enemy within a radius around the player (with AoE on impact); slower homing and turn
+
 ## v0.1.18 (2025-08-10)
 
 - Rocket: AoE restored on impact; homing remains simple with brief hesitate
