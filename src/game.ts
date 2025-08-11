@@ -335,6 +335,8 @@ type Enemy = {
   burstSlowFactor?: number
   // Effect throttles
   nextWhirlFxTime?: number
+  // Visibility tracking for offscreen culling
+  lastOnscreenAt?: number
 }
 
 type Pickup = {
@@ -358,6 +360,8 @@ class Game {
   camera: THREE.OrthographicCamera
   isoPivot: THREE.Group
   frameId = 0
+  // Temp vectors for projections
+  _tmpProj = new THREE.Vector3()
   raycaster = new THREE.Raycaster()
   groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   input: InputManager
@@ -429,6 +433,8 @@ class Game {
   waveCullKeepFraction = 0.03
   maxActiveEnemies = 1000
   aliveEnemies = 0
+  // Offscreen cull policy for older waves
+  offscreenCullSeconds = 2.5
   whirlSpeed = 2.8
   whirlDamage = 16
   // Magic Lasso
@@ -2150,12 +2156,16 @@ class Game {
       }
     }
 
-    // Update enemies with different behaviors (throttle far ones)
+    // Update enemies with different behaviors (throttle far ones); track onscreen time
     for (const e of this.enemies) {
       if (!e.alive) continue
       // Skip detailed updates for very distant enemies every other frame
       const toCam = this.camera.position.clone().sub(e.mesh.position)
       const far = toCam.lengthSq() > 60 * 60
+      // Update lastOnscreenAt if visible in viewport
+      this._tmpProj.copy(e.mesh.position).project(this.camera)
+      const onScreen = Math.abs(this._tmpProj.x) <= 1.05 && Math.abs(this._tmpProj.y) <= 1.05
+      if (onScreen) e.lastOnscreenAt = (e.lastOnscreenAt ?? this.gameTime)
       if (far && ((this.frameId ?? 0) % 2 === 1)) continue
       e.timeAlive += dt
       const toPlayer = this.player.group.position.clone().sub(e.mesh.position)
@@ -2430,6 +2440,20 @@ class Game {
             e.nextFaceUpdate = performance.now() + 120
           }
         }
+      }
+    }
+
+    // Offscreen cull for enemies 2+ waves old
+    const currentWave = Math.floor(this.gameTime / 60)
+    for (const e of this.enemies) {
+      if (!e.alive) continue
+      if (currentWave - e.spawnWave < 2) continue
+      const lastSeen = e.lastOnscreenAt ?? this.gameTime
+      if (this.gameTime - lastSeen > this.offscreenCullSeconds) {
+        e.alive = false
+        this.scene.remove(e.mesh)
+        if (e.face) this.scene.remove(e.face)
+        this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
       }
     }
 
