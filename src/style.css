@@ -92,6 +92,8 @@ html, body {
   .title-buttons { grid-template-columns: 1fr !important; grid-auto-rows: minmax(52px, auto) !important; gap: 10px !important; }
   /* Game over two-column wrap */
   .go-wrap { flex-direction: column !important; align-items: stretch !important; }
+  /* Pause actions tightened on vertical */
+  .pause-actions .card { min-height: 34px; padding: 6px; font-size: 12px; }
 }
 
 /* Touch pause button */

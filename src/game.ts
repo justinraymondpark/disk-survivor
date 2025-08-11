@@ -2046,7 +2046,7 @@ class Game {
             } else {
               this.audio.playImpact()
               // Brief grey tint and face ouch
-              e.hitTintColor = 0xaaaaaa; e.hitTintUntil = this.gameTime + 0.10; e.faceOuchUntil = this.gameTime + 0.10
+              e.hitTintColor = 0xaaaaaa; e.hitTintUntil = this.gameTime + 0.05; e.faceOuchUntil = this.gameTime + 0.05
               // Knockback should push away from the player, not toward
               const awayFromPlayer = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize().multiplyScalar(0.035)
               e.mesh.position.add(awayFromPlayer)
@@ -2105,7 +2105,7 @@ class Game {
             } else {
             // Minor zap on hit + brief yellow tint and face ouch
             this.spawnZapEffect(wp, e.mesh.position.clone(), 0.5)
-            e.hitTintColor = 0xffff66; e.hitTintUntil = this.gameTime + 0.12; e.faceOuchUntil = this.gameTime + 0.12
+            e.hitTintColor = 0xffff66; e.hitTintUntil = this.gameTime + 0.06; e.faceOuchUntil = this.gameTime + 0.06
             }
             break
           }

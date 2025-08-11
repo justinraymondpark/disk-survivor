@@ -140,6 +140,12 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - Optionally tune spawn margins by DPI/zoom for ultra-dense displays.
 - Continue mobile UI refinements; evaluate controller navigation consistency on all overlays.
 
+## Ideas for later
+
+- Enemy that enrages when hit and becomes much more aggressive (think Mario World caterpillar).
+- Yellow splitters that pop into 2 could have a more interesting pattern after splitting.
+- Red enemies are too slow/uninteresting; give them a unique hook/mechanic.
+
 ### License
 
 No license specified yet. Add one if you plan to distribute.
