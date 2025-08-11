@@ -1,3 +1,8 @@
+## v0.1.20 (2025-08-11)
+
+- Fonts: replace `Share Tech Mono` with self-hosted `W95FA` for HUD digits and counters; drop Google Fonts link for Share Tech Mono
+- Docs: README touch to note font change
+
 ## v0.1.19 (2025-08-10)
 
 - Rocket: targets a random enemy within a radius around the player (with AoE on impact); slower homing and turn

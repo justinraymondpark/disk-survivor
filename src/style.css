@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'W95FA';
+  src: url('/fonts/W95FA.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -38,7 +46,7 @@ html, body {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 8px rgba(0,0,0,0.5);
 }
 #hud .hc-label { color: #ddd; font-size: 10px; letter-spacing: 1px; font-family: 'Press Start 2P', ui-monospace, monospace; }
-#hud .hc-digit { display:inline-block; min-width:12px; padding:2px 2px 1px; text-align:center; color:#9be3ff; font-size:12px; background:#0b1b2f; border:1px solid #0a1220; border-radius:2px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(100,160,255,0.25); font-family: 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.5px; }
+#hud .hc-digit { display:inline-block; min-width:12px; padding:2px 2px 1px; text-align:center; color:#9be3ff; font-size:12px; background:#0b1b2f; border:1px solid #0a1220; border-radius:2px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(100,160,255,0.25); font-family: 'W95FA', ui-monospace, monospace; letter-spacing: 0.5px; }
 
 #hpbar {
   position: fixed;
@@ -258,7 +266,7 @@ html, body {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 8px rgba(0,0,0,0.5);
 }
 #wave .hc-label { color: #ddd; font-size: 11px; letter-spacing: 1px; font-family: 'Press Start 2P', ui-monospace, monospace; }
-#wave .hc-digit { display:inline-block; min-width:14px; padding:2px 3px 1px; text-align:center; color:#ffe39a; font-size:14px; background:#2f200b; border:1px solid #20120a; border-radius:2px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(255,200,100,0.25); font-family: 'Share Tech Mono', ui-monospace, monospace; letter-spacing: 0.5px; }
+#wave .hc-digit { display:inline-block; min-width:14px; padding:2px 3px 1px; text-align:center; color:#ffe39a; font-size:14px; background:#2f200b; border:1px solid #20120a; border-radius:2px; box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(255,200,100,0.25); font-family: 'W95FA', ui-monospace, monospace; letter-spacing: 0.5px; }
 #hitcounter .hc-wrap {
   display: inline-flex;
   align-items: center;
@@ -287,7 +295,7 @@ html, body {
   border: 1px solid #060;
   border-radius: 2px;
   box-shadow: inset 0 0 8px rgba(0,0,0,0.6), 0 0 4px rgba(0,255,120,0.25);
-  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-family: 'W95FA', ui-monospace, monospace;
   letter-spacing: 1px;
 }
 

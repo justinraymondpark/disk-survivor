@@ -104,8 +104,8 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 
 ### Fonts
 
-- The app includes Google Fonts `Press Start 2P` (UI cards) and `VT323` (inventory/body) via `<link>` tags in `index.html`.
-- If you prefer self-hosted fonts, place files in `public/fonts/` and update `src/style.css` font-family declarations accordingly.
+- Monospace-style digits and counters now use self-hosted `W95FA` via `@font-face` (see `src/style.css`). Add the font file to `public/fonts/W95FA.otf`.
+- UI cards still reference `Press Start 2P`; if you prefer to self-host, add assets under `public/fonts/` and update `src/style.css` accordingly.
 
 ### Maintainer quick-brief (what a future chat should know)
 
