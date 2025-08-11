@@ -1974,8 +1974,9 @@ class Game {
           const dirDot = forward.dot(toE.normalize()) // cos angle
           if (dirDot > 0.92) {
             e.hp -= this.crtBeamDps * dt
-            if (e.hp <= 0) {
-              e.alive = false
+          if (e.hp <= 0) {
+            e.alive = false
+            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.spawnExplosion(e.mesh)
               if (e.face) this.scene.remove(e.face)
               this.onEnemyDown()
@@ -2276,6 +2277,7 @@ class Game {
         // on low HP, split into two runners
         if (e.hp < 2 && e.alive) {
           e.alive = false
+          this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
           this.scene.remove(e.mesh)
           this.onEnemyDown()
           for (let i = 0; i < 2; i++) {
@@ -2291,6 +2293,7 @@ class Game {
         // accelerates toward player, small explosive knockback when near
         if (toPlayer.length() < 1.2) {
           e.alive = false
+          this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
           this.spawnExplosion(e.mesh)
           this.onEnemyDown()
           this.player.hp = Math.max(0, this.player.hp - 1)
@@ -2395,6 +2398,7 @@ class Game {
       if (e.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.5) ** 2) {
         if (this.invulnTimer <= 0) {
           e.alive = false
+          this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
           this.spawnExplosion(e.mesh)
           if (e.face) this.scene.remove(e.face)
           this.player.hp = Math.max(0, this.player.hp - 1)
@@ -2471,6 +2475,7 @@ class Game {
           e.hp -= p.damage
           if (e.hp <= 0) {
             e.alive = false
+            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
             this.spawnExplosion(e.mesh)
             if (e.face) this.scene.remove(e.face)
             this.onEnemyDown()
@@ -2654,6 +2659,7 @@ class Game {
           e.burstSlowFactor = 0.6
           if (e.hp <= 0) {
             e.alive = false
+            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
             this.spawnExplosion(e.mesh)
             if (e.face) this.scene.remove(e.face)
             this.onEnemyDown()
@@ -3500,6 +3506,7 @@ class Game {
       this.scene.remove(enemy.mesh)
       if (enemy.face) this.scene.remove(enemy.face)
       // Intentionally do not award XP or score and do not call onEnemyDown
+      this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
     }
     // Compact enemy list to remove culled entries
     this.enemies = this.enemies.filter((e) => e.alive)
