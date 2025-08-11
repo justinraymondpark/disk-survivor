@@ -365,6 +365,9 @@ class Game {
   // Spatial hash for enemies (rebuilt each frame before projectile checks)
   spatialCellSize = 4.0
   spatialMap: Map<string, Enemy[]> = new Map()
+  // Simple pools to reduce allocations
+  poolRings: THREE.Mesh[] = []
+  poolQuads: THREE.Mesh[] = []
   raycaster = new THREE.Raycaster()
   groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   input: InputManager
@@ -2658,9 +2661,12 @@ class Game {
   emitShockwave() {
     // Damage nearby enemies in ring (supports multi-pulse)
     // Visual ring (animate scale/opacity; avoid geometry rebuild)
-    const ringGeom = new THREE.RingGeometry(1, 1.2, 64)
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
-    const ring = new THREE.Mesh(ringGeom, ringMat)
+    let ring = this.poolRings.pop()
+    if (!ring) {
+      const ringGeom = new THREE.RingGeometry(1, 1.2, 64)
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+      ring = new THREE.Mesh(ringGeom, ringMat)
+    }
     ring.rotation.x = -Math.PI / 2
     ring.position.copy(this.player.group.position).setY(0.02)
     ring.scale.set(this.modemWaveRadius * 0.2, this.modemWaveRadius * 0.2, 1)
@@ -2669,7 +2675,7 @@ class Game {
     const duration = 420
     const anim = () => {
       const t = (performance.now() - start) / duration
-      if (t >= 1) { this.scene.remove(ring); ringGeom.dispose(); (ring.material as THREE.Material).dispose?.(); return }
+      if (t >= 1) { this.scene.remove(ring); this.poolRings.push(ring!); return }
       const s = this.modemWaveRadius * (0.2 + 0.8 * t)
       ring.scale.set(s, s, 1)
       ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t)
@@ -3175,16 +3181,19 @@ class Game {
   }
 
   private spawnWhirlDust(center: THREE.Vector3) {
-    // Small magnetic/dusty poofs, greenish-teal, fade quickly
+    // Small magnetic/dusty poofs using pooled quads
     const count = 8
     const lifeMs = 220
     const particles: { m: THREE.Mesh; v: THREE.Vector3; born: number }[] = []
     for (let i = 0; i < count; i++) {
-      const g = new THREE.PlaneGeometry(0.15, 0.15)
-      const m = new THREE.MeshBasicMaterial({ color: 0x66ffcc, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
-      const quad = new THREE.Mesh(g, m)
+      let quad = this.poolQuads.pop()
+      if (!quad) {
+        const g = new THREE.PlaneGeometry(0.15, 0.15)
+        const m = new THREE.MeshBasicMaterial({ color: 0x66ffcc, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+        quad = new THREE.Mesh(g, m)
+        quad.rotation.x = -Math.PI / 2
+      }
       quad.position.copy(center).setY(0.12)
-      quad.rotation.x = -Math.PI / 2
       this.scene.add(quad)
       const dir = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize()
       const speed = 0.6 + Math.random() * 0.6
@@ -3195,7 +3204,7 @@ class Game {
       const now = performance.now()
       for (const p of particles) {
         const t = (now - p.born) / lifeMs
-        if (t >= 1) { this.scene.remove(p.m); continue }
+        if (t >= 1) { this.scene.remove(p.m); this.poolQuads.push(p.m); continue }
         any = true
         p.m.position.addScaledVector(p.v, 1 / 60)
         ;(p.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 * (1 - t))

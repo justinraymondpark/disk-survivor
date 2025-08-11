@@ -13,6 +13,7 @@
  - Perf: throttle far enemy updates every other frame; misc allocations reduced
  - Perf: cull enemies 2+ waves old after ~2.5s off-screen (no XP/score), freeing capacity for current wave
  - Perf: add simple spatial hash for projectile→enemy collision checks to cut scans
+ - Perf: pool shockwave rings and dust quads to reduce allocations/GC
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
 
 ## v0.1.19 (2025-08-10)
