@@ -1,9 +1,7 @@
 ## v0.1.20 (2025-08-11)
 
-- Fonts: replace `Share Tech Mono` with self-hosted `W95FA` for HUD digits and counters; drop Google Fonts link for Share Tech Mono
-- Docs: README touch to note font change
- - Fonts: prefer `W95FA.woff2` with `W95FA.otf` fallback
- - Docs: note PowerShell '&&' limitation and recommend separate commands
+- Fonts: switch entire UI to self-hosted `W95FA` (prefer `W95FA.woff2`, OTF fallback); removed Google Fonts usage
+- Docs: README updated with W95FA-only setup and PowerShell '&&' note
 
 ## v0.1.19 (2025-08-10)
 
