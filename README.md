@@ -104,8 +104,12 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 
 ### Fonts
 
-- Monospace-style digits and counters now use self-hosted `W95FA` via `@font-face` (see `src/style.css`). Add the font file to `public/fonts/W95FA.otf`.
-- UI cards still reference `Press Start 2P`; if you prefer to self-host, add assets under `public/fonts/` and update `src/style.css` accordingly.
+- Monospace-style digits and counters now use self-hosted `W95FA` via `@font-face` (see `src/style.css`). Place `W95FA.woff2` (preferred) and optionally `W95FA.otf` in `public/fonts/`.
+- UI cards still reference `Press Start 2P` and inventory uses `VT323`. We currently load these via Google Fonts in `index.html`. You can self-host alternatives by adding files under `public/fonts/` and updating `src/style.css`.
+
+### Shell notes
+
+- PowerShell here doesn’t support the `&&` separator. Run commands separately instead of chaining.
 
 ### Maintainer quick-brief (what a future chat should know)
 

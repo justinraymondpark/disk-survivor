@@ -1,6 +1,7 @@
 @font-face {
   font-family: 'W95FA';
-  src: url('/fonts/W95FA.otf') format('opentype');
+  src: url('/fonts/W95FA.woff2') format('woff2'),
+       url('/fonts/W95FA.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
