@@ -362,6 +362,8 @@ class Game {
   frameId = 0
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
+  _frustum = new THREE.Frustum()
+  _frustumMat = new THREE.Matrix4()
   // Spatial hash for enemies (rebuilt each frame before projectile checks)
   spatialCellSize = 4.0
   spatialMap: Map<string, Enemy[]> = new Map()
@@ -2168,9 +2170,8 @@ class Game {
       // Skip detailed updates for very distant enemies every other frame
       const toCam = this.camera.position.clone().sub(e.mesh.position)
       const far = toCam.lengthSq() > 60 * 60
-      // Update lastOnscreenAt if visible in viewport (use a slightly generous margin)
-      this._tmpProj.copy(e.mesh.position).project(this.camera)
-      const onScreen = Math.abs(this._tmpProj.x) <= 1.2 && Math.abs(this._tmpProj.y) <= 1.2
+      // Update lastOnscreenAt if visible in frustum (more robust than NDC margin)
+      const onScreen = this._frustum.containsPoint(e.mesh.position)
       if (onScreen) e.lastOnscreenAt = this.gameTime
       if (far && ((this.frameId ?? 0) % 2 === 1)) continue
       e.timeAlive += dt
@@ -2455,8 +2456,7 @@ class Game {
       if (!e.alive) continue
       if (currentWave - e.spawnWave < 1) continue
       // Never cull if currently onscreen
-      this._tmpProj.copy(e.mesh.position).project(this.camera)
-      const visibleNow = Math.abs(this._tmpProj.x) <= 1.2 && Math.abs(this._tmpProj.y) <= 1.2
+      const visibleNow = this._frustum.containsPoint(e.mesh.position)
       if (visibleNow) continue
       const lastSeen = e.lastOnscreenAt ?? this.gameTime
       if (this.gameTime - lastSeen > this.offscreenCullSeconds) {
@@ -2640,6 +2640,9 @@ class Game {
       }
     }
 
+    // Update frustum from current camera
+    this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
+    this._frustum.setFromProjectionMatrix(this._frustumMat)
     this.renderer.render(this.scene, this.camera)
     this.frameId++
     requestAnimationFrame(() => this.loop())

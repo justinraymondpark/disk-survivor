@@ -11,7 +11,7 @@
  - Inventory: weapons now show their level in the HUD list
  - Perf: replace repeated alive filters with counters; move rocket homing into main loop (no timers); reduce shockwave geometry churn
  - Perf: throttle far enemy updates every other frame; misc allocations reduced
- - Perf: offscreen cull refined: only for 1+ waves old and strictly offscreen for ~2.5s; widened onscreen margin to avoid false positives
+ - Perf: offscreen cull uses camera frustum checks (no NDC margin) to prevent visible culls; still 1+ waves old and ~2.5s unseen
  - Perf: add simple spatial hash for projectile→enemy collision checks to cut scans
  - Perf: pool shockwave rings and dust quads to reduce allocations/GC
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
