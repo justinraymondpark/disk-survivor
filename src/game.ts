@@ -2453,7 +2453,7 @@ class Game {
     const currentWave = Math.floor(this.gameTime / 60)
     for (const e of this.enemies) {
       if (!e.alive) continue
-      if (currentWave - e.spawnWave < 2) continue
+      if (currentWave - e.spawnWave < 1) continue
       const lastSeen = e.lastOnscreenAt ?? this.gameTime
       if (this.gameTime - lastSeen > this.offscreenCullSeconds) {
         e.alive = false
