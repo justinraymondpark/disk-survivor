@@ -487,7 +487,7 @@ class Game {
     scroll.style.flex = '1 1 auto'
     scroll.style.overflow = 'auto'
     const form = document.createElement('div')
-    form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '12px'
+    form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '6px'
     scroll.appendChild(form)
     const emojiMap: Record<string, string> = {
       'CRT Beam': '🔦',
@@ -512,6 +512,9 @@ class Game {
       const row = document.createElement('div')
       row.className = 'card dbg-row'
       row.style.padding = '4px'
+      row.style.display = 'flex'
+      row.style.alignItems = 'center'
+      row.style.justifyContent = 'space-between'
       const emoji = emojiMap[label] ?? '•'
       const name = document.createElement('div'); name.innerHTML = `<strong>${emoji} ${label}</strong>`
       const controls = document.createElement('div')

@@ -174,7 +174,7 @@ html, body {
 .overlay { pointer-events: auto; }
 .overlay .card {
   width: 260px;
-  min-height: 120px;
+  min-height: 96px;
   padding: 14px;
   color: #0b1020;
   background: linear-gradient(#bfc6d1, #9aa4b3);
@@ -216,6 +216,14 @@ html, body {
 .dbg-row strong { font-size: 12px; }
 .dbg-row input[type="number"] { height: 18px; font-size: 11px; }
 .dbg-row input[type="checkbox"] { width: 14px; height: 14px; }
+/* Override generic card min-height inside debug grid */
+.debug-panel .card.dbg-row {
+  min-height: 44px;
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 /* Animated card entrance */
 @keyframes popFade {
