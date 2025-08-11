@@ -362,6 +362,9 @@ class Game {
   frameId = 0
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
+  // Spatial hash for enemies (rebuilt each frame before projectile checks)
+  spatialCellSize = 4.0
+  spatialMap: Map<string, Enemy[]> = new Map()
   raycaster = new THREE.Raycaster()
   groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   input: InputManager
@@ -2457,6 +2460,18 @@ class Game {
       }
     }
 
+    // Rebuild spatial hash for enemies near projectiles
+    this.spatialMap.clear()
+    const cs = this.spatialCellSize
+    const keyFor = (v: THREE.Vector3) => `${Math.floor(v.x / cs)},${Math.floor(v.z / cs)}`
+    for (const e of this.enemies) {
+      if (!e.alive) continue
+      const k = keyFor(e.mesh.position)
+      let arr = this.spatialMap.get(k)
+      if (!arr) { arr = []; this.spatialMap.set(k, arr) }
+      arr.push(e)
+    }
+
     // Update projectiles with damage and pierce
     for (const p of this.projectiles) {
       if (!p.alive) continue
@@ -2485,41 +2500,49 @@ class Game {
       }
       p.mesh.position.addScaledVector(p.velocity, dt)
 
-      // Swept collision against enemies
-      for (const e of this.enemies) {
-        if (!e.alive) continue
-        // distance from segment prev->curr to enemy center on XZ
-        const a = prev.clone(); const b = p.mesh.position.clone(); const c = e.mesh.position.clone()
-        a.y = b.y = c.y = 0
-        const ab = b.clone().sub(a)
-        const t = Math.max(0, Math.min(1, c.clone().sub(a).dot(ab) / Math.max(1e-6, ab.lengthSq())))
-        const closest = a.clone().add(ab.multiplyScalar(t))
-        const d2 = closest.distanceToSquared(c)
-        if (d2 < 0.55 ** 2) {
-          e.hp -= p.damage
-          if (e.hp <= 0) {
-            e.alive = false
-            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
-            this.spawnExplosion(e.mesh)
-            if (e.face) this.scene.remove(e.face)
-            this.onEnemyDown()
-            this.score += 1
-            this.updateHud()
-            this.spawnXP(e.mesh.position.clone())
-            if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
-            
+      // Swept collision against enemies via spatial hash
+      const a = prev.clone(); const b = p.mesh.position.clone()
+      const minx = Math.min(a.x, b.x), maxx = Math.max(a.x, b.x)
+      const minz = Math.min(a.z, b.z), maxz = Math.max(a.z, b.z)
+      const kx0 = Math.floor((minx - 0.6) / cs), kx1 = Math.floor((maxx + 0.6) / cs)
+      const kz0 = Math.floor((minz - 0.6) / cs), kz1 = Math.floor((maxz + 0.6) / cs)
+      let hit = false
+      for (let gx = kx0; gx <= kx1 && !hit; gx++) for (let gz = kz0; gz <= kz1 && !hit; gz++) {
+        const arr = this.spatialMap.get(`${gx},${gz}`)
+        if (!arr) continue
+        for (const e of arr) {
+          if (!e.alive) continue
+          const c = e.mesh.position.clone()
+          a.y = b.y = c.y = 0
+          const ab = b.clone().sub(a)
+          const t = Math.max(0, Math.min(1, c.clone().sub(a).dot(ab) / Math.max(1e-6, ab.lengthSq())))
+          const closest = a.clone().add(ab.multiplyScalar(t))
+          const d2 = closest.distanceToSquared(c)
+          if (d2 < 0.55 ** 2) {
+            e.hp -= p.damage
+            if (e.hp <= 0) {
+              e.alive = false
+              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
+              this.spawnExplosion(e.mesh)
+              if (e.face) this.scene.remove(e.face)
+              this.onEnemyDown()
+              this.score += 1
+              this.updateHud()
+              this.spawnXP(e.mesh.position.clone())
+              if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
+            } else {
+              this.audio.playImpact()
+            }
+            if (p.pierce > 0) {
+              p.pierce -= 1
+            } else {
+              if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
+              p.alive = false
+              this.scene.remove(p.mesh)
+            }
+            hit = true
+            break
           }
-          else {
-            this.audio.playImpact()
-          }
-          if (p.pierce > 0) {
-            p.pierce -= 1
-          } else {
-            if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
-            p.alive = false
-            this.scene.remove(p.mesh)
-          }
-          break
         }
       }
       p.last.copy(p.mesh.position)

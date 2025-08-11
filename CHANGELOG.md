@@ -12,6 +12,7 @@
  - Perf: replace repeated alive filters with counters; move rocket homing into main loop (no timers); reduce shockwave geometry churn
  - Perf: throttle far enemy updates every other frame; misc allocations reduced
  - Perf: cull enemies 2+ waves old after ~2.5s off-screen (no XP/score), freeing capacity for current wave
+ - Perf: add simple spatial hash for projectile→enemy collision checks to cut scans
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
 
 ## v0.1.19 (2025-08-10)
