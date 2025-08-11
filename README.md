@@ -110,6 +110,11 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 
 - PowerShell here doesn’t support the `&&` separator. Run commands separately instead of chaining.
 
+### Controller notes
+
+- On debug and pause overlays, A activates the focused control; use d-pad/left stick to navigate.
+- If focus seems lost, press d-pad once to re-sync selection.
+
 ### Maintainer quick-brief (what a future chat should know)
 
 - Core files: `src/game.ts` (loop, systems, UI), `src/audio.ts` (SFX/music), `src/style.css` (UI), Netlify Functions in `netlify/functions/*`.

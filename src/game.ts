@@ -932,6 +932,26 @@ class Game {
       }
       if (restartBtn) restartBtn.onclick = () => confirmAction('Restart the run? Are you sure?', () => location.reload())
       if (mainBtn) mainBtn.onclick = () => confirmAction('Return to main menu? Are you sure?', () => location.reload())
+      // Gamepad navigation for pause actions
+      const actions = [resumeBtn, restartBtn, mainBtn].filter(Boolean) as HTMLButtonElement[]
+      let idx = 0
+      const setSel = () => actions.forEach((b, i) => b.classList.toggle('selected', i === idx))
+      setSel()
+      let prevUp = false, prevDown = false, prevA = false
+      const nav = () => {
+        if (!this.isPaused) return
+        const gp = this.input.getActiveGamepad()
+        const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.5 || gp.buttons?.[12]?.pressed)
+        const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.5 || gp.buttons?.[13]?.pressed)
+        const a = !!gp && gp.buttons?.[0]?.pressed
+        if (up && !prevUp) { idx = (idx - 1 + actions.length) % actions.length; setSel() }
+        if (down && !prevDown) { idx = (idx + 1) % actions.length; setSel() }
+        if (a && !prevA) actions[idx]?.click()
+        prevUp = up; prevDown = down; prevA = a
+        requestAnimationFrame(nav)
+      }
+      requestAnimationFrame(nav)
+
       // Update debug line
       const updDbg = () => {
         if (!dbg) return
