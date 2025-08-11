@@ -150,6 +150,11 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - Enemy that enrages when hit and becomes much more aggressive (think Mario World caterpillar).
 - Yellow splitters that pop into 2 could have a more interesting pattern after splitting.
 - Red enemies are too slow/uninteresting; give them a unique hook/mechanic.
+- If there's an "end": recreate the SkiFree yeti vibe – a monster that eventually chases you down and gobbles you.
+- Secret level hidden off the main menu.
+- Include kill count on the leaderboard along with time/score.
+- 1 of every 100 enemies should spawn with red eyes and be very aggressive.
+- Prize for killing BIG (giant) enemies: drop a huge XP cube or similar jackpot.
 
 ### License
 
