@@ -1,3 +1,7 @@
+## v0.1.20 (2025-08-11)
+
+- Docs: README touch to test deploy pipeline
+
 ## v0.1.19 (2025-08-10)
 
 - Rocket: targets a random enemy within a radius around the player (with AoE on impact); slower homing and turn

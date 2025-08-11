@@ -161,7 +161,5 @@ Environment (for Blobs in Functions)
 
 ### Test deployment
 
-- This line exists to verify CI/CD deploy triggers on README edits.
-- Safe to remove later.
-- Additional README touch to test push workflow (2025-08-10).
+- README touched (2025-08-11) to verify CI/CD and live deploy triggers.
 
