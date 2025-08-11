@@ -10,6 +10,7 @@
  - SCSI Rocket: level-ups now increase blast radius, fire rate, and damage
  - Inventory: weapons now show their level in the HUD list
  - Perf: replace repeated alive filters with counters; move rocket homing into main loop (no timers); reduce shockwave geometry churn
+ - Perf: throttle far enemy updates every other frame; misc allocations reduced
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
 
 ## v0.1.19 (2025-08-10)

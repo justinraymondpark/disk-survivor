@@ -357,6 +357,7 @@ class Game {
   scene: THREE.Scene
   camera: THREE.OrthographicCamera
   isoPivot: THREE.Group
+  frameId = 0
   raycaster = new THREE.Raycaster()
   groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   input: InputManager
@@ -2148,9 +2149,13 @@ class Game {
       }
     }
 
-    // Update enemies with different behaviors
+    // Update enemies with different behaviors (throttle far ones)
     for (const e of this.enemies) {
       if (!e.alive) continue
+      // Skip detailed updates for very distant enemies every other frame
+      const toCam = this.camera.position.clone().sub(e.mesh.position)
+      const far = toCam.lengthSq() > 60 * 60
+      if (far && ((this.frameId ?? 0) % 2 === 1)) continue
       e.timeAlive += dt
       const toPlayer = this.player.group.position.clone().sub(e.mesh.position)
       toPlayer.y = 0
@@ -2577,6 +2582,7 @@ class Game {
     }
 
     this.renderer.render(this.scene, this.camera)
+    this.frameId++
     requestAnimationFrame(() => this.loop())
   }
 
