@@ -333,6 +333,8 @@ type Enemy = {
   // Temporary slow from Dial-up Burst
   burstSlowUntil?: number
   burstSlowFactor?: number
+  // Effect throttles
+  nextWhirlFxTime?: number
 }
 
 type Pickup = {
@@ -1264,7 +1266,7 @@ class Game {
       if (!this.ownedWeapons.has('Dial-up Burst'))
         pool.push({ title: 'Dial-up Burst', desc: 'Periodic shockwave', icon: '📞', apply: () => this.addWeapon('Dial-up Burst') })
       if (!this.ownedWeapons.has('SCSI Rocket'))
-        pool.push({ title: 'SCSI Rocket', desc: 'Homing rockets', icon: '🚀', apply: () => this.addWeapon('SCSI Rocket') })
+        pool.push({ title: 'SCSI Rocket', desc: 'Powerful missiles with a blast radius', icon: '🚀', apply: () => this.addWeapon('SCSI Rocket') })
       if (!this.ownedWeapons.has('Tape Whirl'))
         pool.push({ title: 'Tape Whirl', desc: 'Orbiting saws', icon: '📼', apply: () => this.addWeapon('Tape Whirl') })
       if (!this.ownedWeapons.has('Sata Cable Tail'))
@@ -1300,7 +1302,7 @@ class Game {
     if (this.hasLasso) pool.push({ title: 'Magic Lasso (Level up)', desc: '+2s duration, +2 damage', icon: '🪢', apply: () => this.levelUpLasso() })
     if (this.hasShield) pool.push({ title: 'Shield Wall (Level up)', desc: '+1 length, wider, longer uptime', icon: '🛡️', apply: () => this.levelUpShield() })
     if (this.ownedWeapons.has('Dial-up Burst')) pool.push({ title: 'Dial-up Burst (Level up)', desc: 'Bigger radius, faster cycle, multi-pulse', icon: '📞', apply: () => this.levelUpBurst() })
-    if (this.ownedWeapons.has('SCSI Rocket')) pool.push({ title: 'SCSI Rocket (Level up)', desc: 'Faster, stronger rockets', icon: '🚀', apply: () => this.levelUpRocket() })
+    if (this.ownedWeapons.has('SCSI Rocket')) pool.push({ title: 'SCSI Rocket (Level up)', desc: 'Bigger blast and stronger payload', icon: '🚀', apply: () => this.levelUpRocket() })
     if (this.ownedWeapons.has('Dot Matrix')) pool.push({ title: 'Dot Matrix (Level up)', desc: 'Stronger side bullets', icon: '🖨️', apply: () => this.levelUpDotMatrix() })
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
     if (this.ownedWeapons.has('Sata Cable Tail')) pool.push({ title: 'Sata Cable Tail (Level up)', desc: 'Longer, stronger tail', icon: '🔌', apply: () => this.levelUpSataTail() })
@@ -2000,9 +2002,15 @@ class Game {
               this.spawnXP(e.mesh.position.clone())
             } else {
               this.audio.playImpact()
-              // small nudge so we don't re-hit the same spot without visual movement
-              const away = e.mesh.position.clone().sub(saw.position).setY(0).normalize().multiplyScalar(0.02)
-              e.mesh.position.add(away)
+              // Knockback should push away from the player, not toward
+              const awayFromPlayer = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize().multiplyScalar(0.035)
+              e.mesh.position.add(awayFromPlayer)
+              // Dusty magnetic hit effect (throttled per enemy)
+              const now = this.gameTime
+              if (!e.nextWhirlFxTime || now >= e.nextWhirlFxTime) {
+                this.spawnWhirlDust(e.mesh.position.clone())
+                e.nextWhirlFxTime = now + 0.08
+              }
             }
           }
         }
@@ -3109,6 +3117,37 @@ class Game {
     const mid = new THREE.Vector3().lerpVectors(a, b, 0.6)
     const branch = mid.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6))
     drawBolt(mid, branch, 2, 0x88eeff, 140)
+  }
+
+  private spawnWhirlDust(center: THREE.Vector3) {
+    // Small magnetic/dusty poofs, greenish-teal, fade quickly
+    const count = 8
+    const lifeMs = 220
+    const particles: { m: THREE.Mesh; v: THREE.Vector3; born: number }[] = []
+    for (let i = 0; i < count; i++) {
+      const g = new THREE.PlaneGeometry(0.15, 0.15)
+      const m = new THREE.MeshBasicMaterial({ color: 0x66ffcc, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+      const quad = new THREE.Mesh(g, m)
+      quad.position.copy(center).setY(0.12)
+      quad.rotation.x = -Math.PI / 2
+      this.scene.add(quad)
+      const dir = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize()
+      const speed = 0.6 + Math.random() * 0.6
+      particles.push({ m: quad, v: dir.multiplyScalar(speed), born: performance.now() })
+    }
+    const tick = () => {
+      let any = false
+      const now = performance.now()
+      for (const p of particles) {
+        const t = (now - p.born) / lifeMs
+        if (t >= 1) { this.scene.remove(p.m); continue }
+        any = true
+        p.m.position.addScaledVector(p.v, 1 / 60)
+        ;(p.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 * (1 - t))
+      }
+      if (any) requestAnimationFrame(tick)
+    }
+    tick()
   }
 
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
