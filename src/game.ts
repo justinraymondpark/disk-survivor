@@ -427,6 +427,7 @@ class Game {
   waveCullDelaySeconds = 2
   waveCullKeepFraction = 0.03
   maxActiveEnemies = 1000
+  aliveEnemies = 0
   whirlSpeed = 2.8
   whirlDamage = 16
   // Magic Lasso
@@ -910,7 +911,7 @@ class Game {
       // Update debug line
       const updDbg = () => {
         if (!dbg) return
-        const enemies = this.enemies.filter(e => e.alive).length
+        const enemies = this.aliveEnemies
         const proj = this.projectiles.filter(p => p.alive).length
         const orbs = this.xpOrbs.filter(o => o.alive).length
         const picks = this.pickups.filter(p => p.alive).length
@@ -1102,6 +1103,7 @@ class Game {
     this.scene.add(mesh)
     const minute = Math.floor(this.gameTime / 60)
     this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0, spawnWave: minute })
+    this.aliveEnemies++
   }
 
   shoot() {
@@ -1764,7 +1766,7 @@ class Game {
         syncVals()
         // Update debug numbers when pause opens
         if (dbg) {
-          const enemies = this.enemies.filter(e => e.alive).length
+          const enemies = this.aliveEnemies
           const proj = this.projectiles.filter(p => p.alive).length
           const orbs = this.xpOrbs.filter(o => o.alive).length
           const picks = this.pickups.filter(p => p.alive).length
@@ -1800,7 +1802,7 @@ class Game {
       // Refresh debug counts each frame while paused
       const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
       if (dbg) {
-        const enemies = this.enemies.filter(e => e.alive).length
+        const enemies = this.aliveEnemies
         const proj = this.projectiles.filter(p => p.alive).length
         const orbs = this.xpOrbs.filter(o => o.alive).length
         const picks = this.pickups.filter(p => p.alive).length
@@ -2004,6 +2006,7 @@ class Game {
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
+              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               if (e.face) this.scene.remove(e.face)
               this.onEnemyDown()
               this.score += 1
@@ -2136,8 +2139,7 @@ class Game {
       const extra = this.microBurstLeft > 0 ? 1 : 0
       const total = baseCount + extra
       // Enforce global cap by limiting scheduled spawns
-      const aliveNow = this.enemies.filter(e => e.alive).length
-      const remainingCapacity = Math.max(0, this.maxActiveEnemies - aliveNow)
+      const remainingCapacity = Math.max(0, this.maxActiveEnemies - this.aliveEnemies)
       const toSpawn = Math.min(total, remainingCapacity)
       for (let i = 0; i < toSpawn; i++) {
         const delay = i < baseCount ? 0 : (i - baseCount + 1) * 120
@@ -2276,6 +2278,7 @@ class Game {
             child.position.copy(e.mesh.position).add(new THREE.Vector3((Math.random()-0.5)*0.8, 0.35, (Math.random()-0.5)*0.8))
             this.scene.add(child)
             this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0, spawnWave: e.spawnWave })
+            this.aliveEnemies++
           }
           continue
         }
@@ -2431,6 +2434,22 @@ class Game {
         continue
       }
       const prev = p.mesh.position.clone()
+      // Update velocity for rockets (homing), then integrate
+      if (p.kind === 'rocket') {
+        // Pick a near target occasionally
+        let nearest: Enemy | null = null
+        let best = Infinity
+        for (const e of this.enemies) {
+          if (!e.alive) continue
+          const d2 = e.mesh.position.distanceToSquared(p.mesh.position)
+          if (d2 < best) { best = d2; nearest = e }
+        }
+        if (nearest) {
+          const desired = nearest.mesh.position.clone().sub(p.mesh.position).setY(0).normalize().multiplyScalar(this.rocketSpeed)
+          p.velocity.lerp(desired, this.rocketTurn)
+          p.mesh.lookAt(nearest.mesh.position.clone().setY(p.mesh.position.y))
+        }
+      }
       p.mesh.position.addScaledVector(p.velocity, dt)
 
       // Swept collision against enemies
@@ -2580,23 +2599,21 @@ class Game {
 
   emitShockwave() {
     // Damage nearby enemies in ring (supports multi-pulse)
-    // Visual ring
-    const ringGeom = new THREE.RingGeometry(this.modemWaveRadius * 0.25, this.modemWaveRadius * 0.33, 64)
+    // Visual ring (animate scale/opacity; avoid geometry rebuild)
+    const ringGeom = new THREE.RingGeometry(1, 1.2, 64)
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
     const ring = new THREE.Mesh(ringGeom, ringMat)
     ring.rotation.x = -Math.PI / 2
     ring.position.copy(this.player.group.position).setY(0.02)
+    ring.scale.set(this.modemWaveRadius * 0.2, this.modemWaveRadius * 0.2, 1)
     this.scene.add(ring)
     const start = performance.now()
     const duration = 420
-    const initR = this.modemWaveRadius * 0.2
-    const endR = this.modemWaveRadius
     const anim = () => {
       const t = (performance.now() - start) / duration
       if (t >= 1) { this.scene.remove(ring); ringGeom.dispose(); (ring.material as THREE.Material).dispose?.(); return }
-      const r = initR + (endR - initR) * t
-      ring.geometry.dispose()
-      ring.geometry = new THREE.RingGeometry(Math.max(0.01, r * 0.85), r, 72)
+      const s = this.modemWaveRadius * (0.2 + 0.8 * t)
+      ring.scale.set(s, s, 1)
       ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t)
       requestAnimationFrame(anim)
     }
@@ -2646,7 +2663,7 @@ class Game {
   }
 
   launchRocket() {
-    // Simple homing rocket with slight initial hesitate
+    // Rocket; homing handled in main projectile loop to avoid timers
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
     const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 10), new THREE.MeshBasicMaterial({ color: 0xff8844 }))
@@ -2655,37 +2672,6 @@ class Game {
     this.scene.add(mesh)
     const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 5.0, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     this.projectiles.push(rocket)
-    const initialDir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
-    // Select a random target within a radius around the player (fallback to any alive if none)
-    const targetRadius = 10
-    const pickRandomTarget = (): Enemy | null => {
-      const r2 = targetRadius * targetRadius
-      const candidates = this.enemies.filter((e) => e.alive && e.mesh.position.distanceToSquared(this.player.group.position) < r2)
-      if (candidates.length === 0) {
-        const any = this.enemies.find((e) => e.alive)
-        return any ?? null
-      }
-      const idx = Math.floor(Math.random() * candidates.length)
-      return candidates[idx]!
-    }
-    let target: Enemy | null = pickRandomTarget()
-    let ticks = 0
-    const update = () => {
-      if (!rocket.alive) return
-      ticks++
-      if (ticks < 12) {
-        rocket.velocity.lerp(initialDir.multiplyScalar(this.rocketSpeed * 0.5), 0.12)
-      } else {
-        if (!target || !target.alive) target = pickRandomTarget()
-        if (target) {
-          const dir = target.mesh.position.clone().sub(rocket.mesh.position).setY(0).normalize()
-          rocket.velocity.lerp(dir.multiplyScalar(this.rocketSpeed * 0.7), this.rocketTurn)
-          rocket.mesh.lookAt(target.mesh.position.clone().setY(rocket.mesh.position.y))
-        }
-      }
-      setTimeout(update, 50)
-    }
-    update()
   }
 
   spawnEnemyByWave(minute: number) {
@@ -2873,6 +2859,7 @@ class Game {
       ;(enemy as any).dashRemaining = 0.35
     }
     this.enemies.push(enemy)
+    this.aliveEnemies++
   }
 
   makeFaceTexture(type: EnemyType) {
