@@ -427,6 +427,10 @@ class Game {
   whirlSaws: THREE.Mesh[] = []
   whirlRadius = 2.0
   whirlLevel = 0
+  whirlOn = true
+  whirlOnDuration = 1.2
+  whirlOffDuration = 0.8
+  whirlTimer = 0
   // Sata Cable Tail
   sataTailGroup?: THREE.Group
   sataTailSegments: THREE.Mesh[] = []
@@ -863,10 +867,10 @@ class Game {
           <div class="carddesc" id="pause-debug" style="margin-top:6px; font-family: ui-monospace, monospace;"></div>
         </div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button id="btn-resume" class="card selected" style="flex:1;"><strong>Resume</strong></button>
-        <button id="btn-restart" class="card" style="flex:1;"><strong>Restart</strong></button>
-        <button id="btn-mainmenu" class="card" style="flex:1;"><strong>Main Menu</strong></button>
+      <div class="pause-actions">
+        <button id="btn-resume" class="card selected"><strong>Resume</strong></button>
+        <button id="btn-restart" class="card"><strong>Restart</strong></button>
+        <button id="btn-mainmenu" class="card"><strong>Main Menu</strong></button>
       </div>
     `
     this.root.appendChild(this.pauseOverlay)
@@ -973,8 +977,6 @@ class Game {
     titleWrap.appendChild(fallbackText)
     const btnRow = document.createElement('div')
     btnRow.className = 'title-buttons'
-    btnRow.style.display = 'flex'
-    btnRow.style.gap = '14px'
     const startBtn = document.createElement('button') as HTMLButtonElement
     startBtn.className = 'card selected'
     startBtn.innerHTML = '<strong>Start</strong>'
@@ -1436,6 +1438,7 @@ class Game {
       this.scene.add(s1, s2, s3)
       this.whirlSaws.push(s1, s2, s3)
       this.whirlLevel = 1
+      this.whirlTimer = 0; this.whirlOn = true
     }
     if (name === 'Magic Lasso' && !this.hasLasso) {
       this.hasLasso = true
@@ -2006,11 +2009,17 @@ class Game {
 
     // Tape Whirl update
     if (this.ownedWeapons.has('Tape Whirl') && this.whirlSaws.length > 0) {
+      // Toggle cycle like CRT beam
+      this.whirlTimer += dt
+      const curr = this.whirlOn ? this.whirlOnDuration : this.whirlOffDuration
+      if (this.whirlTimer >= curr) { this.whirlTimer = 0; this.whirlOn = !this.whirlOn }
       for (let i = 0; i < this.whirlSaws.length; i++) {
         const saw = this.whirlSaws[i]
         const angle = this.gameTime * this.whirlSpeed + (i * Math.PI * 2) / this.whirlSaws.length
         const offset = new THREE.Vector3(Math.cos(angle) * this.whirlRadius, 0.6, Math.sin(angle) * this.whirlRadius)
+        saw.visible = this.whirlOn
         saw.position.copy(this.player.group.position).add(offset)
+        if (!this.whirlOn) continue
         // Damage enemies on touch
         for (const e of this.enemies) {
           if (!e.alive) continue

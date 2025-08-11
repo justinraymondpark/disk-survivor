@@ -12,6 +12,8 @@
  - Perf: replace repeated alive filters with counters; move rocket homing into main loop (no timers); reduce shockwave geometry churn
  - Perf: throttle far enemy updates every other frame; misc allocations reduced
  - Perf: wave cull now removes only offscreen enemies (farthest first) to avoid visible mass culls
+ - UI: title buttons use a 2x2 grid by default (stack on narrow screens); pause actions are smaller and stacked
+ - Balance: Tape Whirl now pulses on/off like CRT Beam
  - Perf: add simple spatial hash for projectile→enemy collision checks to cut scans
  - Perf: pool shockwave rings and dust quads to reduce allocations/GC
  - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
