@@ -3554,24 +3554,30 @@ class Game {
   private cullEnemiesFromWave(waveMinute: number) {
     const group = this.enemies.filter((e) => e.alive && e.spawnWave === waveMinute)
     if (group.length === 0) return
-    // Be more aggressive: keep a small sliver only
+    // Desired survivors; prefer to only remove offscreen enemies
     const keepCount = Math.min(group.length, Math.max(1, Math.floor(group.length * this.waveCullKeepFraction)))
-    // Shuffle indices to pick survivors
-    const indices = Array.from({ length: group.length }, (_, i) => i)
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[indices[i], indices[j]] = [indices[j], indices[i]]
-    }
-    const survivorSet = new Set(indices.slice(0, keepCount).map((idx) => group[idx]))
-    for (const enemy of group) {
-      if (survivorSet.has(enemy)) continue
+    const needRemove = Math.max(0, group.length - keepCount)
+    if (needRemove <= 0) return
+
+    // Build frustum at call time
+    this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
+    this._frustum.setFromProjectionMatrix(this._frustumMat)
+
+    // Candidates: enemies currently NOT visible
+    const offscreen = group.filter((e) => !this._frustum.containsPoint(e.mesh.position))
+    // Remove only up to offscreen length; if fewer than needed, remove all offscreen and leave visible ones
+    const removeCount = Math.min(needRemove, offscreen.length)
+    if (removeCount === 0) return
+    // Prefer to remove farthest offscreen first
+    const playerPos = this.player.group.position
+    offscreen.sort((a, b) => b.mesh.position.distanceToSquared(playerPos) - a.mesh.position.distanceToSquared(playerPos))
+    const toRemove = offscreen.slice(0, removeCount)
+    for (const enemy of toRemove) {
       enemy.alive = false
       this.scene.remove(enemy.mesh)
       if (enemy.face) this.scene.remove(enemy.face)
-      // Intentionally do not award XP or score and do not call onEnemyDown
       this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
     }
-    // Compact enemy list to remove culled entries
     this.enemies = this.enemies.filter((e) => e.alive)
   }
 }
