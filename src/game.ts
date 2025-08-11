@@ -2168,10 +2168,10 @@ class Game {
       // Skip detailed updates for very distant enemies every other frame
       const toCam = this.camera.position.clone().sub(e.mesh.position)
       const far = toCam.lengthSq() > 60 * 60
-      // Update lastOnscreenAt if visible in viewport
+      // Update lastOnscreenAt if visible in viewport (use a slightly generous margin)
       this._tmpProj.copy(e.mesh.position).project(this.camera)
-      const onScreen = Math.abs(this._tmpProj.x) <= 1.05 && Math.abs(this._tmpProj.y) <= 1.05
-      if (onScreen) e.lastOnscreenAt = (e.lastOnscreenAt ?? this.gameTime)
+      const onScreen = Math.abs(this._tmpProj.x) <= 1.2 && Math.abs(this._tmpProj.y) <= 1.2
+      if (onScreen) e.lastOnscreenAt = this.gameTime
       if (far && ((this.frameId ?? 0) % 2 === 1)) continue
       e.timeAlive += dt
       const toPlayer = this.player.group.position.clone().sub(e.mesh.position)
@@ -2454,6 +2454,10 @@ class Game {
     for (const e of this.enemies) {
       if (!e.alive) continue
       if (currentWave - e.spawnWave < 1) continue
+      // Never cull if currently onscreen
+      this._tmpProj.copy(e.mesh.position).project(this.camera)
+      const visibleNow = Math.abs(this._tmpProj.x) <= 1.2 && Math.abs(this._tmpProj.y) <= 1.2
+      if (visibleNow) continue
       const lastSeen = e.lastOnscreenAt ?? this.gameTime
       if (this.gameTime - lastSeen > this.offscreenCullSeconds) {
         e.alive = false
