@@ -337,6 +337,11 @@ type Enemy = {
   nextWhirlFxTime?: number
   // Visibility tracking for offscreen culling
   lastOnscreenAt?: number
+  // Visual feedback
+  baseColorHex?: number
+  hitTintUntil?: number
+  hitTintColor?: number
+  faceOuchUntil?: number
 }
 
 type Pickup = {
@@ -1119,7 +1124,8 @@ class Game {
     mesh.position.set(x, 0.5, z)
     this.scene.add(mesh)
     const minute = Math.floor(this.gameTime / 60)
-    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0, spawnWave: minute })
+    const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
+    this.enemies.push({ mesh, alive: true, speed: 2 + Math.random() * 1.5, hp: 2, type: 'slime', timeAlive: 0, spawnWave: minute, baseColorHex: baseColor })
     this.aliveEnemies++
   }
 
@@ -2039,6 +2045,8 @@ class Game {
               this.spawnXP(e.mesh.position.clone())
             } else {
               this.audio.playImpact()
+              // Brief grey tint and face ouch
+              e.hitTintColor = 0xaaaaaa; e.hitTintUntil = this.gameTime + 0.10; e.faceOuchUntil = this.gameTime + 0.10
               // Knockback should push away from the player, not toward
               const awayFromPlayer = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize().multiplyScalar(0.035)
               e.mesh.position.add(awayFromPlayer)
@@ -2095,8 +2103,9 @@ class Game {
               // Zap effect on kill
               this.spawnZapEffect(wp, e.mesh.position.clone())
             } else {
-              // Minor zap on hit
-              this.spawnZapEffect(wp, e.mesh.position.clone(), 0.5)
+            // Minor zap on hit + brief yellow tint and face ouch
+            this.spawnZapEffect(wp, e.mesh.position.clone(), 0.5)
+            e.hitTintColor = 0xffff66; e.hitTintUntil = this.gameTime + 0.12; e.faceOuchUntil = this.gameTime + 0.12
             }
             break
           }
@@ -2310,7 +2319,8 @@ class Game {
             const child = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffdd55 }))
             child.position.copy(e.mesh.position).add(new THREE.Vector3((Math.random()-0.5)*0.8, 0.35, (Math.random()-0.5)*0.8))
             this.scene.add(child)
-            this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0, spawnWave: e.spawnWave })
+            const baseColor = ((child.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffdd55) as number
+            this.enemies.push({ mesh: child, alive: true, speed: 3.0, hp: 2, type: 'runner', timeAlive: 0, spawnWave: e.spawnWave, baseColorHex: baseColor })
             this.aliveEnemies++
           }
           continue
@@ -2417,6 +2427,12 @@ class Game {
           e.speed = e.baseSpeed!
         }
       }
+      // Apply brief tint if recently hit
+      if ((e.hitTintUntil ?? 0) > this.gameTime && e.hitTintColor != null) {
+        ;(e.mesh.material as THREE.MeshBasicMaterial).color.setHex(e.hitTintColor!)
+      } else if (e.baseColorHex != null) {
+        ;(e.mesh.material as THREE.MeshBasicMaterial).color.setHex(e.baseColorHex!)
+      }
       const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
       e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * dt))
 
@@ -2448,6 +2464,23 @@ class Game {
         const faceHeight = e.type === 'giant' ? 2.1 : 0.95
         e.face.position.copy(e.mesh.position).add(dir2.multiplyScalar(faceOffset)).setY(faceHeight)
         e.face.lookAt(this.player.group.position.clone().setY(faceHeight))
+        // Draw ouch or normal face
+        if (e.faceTex && e.faceCanvas) {
+          const now = this.gameTime
+          if ((e.faceOuchUntil ?? 0) > now) {
+            // quick >.< face
+            const ctx = e.faceCanvas.getContext('2d')!
+            ctx.clearRect(0,0,e.faceCanvas.width,e.faceCanvas.height)
+            ctx.fillStyle = '#ffcc88'
+            ctx.fillRect(0,0,e.faceCanvas.width,e.faceCanvas.height)
+            ctx.fillStyle = '#000'
+            ctx.font = '20px sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('>.<', e.faceCanvas.width/2, e.faceCanvas.height/2)
+            e.faceTex.needsUpdate = true
+          }
+        }
         if (e.type === 'giant' && e.faceTex && e.faceCanvas) {
           if ((e.nextFaceUpdate ?? 0) <= performance.now()) {
             const frame = Math.floor(e.timeAlive * 10)
@@ -3001,7 +3034,8 @@ class Game {
     this.drawAnimatedFace(canvas, 0)
 
     const minute = Math.floor(this.gameTime / 60)
-    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now(), spawnWave: minute })
+    const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
+    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now(), spawnWave: minute, baseColorHex: baseColor })
   }
 
   drawAnimatedFace(c: HTMLCanvasElement, frame: number) {
