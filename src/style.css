@@ -212,10 +212,10 @@ html, body {
 /* Debug panel compaction */
 .debug-panel { max-width: 720px; }
 .debug-panel .carddesc { font-size: 12px; }
-.dbg-row { padding: 6px !important; }
-.dbg-row strong { font-size: 13px; }
-.dbg-row input[type="number"] { height: 22px; font-size: 12px; }
-.dbg-row input[type="checkbox"] { width: 16px; height: 16px; }
+.dbg-row { padding: 3px !important; }
+.dbg-row strong { font-size: 12px; }
+.dbg-row input[type="number"] { height: 18px; font-size: 11px; }
+.dbg-row input[type="checkbox"] { width: 14px; height: 14px; }
 
 /* Animated card entrance */
 @keyframes popFade {

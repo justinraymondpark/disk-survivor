@@ -3,6 +3,8 @@
 - Fonts: switch entire UI to self-hosted `W95FA` (prefer `W95FA.woff2`, OTF fallback); removed Google Fonts usage
 - Docs: README updated with W95FA-only setup and PowerShell '&&' note
  - Assets: add `public/fonts/W95FA.otf` and `public/fonts/W95FA.woff2`
+ - Debug: add emoji icons and compact rows in Debug Mode
+ - Pause: add Restart and Main Menu buttons with confirmation prompt (OK/Cancel; A/B on controller)
 
 ## v0.1.19 (2025-08-10)
 

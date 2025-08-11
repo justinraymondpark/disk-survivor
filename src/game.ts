@@ -489,15 +489,35 @@ class Game {
     const form = document.createElement('div')
     form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '12px'
     scroll.appendChild(form)
+    const emojiMap: Record<string, string> = {
+      'CRT Beam': '🔦',
+      'Dot Matrix': '🖨️',
+      'Dial-up Burst': '📞',
+      'SCSI Rocket': '🚀',
+      'Tape Whirl': '🧷',
+      'Magic Lasso': '🪢',
+      'Shield Wall': '🛡️',
+      'Sata Cable Tail': '🪫',
+      'Turbo CPU': '⚡',
+      'SCSI Splitter': '🔀',
+      'Overclocked Bus': '🚌',
+      'Copper Heatsink': '🧊',
+      'ECC Memory': '💾',
+      'DMA Burst': '💥',
+      'Magnet Coil': '🧲',
+      'Piercing ISA': '🗡️',
+      'XP Amplifier': '📈',
+    }
     const makeRow = (label: string, kind: 'weapon' | 'upgrade') => {
       const row = document.createElement('div')
       row.className = 'card dbg-row'
-      row.style.padding = '8px'
-      const name = document.createElement('div'); name.innerHTML = `<strong>${label}</strong>`
+      row.style.padding = '4px'
+      const emoji = emojiMap[label] ?? '•'
+      const name = document.createElement('div'); name.innerHTML = `<strong>${emoji} ${label}</strong>`
       const controls = document.createElement('div')
-      controls.style.display = 'flex'; controls.style.gap = '8px'; controls.style.alignItems = 'center'
+      controls.style.display = 'flex'; controls.style.gap = '6px'; controls.style.alignItems = 'center'
       const chk = document.createElement('input'); chk.type = 'checkbox'
-      const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = '1'; lvl.style.width = '64px'
+      const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = '1'; lvl.style.width = '52px'
       controls.appendChild(chk); controls.appendChild(document.createTextNode('Lv')); controls.appendChild(lvl)
       row.appendChild(name); row.appendChild(controls)
       ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
@@ -822,7 +842,11 @@ class Game {
           <div class="carddesc" id="pause-debug" style="margin-top:6px; font-family: ui-monospace, monospace;"></div>
         </div>
       </div>
-      <button id="btn-resume" class="card selected"><strong>Resume</strong></button>
+      <div style="display:flex; gap:8px;">
+        <button id="btn-resume" class="card selected" style="flex:1;"><strong>Resume</strong></button>
+        <button id="btn-restart" class="card" style="flex:1;"><strong>Restart</strong></button>
+        <button id="btn-mainmenu" class="card" style="flex:1;"><strong>Main Menu</strong></button>
+      </div>
     `
     this.root.appendChild(this.pauseOverlay)
     const hookSliders = () => {
@@ -834,6 +858,8 @@ class Game {
       const vsVal = this.pauseOverlay.querySelector('#vol-sfx-val') as HTMLSpanElement
       const af = this.pauseOverlay.querySelector('#opt-autofire') as HTMLInputElement
       const resumeBtn = this.pauseOverlay.querySelector('#btn-resume') as HTMLButtonElement
+      const restartBtn = this.pauseOverlay.querySelector('#btn-restart') as HTMLButtonElement
+      const mainBtn = this.pauseOverlay.querySelector('#btn-mainmenu') as HTMLButtonElement
       const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
@@ -845,6 +871,37 @@ class Game {
       if (vs) vs.oninput = () => { this.audio.setSfxVolume(Number(vs.value)); syncVals() }
       if (af) af.onchange = () => { this.autoFire = !!af.checked; try { localStorage.setItem('opt.autofire', this.autoFire ? '1' : '0') } catch {} }
       if (resumeBtn) resumeBtn.onclick = () => { this.togglePause() }
+      const confirmAction = (message: string, action: () => void) => {
+        const conf = document.createElement('div') as HTMLDivElement
+        conf.className = 'overlay'
+        const card = document.createElement('div') as HTMLDivElement
+        card.className = 'card'
+        const text = document.createElement('div') as HTMLDivElement
+        text.className = 'carddesc'
+        text.textContent = message
+        const row = document.createElement('div') as HTMLDivElement
+        row.style.display = 'flex'; row.style.gap = '8px'; row.style.marginTop = '8px'
+        const ok = document.createElement('button') as HTMLButtonElement; ok.className = 'card'; ok.innerHTML = '<strong>OK</strong>'
+        const cancel = document.createElement('button') as HTMLButtonElement; cancel.className = 'card'; cancel.innerHTML = '<strong>Cancel</strong>'
+        row.append(ok, cancel); card.append(text, row); conf.append(card)
+        this.root.append(conf)
+        conf.style.display = 'flex'
+        ok.onclick = () => { conf.remove(); action() }
+        cancel.onclick = () => conf.remove()
+        let prevA = false, prevB = false
+        const nav = () => {
+          const gp = this.input.getActiveGamepad()
+          const a = !!gp?.buttons?.[0]?.pressed
+          const b = !!gp?.buttons?.[1]?.pressed
+          if (a && !prevA) ok.click()
+          if (b && !prevB) cancel.click()
+          prevA = a; prevB = b
+          if (conf.parentElement) requestAnimationFrame(nav)
+        }
+        requestAnimationFrame(nav)
+      }
+      if (restartBtn) restartBtn.onclick = () => confirmAction('Restart the run? Are you sure?', () => location.reload())
+      if (mainBtn) mainBtn.onclick = () => confirmAction('Return to main menu? Are you sure?', () => location.reload())
       // Update debug line
       const updDbg = () => {
         if (!dbg) return
