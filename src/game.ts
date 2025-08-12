@@ -382,6 +382,25 @@ class Game {
   sharedShardGeom = new THREE.BoxGeometry(0.15, 0.15, 0.15)
   // Lasso update throttle
   lassoNextGeomAt = 0
+
+  private disposeObjectDeep(obj: THREE.Object3D) {
+    obj.traverse((node: any) => {
+      const mesh = node as THREE.Mesh
+      const mat = mesh.material as any
+      if (mesh.geometry) {
+        mesh.geometry.dispose?.()
+      }
+      if (Array.isArray(mat)) {
+        for (const m of mat) {
+          if (m.map) m.map.dispose?.()
+          m.dispose?.()
+        }
+      } else if (mat) {
+        if (mat.map) mat.map.dispose?.()
+        mat.dispose?.()
+      }
+    })
+  }
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
   _frustum = new THREE.Frustum()
@@ -1478,7 +1497,14 @@ class Game {
       // upgrade entries: allow if we have space or we're leveling an existing upgrade
       return this.ownedUpgrades.size < this.maxUpgrades || this.ownedUpgrades.has(title)
     }
+    // Ensure titles are unique and valid
     let filtered = pool.filter(p => canApply(p.title))
+    const seen = new Set<string>()
+    filtered = filtered.filter(p => {
+      if (seen.has(p.title)) return false
+      seen.add(p.title)
+      return true
+    })
 
     // Randomize and take N
     for (let i = filtered.length - 1; i > 0; i--) {
@@ -2190,8 +2216,10 @@ class Game {
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
-              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               if (e.face) this.scene.remove(e.face)
+              this.disposeObjectDeep(e.mesh)
+              if (e.face) this.disposeObjectDeep(e.face)
+              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
@@ -2255,6 +2283,8 @@ class Game {
               e.alive = false
               this.scene.remove(e.mesh)
               if (e.face) this.scene.remove(e.face)
+              this.disposeObjectDeep(e.mesh)
+              if (e.face) this.disposeObjectDeep(e.face)
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
@@ -2333,8 +2363,10 @@ class Game {
             }
             if (e.hp <= 0) {
               e.alive = false
-              this.scene.remove(e.mesh)
-              if (e.face) this.scene.remove(e.face)
+             this.scene.remove(e.mesh)
+             if (e.face) this.scene.remove(e.face)
+             this.disposeObjectDeep(e.mesh)
+             if (e.face) this.disposeObjectDeep(e.face)
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
@@ -2735,8 +2767,10 @@ class Game {
       const lastSeen = e.lastOnscreenAt ?? this.gameTime
       if (this.gameTime - lastSeen > this.offscreenCullSeconds) {
         e.alive = false
-        this.scene.remove(e.mesh)
-        if (e.face) this.scene.remove(e.face)
+          this.scene.remove(e.mesh)
+          if (e.face) this.scene.remove(e.face)
+          this.disposeObjectDeep(e.mesh)
+          if (e.face) this.disposeObjectDeep(e.face)
         this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
       }
     }
@@ -3965,6 +3999,8 @@ class Game {
       enemy.alive = false
       this.scene.remove(enemy.mesh)
       if (enemy.face) this.scene.remove(enemy.face)
+      this.disposeObjectDeep(enemy.mesh)
+      if (enemy.face) this.disposeObjectDeep(enemy.face)
       this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
     }
     this.enemies = this.enemies.filter((e) => e.alive)
