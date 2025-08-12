@@ -366,6 +366,8 @@ class Game {
   camera: THREE.OrthographicCamera
   isoPivot: THREE.Group
   frameId = 0
+  // WebGL context tracking
+  contextLost = false
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
   _frustum = new THREE.Frustum()
@@ -753,6 +755,7 @@ class Game {
   pausePrev = false
   audio = new AudioManager()
   groundMesh!: THREE.Mesh
+  groundTex?: THREE.CanvasTexture
   billboardGeocities!: THREE.Object3D
   billboardYahoo!: THREE.Object3D
   billboardDialup!: THREE.Object3D
@@ -814,6 +817,16 @@ class Game {
     this.groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: 0x111522 }))
     this.groundMesh.rotation.x = -Math.PI / 2
     this.scene.add(this.groundMesh)
+    // Handle WebGL context loss/restoration to avoid permanent white/black screen
+    const canvasEl = this.renderer.domElement
+    canvasEl.addEventListener('webglcontextlost', (e: Event) => {
+      e.preventDefault()
+      this.contextLost = true
+    })
+    canvasEl.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false
+      if (this.groundTex) this.groundTex.needsUpdate = true
+    })
 
     const grid = new THREE.GridHelper(200, 200, 0x334455, 0x223344)
     ;(grid.material as THREE.LineBasicMaterial).transparent = true
@@ -1655,6 +1668,7 @@ class Game {
     }
 
     const tex = new THREE.CanvasTexture(texCanvas)
+    this.groundTex = tex
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping
     tex.repeat.set(10, 10)
     ;(this.groundMesh.material as THREE.MeshBasicMaterial).map = tex
@@ -2829,7 +2843,7 @@ class Game {
     // Update frustum from current camera
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
-    this.renderer.render(this.scene, this.camera)
+    if (!this.contextLost) this.renderer.render(this.scene, this.camera)
     this.frameId++
     requestAnimationFrame(() => this.loop())
   }
