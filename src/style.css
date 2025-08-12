@@ -1,3 +1,11 @@
+/* Compact nav buttons on title */
+.nav-card {
+  padding: 8px !important;
+  min-width: 0 !important;
+}
+.title-buttons .card {
+  padding: 8px;
+}
 @font-face {
   font-family: 'W95FA';
   src: url('/fonts/W95FA.woff2') format('woff2'),

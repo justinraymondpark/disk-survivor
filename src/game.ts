@@ -1188,21 +1188,19 @@ class Game {
     btnRow.style.width = 'min(440px, 92vw)'
     btnRow.style.margin = '0 auto'
     const startBtn = document.createElement('button') as HTMLButtonElement
-    startBtn.className = 'card selected'
+    startBtn.className = 'card nav-card selected'
     startBtn.style.padding = '8px'
     startBtn.innerHTML = '<strong>Start</strong>'
     const optBtn = document.createElement('button') as HTMLButtonElement
-    optBtn.className = 'card'
-    optBtn.innerHTML = '<strong>Options</strong>'
+    optBtn.style.display = 'none' // replaced by FAB
     const chgBtn = document.createElement('button') as HTMLButtonElement
-    chgBtn.className = 'card'
-    chgBtn.innerHTML = '<strong>Change Log</strong>'
+    chgBtn.style.display = 'none' // replaced by FAB
     const dbgBtn = document.createElement('button') as HTMLButtonElement
-    dbgBtn.className = 'card'
+    dbgBtn.className = 'card nav-card'
     dbgBtn.style.padding = '8px'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
     const dailyBtn = document.createElement('button') as HTMLButtonElement
-    dailyBtn.className = 'card'
+    dailyBtn.className = 'card nav-card'
     dailyBtn.style.padding = '8px'
     dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
     btnRow.appendChild(startBtn)
@@ -2021,6 +2019,9 @@ class Game {
       // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
+      // Hide FABs during gameplay (show only on title)
+      if (this.optionsFab) this.optionsFab.style.display = 'none'
+      if (this.changelogFab) this.changelogFab.style.display = 'none'
       requestAnimationFrame(() => this.loop())
       return
     }
@@ -2088,6 +2089,9 @@ class Game {
         }
       }
       this.togglePause()
+      // Seed selection index on pause actions
+      const actions = Array.from(this.pauseOverlay.querySelectorAll('#btn-resume, #btn-restart, #btn-mainmenu')) as HTMLButtonElement[]
+      actions.forEach((b, i) => b.classList.toggle('selected', i === 0))
     }
     this.uiStartPrev = !!startPressed
     this.pausePrev = pauseNow
