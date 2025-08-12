@@ -3276,8 +3276,8 @@ class Game {
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
-    // Scale up to fill most of the screen
-    g.scale.set(7, 7, 7)
+    // Scale up to fill most of the screen (slightly less than before)
+    g.scale.set(5, 5, 5)
     // Add opaque background plate facing camera to hide other UI/game
     const bg = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
     bg.quaternion.copy(this.camera.quaternion)

@@ -7,6 +7,7 @@
 - Debug: Lightweight perf overlay (wave, enemies, scene children, geo, tex, calls, context state)
 - Perf: Pooled paint disks and explosion shards; throttled lasso geometry; shared geoms/materials for common projectiles and items; disposal on enemy removal
 - Visual: Brief hit flash on all damage sources (low-cost tint ~60ms)
+ - Alt Title: 3D floppy/drive scene with larger presentation and opaque background; controller A/Enter debounce and insert animation; scaled to ~75% viewport (tuned)
 ## 0.1.20
 - Fix: Enemy hit tint now correctly resets after ~60ms for SATA Tail and Tape Whirl. Ensured all enemy spawns track `baseColorHex` so temporary tints revert properly.
 - Feature: Added new weapon `Paint.exe` (🎨)
