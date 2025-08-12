@@ -931,6 +931,16 @@ class Game {
       const restartBtn = this.pauseOverlay.querySelector('#btn-restart') as HTMLButtonElement
       const mainBtn = this.pauseOverlay.querySelector('#btn-mainmenu') as HTMLButtonElement
       const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
+      // Add fullscreen button to pause actions
+      const actions = this.pauseOverlay.querySelector('.pause-actions') as HTMLDivElement
+      if (actions && !actions.querySelector('#btn-fullscreen')) {
+        const fs = document.createElement('button') as HTMLButtonElement
+        fs.id = 'btn-fullscreen'
+        fs.className = 'card'
+        fs.innerHTML = '<strong>Fullscreen</strong>'
+        fs.onclick = () => this.toggleFullscreen()
+        actions.insertBefore(fs, actions.firstChild)
+      }
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
         if (vmu && vmuVal) vmuVal.textContent = Number(vmu.value).toFixed(2)
@@ -1054,10 +1064,14 @@ class Game {
     const dbgBtn = document.createElement('button') as HTMLButtonElement
     dbgBtn.className = 'card'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
+    const fsBtn = document.createElement('button') as HTMLButtonElement
+    fsBtn.className = 'card'
+    fsBtn.innerHTML = '<strong>Fullscreen</strong>'
     btnRow.appendChild(startBtn)
     btnRow.appendChild(optBtn)
     btnRow.appendChild(chgBtn)
     btnRow.appendChild(dbgBtn)
+    btnRow.appendChild(fsBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -1075,6 +1089,7 @@ class Game {
     }
     chgBtn.onclick = () => this.showChangelog()
     dbgBtn.onclick = () => this.showDebugPanel()
+    fsBtn.onclick = () => this.toggleFullscreen()
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -3325,6 +3340,26 @@ class Game {
     this.audio.playEnemyDown()
     this.hitCount += 1
     this.updateHitCounter()
+  }
+  private async toggleFullscreen() {
+    try {
+      const doc: any = document
+      const el: any = document.documentElement
+      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
+      if (!isFull) {
+        if (el.requestFullscreen) await el.requestFullscreen()
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+        else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+      } else {
+        if (doc.exitFullscreen) await doc.exitFullscreen()
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+        else if (doc.msExitFullscreen) await doc.msExitFullscreen()
+      }
+      setTimeout(() => {
+        this.onResize()
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+      }, 150)
+    } catch {}
   }
 
   private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
