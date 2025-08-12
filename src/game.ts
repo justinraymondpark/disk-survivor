@@ -3279,7 +3279,11 @@ class Game {
     // Scale up to fill most of the screen (slightly less than before)
     g.scale.set(5, 5, 5)
     // Add opaque background plate facing camera to hide other UI/game
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a })
+    bgMat.depthTest = false
+    bgMat.depthWrite = false
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), bgMat)
+    bg.renderOrder = 1000
     bg.quaternion.copy(this.camera.quaternion)
     bg.position.set(0, 2.2, 0)
     g.add(bg)
@@ -3287,15 +3291,27 @@ class Game {
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
     // Drive slot (simple box with inset)
-    const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), new THREE.MeshBasicMaterial({ color: 0xd8d2c5 }))
+    const driveMat = new THREE.MeshBasicMaterial({ color: 0xd8d2c5 })
+    driveMat.depthTest = false
+    driveMat.depthWrite = false
+    const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
     drive.position.set(0, 2.4, 0)
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), new THREE.MeshBasicMaterial({ color: 0x222 }))
+    drive.renderOrder = 1001
+    const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
+    slotMat.depthTest = false
+    slotMat.depthWrite = false
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
     slot.position.set(0, 2.5, 0.31)
+    slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.8), new THREE.MeshBasicMaterial({ color: 0x1a1a1a }))
+      const bodyMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+      bodyMat.depthTest = false
+      bodyMat.depthWrite = false
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.8), bodyMat)
+      body.renderOrder = 1001
       // Create canvas texture for label text
       const c = document.createElement('canvas'); c.width = 256; c.height = 128
       const ctx = c.getContext('2d')!
@@ -3305,7 +3321,10 @@ class Game {
       const tex = new THREE.CanvasTexture(c)
       const labelGeom = new THREE.PlaneGeometry(1.2, 0.5)
       const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false })
+      labelMat.depthTest = false
+      labelMat.depthWrite = false
       const labelMesh = new THREE.Mesh(labelGeom, labelMat)
+      labelMesh.renderOrder = 1002
       labelMesh.rotation.x = -Math.PI / 2
       labelMesh.position.set(0, 0.035, 0.2)
       body.add(labelMesh)
