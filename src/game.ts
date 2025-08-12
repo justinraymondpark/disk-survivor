@@ -573,6 +573,8 @@ class Game {
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; onDone: () => void }
+  altEnterDebounceUntil = 0
+  altBgMesh?: THREE.Mesh
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2005,6 +2007,8 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
+      // Keep background aligned to camera
+      if (this.altBgMesh) this.altBgMesh.quaternion.copy(this.camera.quaternion)
       // Render and continue
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
@@ -3272,6 +3276,16 @@ class Game {
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
+    // Scale up to fill most of the screen
+    g.scale.set(7, 7, 7)
+    // Add opaque background plate facing camera to hide other UI/game
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
+    bg.quaternion.copy(this.camera.quaternion)
+    bg.position.set(0, 2.2, 0)
+    g.add(bg)
+    this.altBgMesh = bg
+    // Debounce A/Enter so we don't select immediately on entry
+    this.altEnterDebounceUntil = performance.now() + 600
     // Drive slot (simple box with inset)
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), new THREE.MeshBasicMaterial({ color: 0xd8d2c5 }))
     drive.position.set(0, 2.4, 0)
@@ -3302,7 +3316,7 @@ class Game {
     for (let i = 0; i < items.length; i++) {
       const m = makeFloppy(items[i])
       const angle = (i * 0.05)
-      m.position.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
+      m.position.set(-0.6 + i * 0.7, 0.3 + i * 0.015, 0.9 - i * 0.01)
       m.rotation.y = angle
       g.add(m)
       this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
@@ -3345,7 +3359,7 @@ class Game {
     else this.altFloppies.unshift(this.altFloppies.pop()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
       const f = this.altFloppies[i]
-      f.target.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
+      f.target.set(-0.6 + i * 0.7, 0.3 + i * 0.015, 0.9 - i * 0.01)
       f.targetRot = (i * 0.05)
     }
   }
