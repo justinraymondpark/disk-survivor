@@ -3288,11 +3288,19 @@ class Game {
     const screen = this.worldToScreen(pos)
     const el = document.createElement('div')
     el.textContent = `-${amount.toFixed(0)}`
-    Object.assign(el.style as CSSStyleDeclaration, {
-      position: 'fixed', left: `${screen.x}px`, top: `${screen.y}px`, transform: 'translate(-50%, -50%)`,
-      color, fontFamily: 'ui-monospace, monospace', fontSize: '13px',
-      textShadow: '0 0 6px rgba(0,0,0,0.6)', pointerEvents: 'none', zIndex: '30', opacity: '1', transition: 'opacity 500ms, transform 500ms'
-    })
+    const style = el.style as CSSStyleDeclaration
+    style.position = 'fixed'
+    style.left = `${screen.x}px`
+    style.top = `${screen.y}px`
+    style.transform = 'translate(-50%, -50%)'
+    style.color = color
+    style.fontFamily = 'ui-monospace, monospace'
+    style.fontSize = '13px'
+    style.textShadow = '0 0 6px rgba(0,0,0,0.6)'
+    style.pointerEvents = 'none'
+    style.zIndex = '30'
+    style.opacity = '1'
+    style.transition = 'opacity 500ms, transform 500ms'
     document.body.appendChild(el)
     requestAnimationFrame(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%, -90%)' })
     setTimeout(() => el.remove(), 520)
