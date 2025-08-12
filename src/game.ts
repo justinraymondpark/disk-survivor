@@ -830,6 +830,8 @@ class Game {
   uiConfirmPrev = false
   uiDpadPrevLeft = false
   uiDpadPrevRight = false
+  uiDpadPrevUp = false
+  uiDpadPrevDown = false
   uiStartPrev = false
   isPaused = false
   pausePrev = false
@@ -1156,8 +1158,14 @@ class Game {
     titleWrap.appendChild(fallbackText)
     const btnRow = document.createElement('div')
     btnRow.className = 'title-buttons'
+    btnRow.style.display = 'grid'
+    btnRow.style.gridTemplateColumns = 'repeat(2, minmax(140px, 1fr))'
+    btnRow.style.gap = '8px'
+    btnRow.style.width = 'min(520px, 90vw)'
+    btnRow.style.margin = '0 auto'
     const startBtn = document.createElement('button') as HTMLButtonElement
     startBtn.className = 'card selected'
+    startBtn.style.padding = '10px'
     startBtn.innerHTML = '<strong>Start</strong>'
     const optBtn = document.createElement('button') as HTMLButtonElement
     optBtn.className = 'card'
@@ -1167,15 +1175,36 @@ class Game {
     chgBtn.innerHTML = '<strong>Change Log</strong>'
     const dbgBtn = document.createElement('button') as HTMLButtonElement
     dbgBtn.className = 'card'
+    dbgBtn.style.padding = '10px'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
     const dailyBtn = document.createElement('button') as HTMLButtonElement
     dailyBtn.className = 'card'
+    dailyBtn.style.padding = '10px'
     dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
     btnRow.appendChild(startBtn)
-    btnRow.appendChild(optBtn)
-    btnRow.appendChild(chgBtn)
-    btnRow.appendChild(dbgBtn)
+    // Small corner buttons for Options (gear) and Changelog (list)
+    const cornerWrap = document.createElement('div')
+    cornerWrap.style.position = 'absolute'
+    cornerWrap.style.right = '12px'
+    cornerWrap.style.top = '12px'
+    cornerWrap.style.display = 'flex'
+    cornerWrap.style.gap = '8px'
+    const makeSmallBtn = (label: string) => {
+      const b = document.createElement('button') as HTMLButtonElement
+      b.className = 'card'
+      b.style.width = '34px'; b.style.height = '34px'; b.style.padding = '0'
+      b.style.display = 'inline-flex'; (b.style as any).alignItems = 'center'; (b.style as any).justifyContent = 'center'
+      b.innerHTML = `<span style="font-size:18px; line-height:18px;">${label}</span>`
+      return b
+    }
+    const optSmall = makeSmallBtn('⚙️')
+    const chgSmall = makeSmallBtn('🧾')
+    cornerWrap.appendChild(optSmall)
+    cornerWrap.appendChild(chgSmall)
+    this.titleOverlay.appendChild(cornerWrap)
+    btnRow.appendChild(startBtn)
     btnRow.appendChild(dailyBtn)
+    btnRow.appendChild(dbgBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -1187,11 +1216,15 @@ class Game {
       this.audio.startMusic('default' as ThemeKey)
     }
     startBtn.onclick = begin
-    optBtn.onclick = () => {
+    const openOptions = () => {
       optBtn.innerHTML = '<strong>Options</strong><div class="carddesc">Coming soon</div>'
       setTimeout(() => (optBtn.innerHTML = '<strong>Options</strong>'), 1200)
     }
-    chgBtn.onclick = () => this.showChangelog()
+    optBtn.onclick = openOptions
+    optSmall.onclick = openOptions
+    const openChangelog = () => this.showChangelog()
+    chgBtn.onclick = openChangelog
+    chgSmall.onclick = openChangelog
     dbgBtn.onclick = () => this.showDebugPanel()
     dailyBtn.onclick = () => {
       this.isDaily = true
@@ -1928,17 +1961,28 @@ class Game {
       const cards = Array.from(this.titleOverlay.querySelectorAll('.card')) as HTMLButtonElement[]
       this.uiNavCooldown = Math.max(0, this.uiNavCooldown - dt)
       // Stick navigation with cooldown
-      if (this.uiNavCooldown <= 0 && moveAxis !== 0) {
+      if (this.uiNavCooldown <= 0 && moveAxis !== 0 && cards.length > 0) {
         this.uiNavCooldown = 0.25
         this.uiSelectIndex = (this.uiSelectIndex + moveAxis + cards.length) % cards.length
       }
       // D-pad edge navigation
-      if (dpadLeft && !this.uiDpadPrevLeft) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
-      if (dpadRight && !this.uiDpadPrevRight) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
+      if (cards.length > 0) {
+        if (dpadLeft && !this.uiDpadPrevLeft) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
+        if (dpadRight && !this.uiDpadPrevRight) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
+      }
+      // Vertical navigation also maps to previous/next
+      const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.6 || gp.buttons?.[12]?.pressed)
+      const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.6 || gp.buttons?.[13]?.pressed)
+      if (cards.length > 0) {
+        if (up && !this.uiDpadPrevUp) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
+        if (down && !this.uiDpadPrevDown) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
+      }
       cards.forEach((c, i) => c.classList.toggle('selected', i === this.uiSelectIndex))
       if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
       this.uiDpadPrevLeft = dpadLeft
       this.uiDpadPrevRight = dpadRight
+      this.uiDpadPrevUp = up
+      this.uiDpadPrevDown = down
       // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
