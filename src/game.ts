@@ -1646,11 +1646,18 @@ class Game {
   showXPToast(text: string) {
     const t = document.createElement('div')
     t.textContent = text
-    Object.assign(t.style, {
-      position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-      color: '#8effe2', fontFamily: 'ui-monospace, monospace', fontSize: '16px',
-      textShadow: '0 0 8px #33d6a6', pointerEvents: 'none', zIndex: '25', opacity: '1', transition: 'opacity 600ms, transform 600ms'
-    } as CSSStyleDeclaration)
+    t.style.position = 'fixed'
+    t.style.left = '50%'
+    t.style.top = '50%'
+    t.style.transform = 'translate(-50%, -50%)'
+    t.style.color = '#8effe2'
+    t.style.fontFamily = 'ui-monospace, monospace'
+    t.style.fontSize = '16px'
+    t.style.textShadow = '0 0 8px #33d6a6'
+    t.style.pointerEvents = 'none'
+    t.style.zIndex = '25'
+    t.style.opacity = '1'
+    t.style.transition = 'opacity 600ms, transform 600ms'
     document.body.appendChild(t)
     requestAnimationFrame(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, -70%)' })
     setTimeout(() => t.remove(), 650)
