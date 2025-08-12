@@ -2012,19 +2012,10 @@ class Game {
         if (up && !this.uiDpadPrevUp) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
         if (down && !this.uiDpadPrevDown) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
       }
-      // Vertical navigation also maps to previous/next
-      const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.6 || gp.buttons?.[12]?.pressed)
-      const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.6 || gp.buttons?.[13]?.pressed)
-      if (cards.length > 0) {
-        if (up && !this.uiDpadPrevUp) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
-        if (down && !this.uiDpadPrevDown) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
-      }
       cards.forEach((c, i) => c.classList.toggle('selected', i === this.uiSelectIndex))
       if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
       this.uiDpadPrevLeft = dpadLeft
       this.uiDpadPrevRight = dpadRight
-      this.uiDpadPrevUp = up
-      this.uiDpadPrevDown = down
       this.uiDpadPrevUp = up
       this.uiDpadPrevDown = down
       // Title art animation disabled (kept static)
