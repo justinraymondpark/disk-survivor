@@ -383,6 +383,7 @@ class Game {
   debugPerfOverlay = false
   perfOverlayEl?: HTMLDivElement
   perfOverlayNextUpdate = 0
+  pauseDebounceUntil = 0
   // Pools and shared resources
   paintDiskPool: THREE.Mesh[] = []
   sharedPaintGeom = new THREE.CircleGeometry(1, 22)
@@ -1185,8 +1186,9 @@ class Game {
     btnRow.style.display = 'grid'
     btnRow.style.gridTemplateColumns = 'repeat(2, minmax(120px, 1fr))'
     btnRow.style.gap = '6px'
-    btnRow.style.width = 'min(440px, 92vw)'
     btnRow.style.margin = '0 auto'
+    ;(btnRow.style as any).justifyItems = 'center'
+    ;(btnRow.style as any).justifyContent = 'center'
     const startBtn = document.createElement('button') as HTMLButtonElement
     startBtn.className = 'card nav-card selected'
     startBtn.style.padding = '8px'
@@ -1215,6 +1217,7 @@ class Game {
     const begin = () => {
       this.titleOverlay.style.display = 'none'
       this.showTitle = false
+      this.pauseDebounceUntil = performance.now() + 400
       // start default music; theme selection will switch later
       this.audio.startMusic('default' as ThemeKey)
     }
@@ -2041,7 +2044,7 @@ class Game {
     const pPressed = !!this.input.keys['p']
     const escPressed = !!this.input.keys['escape']
     const pauseNow = !!(startPressed || pPressed || escPressed)
-    if (pauseNow && !this.pausePrev) {
+    if (pauseNow && !this.pausePrev && performance.now() > this.pauseDebounceUntil) {
       // When opening pause, re-hook sliders so events are active
       const vm = this.pauseOverlay.querySelector('#vol-master') as HTMLInputElement
       if (vm) {
