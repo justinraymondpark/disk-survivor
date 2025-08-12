@@ -296,7 +296,7 @@ type Projectile = {
   damage: number
   pierce: number
   last: THREE.Vector3
-    kind?: 'rocket'
+    kind?: 'rocket' | 'side' | 'bullet'
 }
 
 type Enemy = {
@@ -392,6 +392,7 @@ class Game {
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   sharedVacuumGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5)
   sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x66ccff })
+  projectilePool: Projectile[] = []
   // Lasso update throttle
   lassoNextGeomAt = 0
 
@@ -1292,11 +1293,15 @@ class Game {
     for (let i = 0; i < count; i++) {
       const angleOffset = (i - (count - 1) / 2) * spread
       const dir = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angleOffset)
-      const mesh = new THREE.Mesh(this.sharedBulletGeom, this.sharedBulletMat)
+      // Reuse projectile if available
+      let reused = this.projectilePool.pop()
+      let mesh: THREE.Mesh
+      if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 1.6; reused.pierce = this.projectilePierce; reused.damage = this.projectileDamage }
+      else { mesh = new THREE.Mesh(this.sharedBulletGeom, this.sharedBulletMat) }
       mesh.position.copy(start).add(dir.clone().multiplyScalar(0.12))
       mesh.position.y = 0.5
       this.scene.add(mesh)
-      this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: this.projectilePierce, last: mesh.position.clone() })
+      this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: this.projectilePierce, last: mesh.position.clone(), kind: 'bullet' })
     }
     this.audio.playShoot()
   }
@@ -2758,11 +2763,14 @@ class Game {
           }
         }
         if (e.type === 'giant' && e.faceTex && e.faceCanvas) {
-          if ((e.nextFaceUpdate ?? 0) <= performance.now()) {
+          const nowMs = performance.now()
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+          const interval = isMobile ? 200 : 120
+          if ((e.nextFaceUpdate ?? 0) <= nowMs) {
             const frame = Math.floor(e.timeAlive * 10)
             this.drawAnimatedFace(e.faceCanvas, frame)
             e.faceTex.needsUpdate = true
-            e.nextFaceUpdate = performance.now() + 120
+            e.nextFaceUpdate = nowMs + interval
           }
         }
       }
@@ -2806,6 +2814,7 @@ class Game {
       if (p.ttl <= 0) {
         p.alive = false
         this.scene.remove(p.mesh)
+        this.projectilePool.push(p)
         continue
       }
       const prev = p.mesh.position.clone()
@@ -2872,6 +2881,7 @@ class Game {
               if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
               p.alive = false
               this.scene.remove(p.mesh)
+              this.projectilePool.push(p)
             }
             hit = true
             break
@@ -3008,11 +3018,14 @@ class Game {
   fireSideBullet(dir: THREE.Vector3) {
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    const mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat)
+    let reused = this.projectilePool.pop()
+    let mesh: THREE.Mesh
+    if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 1.6; reused.pierce = this.projectilePierce; reused.damage = this.projectileDamage * this.sideBulletDamageMultiplier }
+    else { mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat) }
     mesh.position.copy(start)
     mesh.position.y = 0.5
     this.scene.add(mesh)
-    this.projectiles.push({ mesh, velocity: dir.clone().multiplyScalar(12), alive: true, ttl: 1.6, damage: this.projectileDamage * this.sideBulletDamageMultiplier, pierce: this.projectilePierce, last: mesh.position.clone() })
+    this.projectiles.push({ mesh, velocity: dir.clone().multiplyScalar(12), alive: true, ttl: 1.6, damage: this.projectileDamage * this.sideBulletDamageMultiplier, pierce: this.projectilePierce, last: mesh.position.clone(), kind: 'side' })
   }
 
   emitShockwave() {
@@ -3094,7 +3107,10 @@ class Game {
     // Rocket; homing handled in main projectile loop to avoid timers
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    const mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat)
+    let reused = this.projectilePool.pop()
+    let mesh: THREE.Mesh
+    if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 5.0; reused.pierce = 0; reused.damage = this.rocketDamage }
+    else { mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat) }
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
@@ -3341,7 +3357,8 @@ class Game {
 
     // Animated face canvas
     const canvas = document.createElement('canvas')
-    canvas.width = 128; canvas.height = 128
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    canvas.width = isMobile ? 64 : 128; canvas.height = isMobile ? 64 : 128
     const tex = new THREE.CanvasTexture(canvas)
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: tex, transparent: true }))
     face.position.set(x, 2.1, z)
