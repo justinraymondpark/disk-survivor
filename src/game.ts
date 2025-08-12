@@ -467,6 +467,17 @@ class Game {
   lassoDuration = 5
   lassoFlashThreshold = 1
   lassoLevel = 0
+  // Paint.exe
+  paintLevel = 0
+  paintOn = true
+  paintOnDuration = 0.7
+  paintOffDuration = 1.3
+  paintTimer = 0
+  paintDps = 10
+  paintDuration = 0.8
+  paintGap = 0.35
+  paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh }[] = []
+  lastPaintPos = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN)
   score = 0
   lastTime = performance.now()
   gameTime = 0
@@ -525,6 +536,7 @@ class Game {
       'Magic Lasso': '🪢',
       'Shield Wall': '🛡️',
       'Sata Cable Tail': '🪫',
+      'Paint.exe': '🎨',
       'Turbo CPU': '⚡',
       'SCSI Splitter': '🔀',
       'Overclocked Bus': '🚌',
@@ -553,7 +565,7 @@ class Game {
       ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
       return row
     }
-    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail']
+    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe']
     const upgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
     weapons.forEach(w => form.appendChild(makeRow(w, 'weapon')))
     upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
@@ -1329,6 +1341,10 @@ class Game {
         pool.push({ title: 'Magic Lasso', desc: 'Draw a loop to damage inside', icon: '🪢', apply: () => this.addWeapon('Magic Lasso') })
       if (!this.ownedWeapons.has('Shield Wall'))
         pool.push({ title: 'Shield Wall', desc: 'Blocking energy wall', icon: '🛡️', apply: () => this.addWeapon('Shield Wall') })
+      if (!this.ownedWeapons.has('Paint.exe'))
+        pool.push({ title: 'Paint.exe', desc: 'Leaves damaging paint on ground', icon: '🎨', apply: () => this.addWeapon('Paint.exe') })
+      if (!this.ownedWeapons.has('Shield Wall'))
+        pool.push({ title: 'Shield Wall', desc: 'Blocking energy wall', icon: '🛡️', apply: () => this.addWeapon('Shield Wall') })
     }
 
     // Upgrades (max 5 unique; upgrades can level)
@@ -1360,9 +1376,10 @@ class Game {
     if (this.ownedWeapons.has('Dot Matrix')) pool.push({ title: 'Dot Matrix (Level up)', desc: 'Stronger side bullets', icon: '🖨️', apply: () => this.levelUpDotMatrix() })
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
     if (this.ownedWeapons.has('Sata Cable Tail')) pool.push({ title: 'Sata Cable Tail (Level up)', desc: 'Longer, stronger tail', icon: '🔌', apply: () => this.levelUpSataTail() })
+    if (this.ownedWeapons.has('Paint.exe')) pool.push({ title: 'Paint.exe (Level up)', desc: 'More uptime, stronger DPS, longer paint', icon: '🎨', apply: () => this.levelUpPaint() })
 
     // Filter out entries that would be invalid due to caps
-    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail']
+    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe']
     const isWeaponName = (t: string) => allWeapons.includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
@@ -1405,7 +1422,7 @@ class Game {
   }
 
   isWeapon(name: string) {
-    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall', 'Sata Cable Tail'].includes(name)
+    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall', 'Sata Cable Tail', 'Paint.exe'].includes(name)
   }
 
   addWeapon(name: string) {
@@ -1478,6 +1495,12 @@ class Game {
       this.lassoPoints = []
       this.lassoLastPoint.copy(this.player.group.position)
       this.lassoLevel = 1
+    }
+    if (name === 'Paint.exe' && this.paintLevel === 0) {
+      this.paintLevel = 1
+      this.paintTimer = 0
+      this.paintOn = true
+      // No mesh created here; paint swaths are emitted during update
     }
     if (name === 'Shield Wall' && !this.hasShield) {
       this.hasShield = true
@@ -2128,6 +2151,61 @@ class Game {
             e.hitTintColor = 0xffff66; e.hitTintUntil = this.gameTime + 0.06; e.faceOuchUntil = this.gameTime + 0.06
             }
             break
+          }
+        }
+      }
+    }
+
+    // Paint.exe update
+    if (this.ownedWeapons.has('Paint.exe') && this.paintLevel > 0) {
+      this.paintTimer += dt
+      const phase = this.paintOn ? this.paintOnDuration : this.paintOffDuration
+      if (this.paintTimer >= phase) { this.paintTimer = 0; this.paintOn = !this.paintOn }
+      const playerXZ = this.player.group.position.clone(); playerXZ.y = 0
+      // Emit paint swaths only while on
+      if (this.paintOn) {
+        if (!Number.isFinite(this.lastPaintPos.x)) this.lastPaintPos.copy(playerXZ)
+        if (playerXZ.distanceToSquared(this.lastPaintPos) >= this.paintGap * this.paintGap) {
+          // Small round disk under player
+          const r = 0.46
+          const geom = new THREE.CircleGeometry(r, 16)
+          const mat = new THREE.MeshBasicMaterial({ color: 0x00ff83, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+          const disk = new THREE.Mesh(geom, mat)
+          disk.rotation.x = -Math.PI / 2
+          disk.position.copy(playerXZ).setY(0.02)
+          this.scene.add(disk)
+          this.paintSwaths.push({ pos: playerXZ.clone(), t: this.gameTime, mesh: disk })
+          this.lastPaintPos.copy(playerXZ)
+        }
+      }
+      // Expire old swaths and apply damage to enemies standing on them
+      for (let i = this.paintSwaths.length - 1; i >= 0; i--) {
+        const s = this.paintSwaths[i]
+        if (this.gameTime - s.t > this.paintDuration) {
+          this.scene.remove(s.mesh)
+          s.mesh.geometry.dispose()
+          ;(s.mesh.material as THREE.Material).dispose?.()
+          this.paintSwaths.splice(i, 1)
+          continue
+        }
+        // Damage
+        for (const e of this.enemies) {
+          if (!e.alive) continue
+          const ep = e.mesh.position.clone(); ep.y = 0
+          const dist = ep.distanceTo(s.pos)
+          if (dist <= 0.5) {
+            e.hp -= this.paintDps * dt
+            // Permanently paint enemies green when touched
+            e.baseColorHex = 0x00ff83
+            if (e.hp <= 0) {
+              e.alive = false
+              this.scene.remove(e.mesh)
+              if (e.face) this.scene.remove(e.face)
+              this.onEnemyDown()
+              this.score += 1
+              this.updateHud()
+              this.spawnXP(e.mesh.position.clone())
+            }
           }
         }
       }
@@ -2977,7 +3055,8 @@ class Game {
       const farther = toPlayer.length() > 0 ? spawnPos.clone().add(toPlayer.normalize().multiplyScalar(-1.5)) : spawnPos
       spawnPos = farther
     }
-    const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed }
+    const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
+    const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor }
     // Post-10 twists: modest buffs per cycle so waves feel unique
     if (minute >= 10) {
       const cycle = (minute - 10) % 6
@@ -3502,6 +3581,15 @@ class Game {
         this.sataTailSegments[i].position.z = -k * this.sataTailLength
       }
     }
+  }
+
+  private levelUpPaint() {
+    this.paintLevel += 1
+    // Increase uptime (on more than off), increase DPS a bit, and extend paint life modestly
+    this.paintOnDuration = Math.min(1.4, this.paintOnDuration + 0.15)
+    this.paintOffDuration = Math.max(0.6, this.paintOffDuration - 0.12)
+    this.paintDps += 4
+    this.paintDuration = Math.min(2.5, this.paintDuration + 0.2)
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {

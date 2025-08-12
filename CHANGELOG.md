@@ -1,3 +1,11 @@
+## 0.1.20
+- Fix: Enemy hit tint now correctly resets after ~60ms for SATA Tail and Tape Whirl. Ensured all enemy spawns track `baseColorHex` so temporary tints revert properly.
+- Feature: Added new weapon `Paint.exe` (🎨)
+  - Leaves bright green (#00FF83) paint swaths under the player while active
+  - Enemies standing on paint take damage over time and are permanently painted green
+  - Toggled on/off like other uptime-based weapons; much shorter range/duration than Magic Lasso
+  - Levels increase uptime (more on than off), DPS, and ground paint lifetime
+
 ## v0.1.20 (2025-08-11)
 
 - Fonts: switch entire UI to self-hosted `W95FA` (prefer `W95FA.woff2`, OTF fallback); removed Google Fonts usage
