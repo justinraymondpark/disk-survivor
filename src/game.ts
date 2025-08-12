@@ -3328,17 +3328,7 @@ class Game {
         }
       } }
     }
-    const cycle = (dir: number) => {
-      if (this.altFloppies.length === 0) return
-      if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
-      else this.altFloppies.unshift(this.altFloppies.pop()!)
-      // Recompute target positions for smooth tween
-      for (let i = 0; i < this.altFloppies.length; i++) {
-        const f = this.altFloppies[i]
-        f.target.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
-        f.targetRot = (i * 0.05)
-      }
-    }
+    const cycle = (dir: number) => this.cycleAltFloppies(dir)
     // Hook minimal input: left/right arrows and A/Enter
     const onKey = (e: KeyboardEvent) => {
       if (!this.altTitleActive) { window.removeEventListener('keydown', onKey); return }
@@ -3347,9 +3337,37 @@ class Game {
       else if (e.key === 'Enter') onChoose(this.altFloppies[0].label)
     }
     window.addEventListener('keydown', onKey)
-    // Expose helpers for loop updates
-    ;(this as any).cycleAltFloppies = cycle
-    ;(this as any).chooseAltFloppy = onChoose
+  }
+
+  private cycleAltFloppies(dir: number) {
+    if (this.altFloppies.length === 0) return
+    if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
+    else this.altFloppies.unshift(this.altFloppies.pop()!)
+    for (let i = 0; i < this.altFloppies.length; i++) {
+      const f = this.altFloppies[i]
+      f.target.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
+      f.targetRot = (i * 0.05)
+    }
+  }
+
+  private chooseAltFloppy(lbl: 'START'|'DAILY'|'DEBUG') {
+    if (!this.altFloppies[0]) return
+    const sel = this.altFloppies[0].mesh
+    const start = sel.position.clone()
+    const end = new THREE.Vector3(0, 2.5, 0.3)
+    this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+      if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
+      this.altTitleGroup = undefined
+      this.altTitleActive = false
+      if (lbl === 'START') {
+        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+      } else if (lbl === 'DAILY') {
+        this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+      } else {
+        this.showDebugPanel()
+      }
+    } }
   }
 
   fireSideBullet(dir: THREE.Vector3) {
