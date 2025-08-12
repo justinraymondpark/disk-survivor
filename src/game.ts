@@ -477,7 +477,7 @@ class Game {
   paintDuration = 0.8
   paintGap = 0.35
   paintRadius = 1.38
-  paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh }[] = []
+  paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh; radius: number }[] = []
   lastPaintPos = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN)
   score = 0
   lastTime = performance.now()
@@ -2168,14 +2168,14 @@ class Game {
         if (!Number.isFinite(this.lastPaintPos.x)) this.lastPaintPos.copy(playerXZ)
         if (playerXZ.distanceToSquared(this.lastPaintPos) >= this.paintGap * this.paintGap) {
           // Round disk under player
-          const r = this.paintRadius
-          const geom = new THREE.CircleGeometry(r, 20)
+          const r = this.paintRadius * (0.85 + Math.random() * 0.3)
+          const geom = new THREE.CircleGeometry(r, 22)
           const mat = new THREE.MeshBasicMaterial({ color: 0x00ff83, transparent: false, opacity: 1, side: THREE.DoubleSide })
           const disk = new THREE.Mesh(geom, mat)
           disk.rotation.x = -Math.PI / 2
           disk.position.copy(playerXZ).setY(0.02)
           this.scene.add(disk)
-          this.paintSwaths.push({ pos: playerXZ.clone(), t: this.gameTime, mesh: disk })
+          this.paintSwaths.push({ pos: playerXZ.clone(), t: this.gameTime, mesh: disk, radius: r })
           this.lastPaintPos.copy(playerXZ)
         }
       }
@@ -2194,7 +2194,7 @@ class Game {
           if (!e.alive) continue
           const ep = e.mesh.position.clone(); ep.y = 0
           const dist = ep.distanceTo(s.pos)
-          if (dist <= this.paintRadius) {
+          if (dist <= s.radius) {
             e.hp -= this.paintDps * dt
             // Permanently paint enemies green when touched
             e.baseColorHex = 0x00ff83
@@ -3591,7 +3591,7 @@ class Game {
     this.paintOffDuration = Math.max(0.6, this.paintOffDuration - 0.12)
     this.paintDps += 4
     this.paintDuration = Math.min(2.5, this.paintDuration + 0.2)
-    this.paintRadius = Math.min(1.8, this.paintRadius + 0.12)
+    this.paintRadius = Math.min(2.2, this.paintRadius + 0.18)
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {
