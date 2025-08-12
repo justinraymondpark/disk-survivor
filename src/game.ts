@@ -422,7 +422,7 @@ class Game {
     })
   }
 
-  private onEnemyDamaged(e: Enemy, amount: number) {
+  private onEnemyDamaged(e: Enemy, _amount: number) {
     // Brief, low-cost tint
     e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
     e.hitTintUntil = this.gameTime + 0.06
