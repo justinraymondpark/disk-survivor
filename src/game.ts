@@ -2037,7 +2037,7 @@ class Game {
 
     // Pause toggle (Start/P/Enter edge)
     const gp = this.input.getActiveGamepad()
-    const startPressed = !!gp && gp.buttons[9]?.pressed
+    const startPressed = !!gp && gp.buttons[9]?.pressed && !this.showTitle
     const pPressed = !!this.input.keys['p']
     const escPressed = !!this.input.keys['escape']
     const pauseNow = !!(startPressed || pPressed || escPressed)

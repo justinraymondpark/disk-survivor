@@ -5,6 +5,8 @@
 }
 .title-buttons .card { padding: 8px; min-width: 120px; }
 .title-buttons { max-width: 440px; margin: 0 auto; }
+/* Force compact size for title nav buttons */
+.overlay .nav-card { min-height: 48px !important; width: 180px !important; padding: 8px !important; }
 @font-face {
   font-family: 'W95FA';
   src: url('/fonts/W95FA.woff2') format('woff2'),
