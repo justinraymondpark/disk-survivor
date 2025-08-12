@@ -8,6 +8,7 @@
 
   - Tweak: Paint swath size tripled; paint is now opaque. Radius increases more with each level and each swath has slight random size variance. Swath color changed to `#2c826e`; enemies painted use `#3c9e87` to differentiate from XP cubes. Stronger level scaling: longer uptime, longer ground lifetime, larger radius, and denser coverage per level.
   - Debug: Add optional floating damage numbers (toggle in debug panel). Now shows for all damage sources; DoT values rounded to avoid "-0" artifacts.
+  - Tweak: Paint.exe blobs linger +0.5s longer at base (same emission cadence; trail remains briefly after placement stops).
 
 ## v0.1.20 (2025-08-11)
 

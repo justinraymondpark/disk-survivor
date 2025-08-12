@@ -475,7 +475,7 @@ class Game {
   paintOffDuration = 1.3
   paintTimer = 0
   paintDps = 10
-  paintDuration = 0.8
+  paintDuration = 1.3
   paintGap = 0.35
   paintRadius = 1.38
   paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh; radius: number }[] = []
