@@ -3,9 +3,8 @@
   padding: 8px !important;
   min-width: 0 !important;
 }
-.title-buttons .card {
-  padding: 8px;
-}
+.title-buttons .card { padding: 8px; min-width: 120px; }
+.title-buttons { max-width: 440px; margin: 0 auto; }
 @font-face {
   font-family: 'W95FA';
   src: url('/fonts/W95FA.woff2') format('woff2'),

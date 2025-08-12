@@ -1204,26 +1204,7 @@ class Game {
     dailyBtn.style.padding = '8px'
     dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
     btnRow.appendChild(startBtn)
-    // Small corner buttons for Options (gear) and Changelog (list)
-    const cornerWrap = document.createElement('div')
-    cornerWrap.style.position = 'absolute'
-    cornerWrap.style.right = '12px'
-    cornerWrap.style.top = '12px'
-    cornerWrap.style.display = 'flex'
-    cornerWrap.style.gap = '8px'
-    const makeSmallBtn = (label: string) => {
-      const b = document.createElement('button') as HTMLButtonElement
-      b.className = 'card'
-      b.style.width = '34px'; b.style.height = '34px'; b.style.padding = '0'
-      b.style.display = 'inline-flex'; (b.style as any).alignItems = 'center'; (b.style as any).justifyContent = 'center'
-      b.innerHTML = `<span style="font-size:18px; line-height:18px;">${label}</span>`
-      return b
-    }
-    const optSmall = makeSmallBtn('⚙️')
-    const chgSmall = makeSmallBtn('🧾')
-    cornerWrap.appendChild(optSmall)
-    cornerWrap.appendChild(chgSmall)
-    this.titleOverlay.appendChild(cornerWrap)
+    // NOTE: Top-right small buttons removed; using bottom-right FABs instead
     btnRow.appendChild(startBtn)
     btnRow.appendChild(dailyBtn)
     btnRow.appendChild(dbgBtn)
@@ -1249,10 +1230,8 @@ class Game {
       setTimeout(() => note.remove(), 1000)
     }
     optBtn.onclick = openOptions
-    optSmall.onclick = openOptions
     const openChangelog = () => this.showChangelog()
     chgBtn.onclick = openChangelog
-    chgSmall.onclick = openChangelog
     // Show corner FABs only on title screen
     if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
     if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
