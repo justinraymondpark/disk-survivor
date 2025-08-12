@@ -3622,13 +3622,6 @@ class Game {
     this.hitCount += 1
     this.updateHitCounter()
   }
-
-  // Leaderboard submit helper that respects Daily mode
-  private submitScore(name: string, timeSurvived: number, score: number) {
-    const payload: any = { name, timeSurvived, score }
-    if (this.isDaily) { payload.mode = 'daily'; payload.dailyId = this.dailyId }
-    fetch('/.netlify/functions/leaderboard-submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {})
-  }
   private async toggleFullscreen() {
     try {
       const doc: any = document
