@@ -3276,17 +3276,24 @@ class Game {
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
-    // Scale up to fill most of the screen (slightly less than before)
-    g.scale.set(5, 5, 5)
-    // Add opaque background plate facing camera to hide other UI/game
+    // Scale up to fill most of the screen (tuned)
+    g.scale.set(4, 4, 4)
+    // Hide HUD/other FABs while Alt Title is active (DOM sits above canvas)
+    if (this.hud) this.hud.style.display = 'none'
+    if (this.optionsFab) this.optionsFab.style.display = 'none'
+    if (this.changelogFab) this.changelogFab.style.display = 'none'
+    // Add opaque full-screen background as a child of the camera so it covers entire view
+    const frustumWidth = (this.camera.right - this.camera.left)
+    const frustumHeight = (this.camera.top - this.camera.bottom)
     const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a })
     bgMat.depthTest = false
     bgMat.depthWrite = false
-    const bg = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), bgMat)
+    const bgGeom = new THREE.PlaneGeometry(frustumWidth * 1.1, frustumHeight * 1.1)
+    const bg = new THREE.Mesh(bgGeom, bgMat)
     bg.renderOrder = 1000
-    bg.quaternion.copy(this.camera.quaternion)
-    bg.position.set(0, 2.2, 0)
-    g.add(bg)
+    // Place slightly in front of camera (negative Z in camera space)
+    bg.position.set(0, 0, -0.5)
+    this.camera.add(bg)
     this.altBgMesh = bg
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
@@ -3295,13 +3302,13 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 2.4, 0)
+    drive.position.set(0, 1.2, 0)
     drive.renderOrder = 1001
     const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 2.5, 0.31)
+    slot.position.set(0, 1.3, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
@@ -3335,7 +3342,8 @@ class Game {
     for (let i = 0; i < items.length; i++) {
       const m = makeFloppy(items[i])
       const angle = (i * 0.05)
-      m.position.set(-0.6 + i * 0.7, 0.3 + i * 0.015, 0.9 - i * 0.01)
+      // Tighten spacing and center under slot
+      m.position.set(-0.45 + i * 0.6, 0.0 + i * 0.012, 0.7 - i * 0.008)
       m.rotation.y = angle
       g.add(m)
       this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
@@ -3378,7 +3386,7 @@ class Game {
     else this.altFloppies.unshift(this.altFloppies.pop()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
       const f = this.altFloppies[i]
-      f.target.set(-0.6 + i * 0.7, 0.3 + i * 0.015, 0.9 - i * 0.01)
+      f.target.set(-0.45 + i * 0.6, 0.0 + i * 0.012, 0.7 - i * 0.008)
       f.targetRot = (i * 0.05)
     }
   }
