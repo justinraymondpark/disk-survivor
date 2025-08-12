@@ -380,6 +380,18 @@ class Game {
   sharedPaintMat = new THREE.MeshBasicMaterial({ color: 0x2c826e, transparent: false, opacity: 1, side: THREE.DoubleSide })
   shardPool: THREE.Mesh[] = []
   sharedShardGeom = new THREE.BoxGeometry(0.15, 0.15, 0.15)
+  sharedBulletGeom = new THREE.SphereGeometry(0.14, 10, 10)
+  sharedBulletMat = new THREE.MeshBasicMaterial({ color: 0xffff66 })
+  sharedSideBulletGeom = new THREE.SphereGeometry(0.12, 8, 8)
+  sharedSideBulletMat = new THREE.MeshBasicMaterial({ color: 0x99ddff })
+  sharedRocketGeom = new THREE.ConeGeometry(0.18, 0.6, 10)
+  sharedRocketMat = new THREE.MeshBasicMaterial({ color: 0xff8844 })
+  sharedXPGeom = new THREE.BoxGeometry(0.25, 0.25, 0.25)
+  sharedXPOrbMat = new THREE.MeshBasicMaterial({ color: 0x66ff88 })
+  sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
+  sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
+  sharedVacuumGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+  sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x66ccff })
   // Lasso update throttle
   lassoNextGeomAt = 0
 
@@ -1280,7 +1292,7 @@ class Game {
     for (let i = 0; i < count; i++) {
       const angleOffset = (i - (count - 1) / 2) * spread
       const dir = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angleOffset)
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffff66 }))
+      const mesh = new THREE.Mesh(this.sharedBulletGeom, this.sharedBulletMat)
       mesh.position.copy(start).add(dir.clone().multiplyScalar(0.12))
       mesh.position.y = 0.5
       this.scene.add(mesh)
@@ -1310,10 +1322,10 @@ class Game {
       mesh.rotation.x = -Math.PI / 2
     } else if (kind === 'vacuum') {
       // Glowing blue cube
-      mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0x66ccff }))
+      mesh = new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
     } else {
       // XP bundle cube (purple)
-      mesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), new THREE.MeshBasicMaterial({ color: 0xb388ff }))
+      mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPCubeMat)
     }
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
@@ -1636,7 +1648,7 @@ class Game {
 
   // When enemy dies, spawn XP
   spawnXP(position: THREE.Vector3) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshBasicMaterial({ color: 0x66ff88 }))
+    const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
     mesh.position.copy(position)
     mesh.position.y = 0.35
     this.scene.add(mesh)
@@ -2996,7 +3008,7 @@ class Game {
   fireSideBullet(dir: THREE.Vector3) {
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0x99ddff }))
+    const mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat)
     mesh.position.copy(start)
     mesh.position.y = 0.5
     this.scene.add(mesh)
@@ -3082,7 +3094,7 @@ class Game {
     // Rocket; homing handled in main projectile loop to avoid timers
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 10), new THREE.MeshBasicMaterial({ color: 0xff8844 }))
+    const mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat)
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
