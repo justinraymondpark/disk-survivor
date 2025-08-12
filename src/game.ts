@@ -566,6 +566,13 @@ class Game {
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
     debugOverlay?: HTMLDivElement
+  // Alt Title state
+  altTitleActive = false
+  altTitleGroup?: THREE.Group
+  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG'; target: THREE.Vector3; targetRot: number }[] = []
+  altDriveMesh?: THREE.Mesh
+  altNavCooldown = 0
+  altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; onDone: () => void }
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -1205,11 +1212,16 @@ class Game {
     dailyBtn.className = 'card nav-card'
     dailyBtn.style.padding = '8px'
     dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
-    btnRow.appendChild(startBtn)
+    const altBtn = document.createElement('button') as HTMLButtonElement
+    altBtn.className = 'card nav-card'
+    altBtn.style.padding = '8px'
+    altBtn.innerHTML = '<strong>Alt Title</strong>'
+    // Insert Start last so it appears first on grid
     // NOTE: Top-right small buttons removed; using bottom-right FABs instead
     btnRow.appendChild(startBtn)
     btnRow.appendChild(dailyBtn)
     btnRow.appendChild(dbgBtn)
+    btnRow.appendChild(altBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -1247,6 +1259,7 @@ class Game {
       this.buildDailyPlan(this.dailyId)
       begin()
     }
+    altBtn.onclick = () => this.showAltTitle()
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -1960,6 +1973,43 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
+    // Alt Title updates (animations and controller input)
+    if (this.altTitleActive && this.altTitleGroup) {
+      // Controller left/right and A
+      const gp = this.input.getActiveGamepad()
+      const axisX = this.input.axesLeft.x
+      const moveAxis = Math.abs(axisX) > 0.6 ? Math.sign(axisX) : 0
+      this.altNavCooldown = Math.max(0, this.altNavCooldown - dt)
+      const dpadLeft = !!gp && gp.buttons[14]?.pressed
+      const dpadRight = !!gp && gp.buttons[15]?.pressed
+      const a = !!gp && gp.buttons[0]?.pressed
+      if (this.altNavCooldown <= 0 && (moveAxis !== 0 || dpadLeft || dpadRight)) {
+        this.altNavCooldown = 0.22
+        if (moveAxis > 0 || dpadRight) this.cycleAltFloppies(1)
+        if (moveAxis < 0 || dpadLeft) this.cycleAltFloppies(-1)
+      }
+      if (a) this.chooseAltFloppy(this.altFloppies[0]?.label ?? 'START')
+      // Animate insertion
+      if (this.altInsertAnim) {
+        const anim = this.altInsertAnim
+        anim.t += dt * 1000
+        const u = Math.min(1, anim.t / anim.dur)
+        const e = u < 0.5 ? 2 * u * u : -1 + (4 - 2 * u) * u // easeInOutQuad
+        const p = new THREE.Vector3().lerpVectors(anim.start, anim.end, e)
+        anim.m.position.copy(p)
+        anim.m.rotation.y = anim.startR + (anim.endR - anim.startR) * e
+        if (u >= 1) { const done = anim.onDone; this.altInsertAnim = undefined; done() }
+      }
+      // Smoothly tween floppy positions/rotations
+      for (const f of this.altFloppies) {
+        f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
+        f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
+      }
+      // Render and continue
+      this.renderer.render(this.scene, this.camera)
+      requestAnimationFrame(() => this.loop())
+      return
+    }
 
     // Overlay controller navigation
     this.updateOverlaySelection(dt)
@@ -3210,6 +3260,96 @@ class Game {
       plan[minute] = pool[Math.floor(rnd() * pool.length)]
     }
     this.dailyWavePlan = plan
+  }
+
+  // ALT TITLE: build a small 3D scene with floppies and a drive slot
+  private showAltTitle() {
+    if (this.altTitleActive) return
+    this.altTitleActive = true
+    // Hide classic title UI
+    this.titleOverlay.style.display = 'none'
+    // Group anchored near origin in front of camera
+    const g = new THREE.Group()
+    this.altTitleGroup = g
+    this.scene.add(g)
+    // Drive slot (simple box with inset)
+    const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), new THREE.MeshBasicMaterial({ color: 0xd8d2c5 }))
+    drive.position.set(0, 2.4, 0)
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), new THREE.MeshBasicMaterial({ color: 0x222 }))
+    slot.position.set(0, 2.5, 0.31)
+    g.add(drive, slot)
+    this.altDriveMesh = slot
+    // Floppy stack
+    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.8), new THREE.MeshBasicMaterial({ color: 0x1a1a1a }))
+      // Create canvas texture for label text
+      const c = document.createElement('canvas'); c.width = 256; c.height = 128
+      const ctx = c.getContext('2d')!
+      ctx.fillStyle = '#e7efe4'; ctx.fillRect(0, 0, c.width, c.height)
+      ctx.fillStyle = '#0a0a0a'; ctx.font = 'bold 36px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText(label === 'START' ? 'START' : label === 'DAILY' ? 'DAILY DISK' : 'DEBUG MODE', c.width / 2, c.height / 2)
+      const tex = new THREE.CanvasTexture(c)
+      const labelGeom = new THREE.PlaneGeometry(1.2, 0.5)
+      const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false })
+      const labelMesh = new THREE.Mesh(labelGeom, labelMat)
+      labelMesh.rotation.x = -Math.PI / 2
+      labelMesh.position.set(0, 0.035, 0.2)
+      body.add(labelMesh)
+      return body
+    }
+    const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
+    this.altFloppies = []
+    for (let i = 0; i < items.length; i++) {
+      const m = makeFloppy(items[i])
+      const angle = (i * 0.05)
+      m.position.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
+      m.rotation.y = angle
+      g.add(m)
+      this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
+    }
+    // Input: swipe/left-right cycles
+    const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
+      const sel = this.altFloppies[0].mesh
+      // Insert animation into drive
+      const start = sel.position.clone()
+      const end = new THREE.Vector3(0, 2.5, 0.3)
+      this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+        this.scene.remove(this.altTitleGroup!)
+        this.altTitleGroup = undefined
+        this.altTitleActive = false
+        if (lbl === 'START') {
+          // Start as usual
+          this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+        } else if (lbl === 'DAILY') {
+          this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+          this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+        } else {
+          this.showDebugPanel()
+        }
+      } }
+    }
+    const cycle = (dir: number) => {
+      if (this.altFloppies.length === 0) return
+      if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
+      else this.altFloppies.unshift(this.altFloppies.pop()!)
+      // Recompute target positions for smooth tween
+      for (let i = 0; i < this.altFloppies.length; i++) {
+        const f = this.altFloppies[i]
+        f.target.set(-1 + i * 1.1, 0.8 + i * 0.03, 1.6 - i * 0.02)
+        f.targetRot = (i * 0.05)
+      }
+    }
+    // Hook minimal input: left/right arrows and A/Enter
+    const onKey = (e: KeyboardEvent) => {
+      if (!this.altTitleActive) { window.removeEventListener('keydown', onKey); return }
+      if (e.key === 'ArrowRight') cycle(1)
+      else if (e.key === 'ArrowLeft') cycle(-1)
+      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label)
+    }
+    window.addEventListener('keydown', onKey)
+    // Expose helpers for loop updates
+    ;(this as any).cycleAltFloppies = cycle
+    ;(this as any).chooseAltFloppy = onChoose
   }
 
   fireSideBullet(dir: THREE.Vector3) {
