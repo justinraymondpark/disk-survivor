@@ -1970,7 +1970,7 @@ class Game {
       const dpadRight = !!gp && gp.buttons[15]?.pressed
       const axisX = this.input.axesLeft.x
       const moveAxis = Math.abs(axisX) > 0.6 ? Math.sign(axisX) : 0
-      const cards = Array.from(this.titleOverlay.querySelectorAll('.card')) as HTMLButtonElement[]
+      const cards = Array.from(this.titleOverlay.querySelectorAll('.nav-card')) as HTMLButtonElement[]
       this.uiNavCooldown = Math.max(0, this.uiNavCooldown - dt)
       // Stick navigation with cooldown
       if (this.uiNavCooldown <= 0 && moveAxis !== 0 && cards.length > 0) {
@@ -1998,12 +1998,16 @@ class Game {
       // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
-      // Hide FABs during gameplay (show only on title)
-      if (this.optionsFab) this.optionsFab.style.display = 'none'
-      if (this.changelogFab) this.changelogFab.style.display = 'none'
+      // Ensure FABs visible on title
+      if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
+      if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
       requestAnimationFrame(() => this.loop())
       return
     }
+
+    // Hide non-gameplay FABs during gameplay
+    if (this.optionsFab) this.optionsFab.style.display = 'none'
+    if (this.changelogFab) this.changelogFab.style.display = 'none'
 
     // Always allow free rotation before theme select
     this.input.updateGamepad()
