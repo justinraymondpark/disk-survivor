@@ -1988,7 +1988,7 @@ class Game {
         if (moveAxis > 0 || dpadRight) this.cycleAltFloppies(1)
         if (moveAxis < 0 || dpadLeft) this.cycleAltFloppies(-1)
       }
-      if (a) this.chooseAltFloppy(this.altFloppies[0]?.label ?? 'START')
+      if (a && performance.now() > (this as any).altEnterDebounceUntil) this.chooseAltFloppy(this.altFloppies[0]?.label ?? 'START')
       // Animate insertion
       if (this.altInsertAnim) {
         const anim = this.altInsertAnim
