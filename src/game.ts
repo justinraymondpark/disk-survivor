@@ -476,6 +476,7 @@ class Game {
   paintDps = 10
   paintDuration = 0.8
   paintGap = 0.35
+  paintRadius = 0.92
   paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh }[] = []
   lastPaintPos = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN)
   score = 0
@@ -2166,10 +2167,10 @@ class Game {
       if (this.paintOn) {
         if (!Number.isFinite(this.lastPaintPos.x)) this.lastPaintPos.copy(playerXZ)
         if (playerXZ.distanceToSquared(this.lastPaintPos) >= this.paintGap * this.paintGap) {
-          // Small round disk under player
-          const r = 0.46
-          const geom = new THREE.CircleGeometry(r, 16)
-          const mat = new THREE.MeshBasicMaterial({ color: 0x00ff83, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+          // Round disk under player
+          const r = this.paintRadius
+          const geom = new THREE.CircleGeometry(r, 20)
+          const mat = new THREE.MeshBasicMaterial({ color: 0x00ff83, transparent: false, opacity: 1, side: THREE.DoubleSide })
           const disk = new THREE.Mesh(geom, mat)
           disk.rotation.x = -Math.PI / 2
           disk.position.copy(playerXZ).setY(0.02)
@@ -2193,7 +2194,7 @@ class Game {
           if (!e.alive) continue
           const ep = e.mesh.position.clone(); ep.y = 0
           const dist = ep.distanceTo(s.pos)
-          if (dist <= 0.5) {
+          if (dist <= this.paintRadius) {
             e.hp -= this.paintDps * dt
             // Permanently paint enemies green when touched
             e.baseColorHex = 0x00ff83
@@ -3590,6 +3591,7 @@ class Game {
     this.paintOffDuration = Math.max(0.6, this.paintOffDuration - 0.12)
     this.paintDps += 4
     this.paintDuration = Math.min(2.5, this.paintDuration + 0.2)
+    this.paintRadius = Math.min(1.4, this.paintRadius + 0.08)
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {
