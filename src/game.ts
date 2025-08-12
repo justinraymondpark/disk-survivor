@@ -2054,7 +2054,13 @@ class Game {
         if (dist <= this.crtBeamLength) {
           const dirDot = forward.dot(toE.normalize()) // cos angle
           if (dirDot > 0.92) {
-            e.hp -= this.crtBeamDps * dt
+            const dmg = this.crtBeamDps * dt
+            e.hp -= dmg
+            const nowT = this.gameTime
+            if ((e.nextDmgToastTime ?? 0) <= nowT) {
+              this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+              e.nextDmgToastTime = nowT + 0.15
+            }
           if (e.hp <= 0) {
             e.alive = false
             this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
@@ -2091,7 +2097,13 @@ class Game {
           const sp = saw.position.clone(); sp.y = 0
           const ep = e.mesh.position.clone(); ep.y = 0
           if (sp.distanceToSquared(ep) < hitDist * hitDist) {
-            e.hp -= this.whirlDamage * dt
+            const dmg = this.whirlDamage * dt
+            e.hp -= dmg
+            const nowT = this.gameTime
+            if ((e.nextDmgToastTime ?? 0) <= nowT) {
+              this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+              e.nextDmgToastTime = nowT + 0.15
+            }
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
@@ -2148,8 +2160,14 @@ class Game {
         for (const seg of this.sataTailSegments) {
           const wp = seg.getWorldPosition(new THREE.Vector3()); wp.y = 0
           const dist = p.distanceTo(wp)
-          if (dist < 0.5) {
-            e.hp -= dps * dt
+            if (dist < 0.5) {
+              const dmg = dps * dt
+              e.hp -= dmg
+              const nowT = this.gameTime
+              if ((e.nextDmgToastTime ?? 0) <= nowT) {
+                this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+                e.nextDmgToastTime = nowT + 0.15
+              }
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
@@ -2688,7 +2706,13 @@ class Game {
           const closest = a.clone().add(ab.multiplyScalar(t))
           const d2 = closest.distanceToSquared(c)
           if (d2 < 0.55 ** 2) {
-            e.hp -= p.damage
+            const dmg = p.damage
+            e.hp -= dmg
+            const nowT = this.gameTime
+            if ((e.nextDmgToastTime ?? 0) <= nowT) {
+              this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+              e.nextDmgToastTime = nowT + 0.15
+            }
             if (e.hp <= 0) {
               e.alive = false
               this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
@@ -2858,7 +2882,13 @@ class Game {
         if (!e.alive) continue
         const d = e.mesh.position.distanceTo(this.player.group.position)
         if (d < this.modemWaveRadius) {
-          e.hp -= this.modemWaveDamage + Math.floor(this.gameTime / 60)
+          const dmg = this.modemWaveDamage + Math.floor(this.gameTime / 60)
+          e.hp -= dmg
+          const nowT = this.gameTime
+          if ((e.nextDmgToastTime ?? 0) <= nowT) {
+            this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+            e.nextDmgToastTime = nowT + 0.15
+          }
           // Knockback away from player, stronger near center
           const dir = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize()
           const strength = Math.max(0.12, (this.modemWaveRadius - d) * 0.08)
@@ -3442,7 +3472,13 @@ class Game {
       if (!e.alive) continue
       const d = e.mesh.position.distanceTo(center)
       if (d < radius) {
-        e.hp -= Math.ceil(baseDamage * 0.8)
+        const dmg = Math.ceil(baseDamage * 0.8)
+        e.hp -= dmg
+        const nowT = this.gameTime
+        if ((e.nextDmgToastTime ?? 0) <= nowT) {
+          this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+          e.nextDmgToastTime = nowT + 0.15
+        }
         const dir = e.mesh.position.clone().sub(center).setY(0).normalize()
         e.mesh.position.add(dir.multiplyScalar(Math.max(0.08, (radius - d) * 0.05)))
         if (e.hp <= 0) {
@@ -3527,7 +3563,13 @@ class Game {
       if (!e.alive) continue
       const p = e.mesh.position
       if (inside(p.x, p.z)) {
-        e.hp -= this.lassoDamage
+        const dmg = this.lassoDamage
+        e.hp -= dmg
+        const nowT = this.gameTime
+        if ((e.nextDmgToastTime ?? 0) <= nowT) {
+          this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+          e.nextDmgToastTime = nowT + 0.15
+        }
         if (e.hp <= 0) {
           e.alive = false
           this.spawnExplosion(e.mesh)
