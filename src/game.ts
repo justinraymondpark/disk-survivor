@@ -2170,7 +2170,7 @@ class Game {
           // Round disk under player
           const r = this.paintRadius * (0.85 + Math.random() * 0.3)
           const geom = new THREE.CircleGeometry(r, 22)
-          const mat = new THREE.MeshBasicMaterial({ color: 0x00ff83, transparent: false, opacity: 1, side: THREE.DoubleSide })
+          const mat = new THREE.MeshBasicMaterial({ color: 0x2c826e, transparent: false, opacity: 1, side: THREE.DoubleSide })
           const disk = new THREE.Mesh(geom, mat)
           disk.rotation.x = -Math.PI / 2
           disk.position.copy(playerXZ).setY(0.02)
@@ -2196,8 +2196,8 @@ class Game {
           const dist = ep.distanceTo(s.pos)
           if (dist <= s.radius) {
             e.hp -= this.paintDps * dt
-            // Permanently paint enemies green when touched
-            e.baseColorHex = 0x00ff83
+            // Permanently paint enemies green-ish when touched
+            e.baseColorHex = 0x3c9e87
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
