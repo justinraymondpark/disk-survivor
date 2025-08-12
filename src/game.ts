@@ -976,14 +976,14 @@ class Game {
       const mainBtn = this.pauseOverlay.querySelector('#btn-mainmenu') as HTMLButtonElement
       const dbg = this.pauseOverlay.querySelector('#pause-debug') as HTMLDivElement
       // Add fullscreen button to pause actions
-      const actions = this.pauseOverlay.querySelector('.pause-actions') as HTMLDivElement
-      if (actions && !actions.querySelector('#btn-fullscreen')) {
+      const pauseActionsEl = this.pauseOverlay.querySelector('.pause-actions') as HTMLDivElement
+      if (pauseActionsEl && !pauseActionsEl.querySelector('#btn-fullscreen')) {
         const fs = document.createElement('button') as HTMLButtonElement
         fs.id = 'btn-fullscreen'
         fs.className = 'card'
         fs.innerHTML = '<strong>Fullscreen</strong>'
         fs.onclick = () => this.toggleFullscreen()
-        actions.insertBefore(fs, actions.firstChild)
+        pauseActionsEl.insertBefore(fs, pauseActionsEl.firstChild)
       }
       const syncVals = () => {
         if (vm && vmVal) vmVal.textContent = Number(vm.value).toFixed(2)
@@ -1027,9 +1027,9 @@ class Game {
       if (restartBtn) restartBtn.onclick = () => confirmAction('Restart the run? Are you sure?', () => location.reload())
       if (mainBtn) mainBtn.onclick = () => confirmAction('Return to main menu? Are you sure?', () => location.reload())
       // Gamepad navigation for pause actions
-      const actions = [resumeBtn, restartBtn, mainBtn].filter(Boolean) as HTMLButtonElement[]
+      const actionBtns = [resumeBtn, restartBtn, mainBtn].filter(Boolean) as HTMLButtonElement[]
       let idx = 0
-      const setSel = () => actions.forEach((b, i) => b.classList.toggle('selected', i === idx))
+      const setSel = () => actionBtns.forEach((b, i) => b.classList.toggle('selected', i === idx))
       setSel()
       let prevUp = false, prevDown = false, prevA = false
       const nav = () => {
@@ -1038,9 +1038,9 @@ class Game {
         const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.5 || gp.buttons?.[12]?.pressed)
         const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.5 || gp.buttons?.[13]?.pressed)
         const a = !!gp && gp.buttons?.[0]?.pressed
-        if (up && !prevUp) { idx = (idx - 1 + actions.length) % actions.length; setSel() }
-        if (down && !prevDown) { idx = (idx + 1) % actions.length; setSel() }
-        if (a && !prevA) actions[idx]?.click()
+        if (up && !prevUp) { idx = (idx - 1 + actionBtns.length) % actionBtns.length; setSel() }
+        if (down && !prevDown) { idx = (idx + 1) % actionBtns.length; setSel() }
+        if (a && !prevA) actionBtns[idx]?.click()
         prevUp = up; prevDown = down; prevA = a
         requestAnimationFrame(nav)
       }
