@@ -3587,11 +3587,12 @@ class Game {
   private levelUpPaint() {
     this.paintLevel += 1
     // Increase uptime (on more than off), increase DPS a bit, and extend paint life modestly
-    this.paintOnDuration = Math.min(1.4, this.paintOnDuration + 0.15)
-    this.paintOffDuration = Math.max(0.6, this.paintOffDuration - 0.12)
-    this.paintDps += 4
-    this.paintDuration = Math.min(2.5, this.paintDuration + 0.2)
-    this.paintRadius = Math.min(2.2, this.paintRadius + 0.18)
+    this.paintOnDuration = Math.min(2.5, this.paintOnDuration + 0.25)
+    this.paintOffDuration = Math.max(0.35, this.paintOffDuration - 0.15)
+    this.paintDps += 5
+    this.paintDuration = Math.min(4.5, this.paintDuration + 0.35)
+    this.paintRadius = Math.min(3.0, this.paintRadius + 0.25)
+    this.paintGap = Math.max(0.18, this.paintGap - 0.02)
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {
