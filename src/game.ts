@@ -3317,7 +3317,8 @@ class Game {
     if (!this.debugShowDamage) return
     const screen = this.worldToScreen(pos)
     const el = document.createElement('div')
-    el.textContent = `-${amount.toFixed(0)}`
+    const shown = Math.max(1, Math.round(amount))
+    el.textContent = `-${shown}`
     const style = el.style as CSSStyleDeclaration
     style.position = 'fixed'
     style.left = `${screen.x}px`
