@@ -368,6 +368,12 @@ class Game {
   frameId = 0
   // WebGL context tracking
   contextLost = false
+  // Small fullscreen button
+  fullscreenBtn?: HTMLButtonElement
+  // Debug toggles/overlay
+  debugPerfOverlay = false
+  perfOverlayEl?: HTMLDivElement
+  perfOverlayNextUpdate = 0
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
   _frustum = new THREE.Frustum()
@@ -598,6 +604,20 @@ class Game {
     dmgLab.style.marginLeft = '6px'
     dmgRow.appendChild(dmgChk); dmgRow.appendChild(dmgLab)
     wrap.appendChild(dmgRow)
+    // Debug option: performance overlay toggle
+    const perfRow = document.createElement('div')
+    perfRow.className = 'card'
+    perfRow.style.padding = '6px'
+    perfRow.style.marginTop = '6px'
+    const perfChk = document.createElement('input'); perfChk.type = 'checkbox'; perfChk.checked = this.debugPerfOverlay
+    perfChk.onchange = () => {
+      this.debugPerfOverlay = perfChk.checked
+      if (!this.debugPerfOverlay && this.perfOverlayEl) { this.perfOverlayEl.remove(); this.perfOverlayEl = undefined }
+    }
+    const perfLab = document.createElement('span'); perfLab.textContent = ' Show lightweight performance overlay'
+    perfLab.style.marginLeft = '6px'
+    perfRow.appendChild(perfChk); perfRow.appendChild(perfLab)
+    wrap.appendChild(perfRow)
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     startBtn.onclick = () => {
       // Collect selections
@@ -844,6 +864,22 @@ class Game {
     this.hud = document.createElement('div') as HTMLDivElement
     this.hud.id = 'hud'
     this.root.appendChild(this.hud)
+
+    // Small fullscreen button (bottom-right)
+    const fsFab = document.createElement('button') as HTMLButtonElement
+    fsFab.id = 'fs-fab'
+    fsFab.title = 'Fullscreen'
+    fsFab.textContent = '⛶'
+    Object.assign(fsFab.style, {
+      position: 'fixed', right: '12px', bottom: '12px', width: '34px', height: '34px',
+      borderRadius: '8px', background: 'rgba(20,28,44,0.9)', color: '#9be3ff',
+      border: '1px solid #1f2a44', font: '16px ui-monospace, monospace',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', zIndex: '40'
+    } as CSSStyleDeclaration)
+    fsFab.onclick = () => this.toggleFullscreen()
+    this.root.appendChild(fsFab)
+    this.fullscreenBtn = fsFab
 
     // HP bar
     this.hpBar = document.createElement('div')
@@ -2859,6 +2895,27 @@ class Game {
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
     if (!this.contextLost) this.renderer.render(this.scene, this.camera)
+    // Lightweight perf overlay
+    if (this.debugPerfOverlay) {
+      const now = performance.now()
+      if (now >= this.perfOverlayNextUpdate) {
+        this.perfOverlayNextUpdate = now + 250
+        if (!this.perfOverlayEl) {
+          const el = document.createElement('div')
+          el.style.position = 'fixed'; el.style.left = '8px'; el.style.bottom = '8px'
+          el.style.background = 'rgba(0,0,0,0.4)'; el.style.color = '#9be3ff'; el.style.padding = '6px 8px'
+          el.style.border = '1px solid #1f2a44'; el.style.borderRadius = '6px'; el.style.font = '12px ui-monospace, monospace'
+          el.style.zIndex = '40'
+          document.body.appendChild(el)
+          this.perfOverlayEl = el
+        }
+        const meshes = this.scene.children.length
+        const enemiesAlive = this.enemies.filter(e => e.alive).length
+        this.perfOverlayEl!.innerHTML = `Wave ${Math.max(1, Math.floor(this.gameTime / 60) + 1)} · Enemies ${enemiesAlive} · Scene children ${meshes} ${this.contextLost ? '· CONTEXT LOST' : ''}`
+      }
+    } else if (this.perfOverlayEl) {
+      this.perfOverlayEl.remove(); this.perfOverlayEl = undefined
+    }
     this.frameId++
     requestAnimationFrame(() => this.loop())
   }
