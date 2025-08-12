@@ -1293,11 +1293,7 @@ class Game {
     for (let i = 0; i < count; i++) {
       const angleOffset = (i - (count - 1) / 2) * spread
       const dir = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angleOffset)
-      // Reuse projectile if available
-      let reused = this.projectilePool.pop()
-      let mesh: THREE.Mesh
-      if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 1.6; reused.pierce = this.projectilePierce; reused.damage = this.projectileDamage }
-      else { mesh = new THREE.Mesh(this.sharedBulletGeom, this.sharedBulletMat) }
+      const mesh = new THREE.Mesh(this.sharedBulletGeom, this.sharedBulletMat)
       mesh.position.copy(start).add(dir.clone().multiplyScalar(0.12))
       mesh.position.y = 0.5
       this.scene.add(mesh)
@@ -2814,7 +2810,6 @@ class Game {
       if (p.ttl <= 0) {
         p.alive = false
         this.scene.remove(p.mesh)
-        this.projectilePool.push(p)
         continue
       }
       const prev = p.mesh.position.clone()
@@ -2881,7 +2876,6 @@ class Game {
               if (p.kind === 'rocket') this.explodeAt(p.mesh.position.clone(), this.rocketBlastRadius, p.damage)
               p.alive = false
               this.scene.remove(p.mesh)
-              this.projectilePool.push(p)
             }
             hit = true
             break
@@ -3018,10 +3012,7 @@ class Game {
   fireSideBullet(dir: THREE.Vector3) {
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    let reused = this.projectilePool.pop()
-    let mesh: THREE.Mesh
-    if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 1.6; reused.pierce = this.projectilePierce; reused.damage = this.projectileDamage * this.sideBulletDamageMultiplier }
-    else { mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat) }
+    const mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat)
     mesh.position.copy(start)
     mesh.position.y = 0.5
     this.scene.add(mesh)
@@ -3107,10 +3098,7 @@ class Game {
     // Rocket; homing handled in main projectile loop to avoid timers
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
-    let reused = this.projectilePool.pop()
-    let mesh: THREE.Mesh
-    if (reused) { mesh = reused.mesh; reused.alive = true; reused.ttl = 5.0; reused.pierce = 0; reused.damage = this.rocketDamage }
-    else { mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat) }
+    const mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat)
     mesh.position.copy(start)
     mesh.position.y = 0.6
     this.scene.add(mesh)
