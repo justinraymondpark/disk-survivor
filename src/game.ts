@@ -343,6 +343,13 @@ type Enemy = {
   hitTintColor?: number
   faceOuchUntil?: number
   nextDmgToastTime?: number
+  // Special behaviors
+  booWave10?: boolean
+  eliteAggressive?: boolean
+  // Giant enrage
+  giantEnrageUntil?: number
+  recentHits?: number
+  lastHitAt?: number
 }
 
 type Pickup = {
@@ -413,6 +420,19 @@ class Game {
         mat.dispose?.()
       }
     })
+  }
+
+  private onEnemyDamaged(e: Enemy, amount: number) {
+    // Brief, low-cost tint
+    e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
+    e.hitTintUntil = this.gameTime + 0.06
+    // Giant enrage: track rapid hits
+    if (e.type === 'giant') {
+      if ((e.lastHitAt ?? -999) < this.gameTime - 1.0) e.recentHits = 0
+      e.recentHits = (e.recentHits ?? 0) + 1
+      e.lastHitAt = this.gameTime
+      if (e.recentHits >= 3) e.giantEnrageUntil = this.gameTime + 3.0
+    }
   }
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
@@ -2178,12 +2198,14 @@ class Game {
           if (dirDot > 0.92) {
             const dmg = this.crtBeamDps * dt
             e.hp -= dmg
+            this.onEnemyDamaged(e, dmg)
+            this.onEnemyDamaged(e, dmg)
             const nowT = this.gameTime
             if ((e.nextDmgToastTime ?? 0) <= nowT) {
               this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
               e.nextDmgToastTime = nowT + 0.15
             }
-          if (e.hp <= 0) {
+            if (e.hp <= 0) {
             e.alive = false
             this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.spawnExplosion(e.mesh)
@@ -2191,7 +2213,16 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              this.spawnXP(e.mesh.position.clone())
+              // Big prize for giants
+              if (e.type === 'giant') {
+                const pos = e.mesh.position.clone()
+                // Drop several XP or a large value
+                for (let i = 0; i < 5; i++) this.spawnXP(pos.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, 0, (Math.random()-0.5)*0.6)))
+                this.spawnXP(pos.clone())
+                this.spawnXP(pos.clone())
+              } else {
+                this.spawnXP(e.mesh.position.clone())
+              }
               if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
             } else this.audio.playImpact()
           }
@@ -2221,6 +2252,7 @@ class Game {
           if (sp.distanceToSquared(ep) < hitDist * hitDist) {
             const dmg = this.whirlDamage * dt
             e.hp -= dmg
+            this.onEnemyDamaged(e, dmg)
             const nowT = this.gameTime
             if ((e.nextDmgToastTime ?? 0) <= nowT) {
               this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
@@ -2287,6 +2319,9 @@ class Game {
             if (dist < 0.5) {
               const dmg = dps * dt
               e.hp -= dmg
+              this.onEnemyDamaged(e, dmg)
+              e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
+              e.hitTintUntil = this.gameTime + 0.06
               const nowT = this.gameTime
               if ((e.nextDmgToastTime ?? 0) <= nowT) {
                 this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
@@ -2473,6 +2508,8 @@ class Game {
       const toPlayer = this.player.group.position.clone().sub(e.mesh.position)
       toPlayer.y = 0
       let dir = toPlayer.clone().normalize()
+      // Elite aggressive enemies are faster
+      if (e.eliteAggressive) dir.multiplyScalar(1.2)
       // Anti-clump hesitation: smooth decel -> brief pause -> accel cycles
       const nowTime = this.gameTime
       if (e.hesitateState == null) {
@@ -2710,8 +2747,28 @@ class Game {
       } else if (e.baseColorHex != null) {
         ;(e.mesh.material as THREE.MeshBasicMaterial).color.setHex(e.baseColorHex!)
       }
-      const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
-      e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * dt))
+      // Wave 10 Boo behavior: when looked at, creep slowly; when not, chase fast
+      if (e.booWave10) {
+        const toEnemy = e.mesh.position.clone().sub(this.camera.position).setY(0).normalize()
+        const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).setY(0).normalize()
+        const facing = camForward.dot(toEnemy) > 0.85
+        const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
+        const mult = facing ? 0.1 : 1.6
+        e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * mult * dt))
+      } else {
+        const speedScale = Math.max(0, Math.min(1, e.speedScale ?? 1))
+        let mult = 1
+        // Giant enrage: if recently hit several times, surge speed for a short time
+        if (e.type === 'giant') {
+          if ((e.lastHitAt ?? -999) > this.gameTime - 0.8) {
+            e.recentHits = (e.recentHits ?? 0) + 0 // maintained elsewhere when hit
+            if ((e.giantEnrageUntil ?? 0) > this.gameTime) mult = 1.8
+          } else {
+            e.recentHits = 0
+          }
+        }
+        e.mesh.position.add(dir.multiplyScalar(e.speed * speedScale * mult * dt))
+      }
 
       // Collide with player
       if (e.mesh.position.distanceToSquared(this.player.group.position) < (this.player.radius + 0.5) ** 2) {
@@ -2852,6 +2909,7 @@ class Game {
           if (d2 < 0.55 ** 2) {
             const dmg = p.damage
             e.hp -= dmg
+            this.onEnemyDamaged(e, dmg)
             const nowT = this.gameTime
             if ((e.nextDmgToastTime ?? 0) <= nowT) {
               this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
@@ -3052,6 +3110,7 @@ class Game {
         if (d < this.modemWaveRadius) {
           const dmg = this.modemWaveDamage + Math.floor(this.gameTime / 60)
           e.hp -= dmg
+          this.onEnemyDamaged(e, dmg)
           const nowT = this.gameTime
           if ((e.nextDmgToastTime ?? 0) <= nowT) {
             this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
@@ -3277,6 +3336,10 @@ class Game {
     }
     const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
     const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor }
+    // Wave 10 special: Boo behavior
+    if (minute === 9) enemy.booWave10 = true
+    // Rare elite: ~1 in 500
+    if (Math.random() < 1 / 500) { enemy.eliteAggressive = true; hp += 2; enemy.hp = hp }
     // Post-10 twists: modest buffs per cycle so waves feel unique
     if (minute >= 10) {
       const cycle = (minute - 10) % 6

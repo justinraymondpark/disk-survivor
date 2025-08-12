@@ -1,3 +1,12 @@
+## 0.1.21
+- Gameplay: Wave 10 “Boo” behavior (advance fast when not watched; creep when in view)
+- Gameplay: Post-wave-10 spawn cadence stays high for consistent challenge
+- Gameplay: Rare elites (~1/500) pursue more aggressively
+- Gameplay: Giants gain brief enrage after rapid hits; drop large XP haul on death
+- UX: Small bottom-right fullscreen button
+- Debug: Lightweight perf overlay (wave, enemies, scene children, geo, tex, calls, context state)
+- Perf: Pooled paint disks and explosion shards; throttled lasso geometry; shared geoms/materials for common projectiles and items; disposal on enemy removal
+- Visual: Brief hit flash on all damage sources (low-cost tint ~60ms)
 ## 0.1.20
 - Fix: Enemy hit tint now correctly resets after ~60ms for SATA Tail and Tape Whirl. Ensured all enemy spawns track `baseColorHex` so temporary tints revert properly.
 - Feature: Added new weapon `Paint.exe` (🎨)
