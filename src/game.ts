@@ -476,7 +476,7 @@ class Game {
   paintDps = 10
   paintDuration = 0.8
   paintGap = 0.35
-  paintRadius = 0.92
+  paintRadius = 1.38
   paintSwaths: { pos: THREE.Vector3; t: number; mesh: THREE.Mesh }[] = []
   lastPaintPos = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN)
   score = 0
@@ -3591,7 +3591,7 @@ class Game {
     this.paintOffDuration = Math.max(0.6, this.paintOffDuration - 0.12)
     this.paintDps += 4
     this.paintDuration = Math.min(2.5, this.paintDuration + 0.2)
-    this.paintRadius = Math.min(1.4, this.paintRadius + 0.08)
+    this.paintRadius = Math.min(1.8, this.paintRadius + 0.12)
   }
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {

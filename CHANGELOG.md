@@ -6,7 +6,7 @@
   - Toggled on/off like other uptime-based weapons; much shorter range/duration than Magic Lasso
   - Levels increase uptime (more on than off), DPS, and ground paint lifetime
 
-  - Tweak: Paint swath size doubled; paint is now opaque. Radius increases slightly with each level.
+  - Tweak: Paint swath size tripled; paint is now opaque. Radius increases a bit more with each level.
 
 ## v0.1.20 (2025-08-11)
 
