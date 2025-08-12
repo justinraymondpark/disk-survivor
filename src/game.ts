@@ -374,6 +374,14 @@ class Game {
   debugPerfOverlay = false
   perfOverlayEl?: HTMLDivElement
   perfOverlayNextUpdate = 0
+  // Pools and shared resources
+  paintDiskPool: THREE.Mesh[] = []
+  sharedPaintGeom = new THREE.CircleGeometry(1, 22)
+  sharedPaintMat = new THREE.MeshBasicMaterial({ color: 0x2c826e, transparent: false, opacity: 1, side: THREE.DoubleSide })
+  shardPool: THREE.Mesh[] = []
+  sharedShardGeom = new THREE.BoxGeometry(0.15, 0.15, 0.15)
+  // Lasso update throttle
+  lassoNextGeomAt = 0
   // Temp vectors for projections
   _tmpProj = new THREE.Vector3()
   _frustum = new THREE.Frustum()
@@ -1108,14 +1116,10 @@ class Game {
     const dbgBtn = document.createElement('button') as HTMLButtonElement
     dbgBtn.className = 'card'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
-    const fsBtn = document.createElement('button') as HTMLButtonElement
-    fsBtn.className = 'card'
-    fsBtn.innerHTML = '<strong>Fullscreen</strong>'
     btnRow.appendChild(startBtn)
     btnRow.appendChild(optBtn)
     btnRow.appendChild(chgBtn)
     btnRow.appendChild(dbgBtn)
-    btnRow.appendChild(fsBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -1133,7 +1137,6 @@ class Game {
     }
     chgBtn.onclick = () => this.showChangelog()
     dbgBtn.onclick = () => this.showDebugPanel()
-    fsBtn.onclick = () => this.toggleFullscreen()
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -2277,13 +2280,24 @@ class Game {
       const playerXZ = this.player.group.position.clone(); playerXZ.y = 0
       // Emit paint swaths only while on
       if (this.paintOn) {
+        // On mobile, cap the number of live swaths to reduce churn
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        const maxSwaths = isMobile ? 40 : 80
+        if (this.paintSwaths.length > maxSwaths) {
+          const old = this.paintSwaths.shift()!
+          this.scene.remove(old.mesh)
+          old.mesh.scale.set(1,1,1)
+          this.paintDiskPool.push(old.mesh)
+        }
         if (!Number.isFinite(this.lastPaintPos.x)) this.lastPaintPos.copy(playerXZ)
         if (playerXZ.distanceToSquared(this.lastPaintPos) >= this.paintGap * this.paintGap) {
           // Round disk under player
           const r = this.paintRadius * (0.85 + Math.random() * 0.3)
-          const geom = new THREE.CircleGeometry(r, 22)
-          const mat = new THREE.MeshBasicMaterial({ color: 0x2c826e, transparent: false, opacity: 1, side: THREE.DoubleSide })
-          const disk = new THREE.Mesh(geom, mat)
+          // Acquire from pool
+          let disk = this.paintDiskPool.pop()
+          if (!disk) disk = new THREE.Mesh(this.sharedPaintGeom, this.sharedPaintMat)
+          // scale shared geometry to radius
+          disk.scale.setScalar(r)
           disk.rotation.x = -Math.PI / 2
           disk.position.copy(playerXZ).setY(0.02)
           this.scene.add(disk)
@@ -2296,8 +2310,8 @@ class Game {
         const s = this.paintSwaths[i]
         if (this.gameTime - s.t > this.paintDuration) {
           this.scene.remove(s.mesh)
-          s.mesh.geometry.dispose()
-          ;(s.mesh.material as THREE.Material).dispose?.()
+          s.mesh.scale.set(1, 1, 1)
+          this.paintDiskPool.push(s.mesh)
           this.paintSwaths.splice(i, 1)
           continue
         }
@@ -2925,8 +2939,11 @@ class Game {
           this.perfOverlayEl = el
         }
         const meshes = this.scene.children.length
+        const info = this.renderer.info
+        const mem = info?.memory || { geometries: 0, textures: 0 }
+        const calls = info?.render?.calls ?? 0
         const enemiesAlive = this.enemies.filter(e => e.alive).length
-        this.perfOverlayEl!.innerHTML = `Wave ${Math.max(1, Math.floor(this.gameTime / 60) + 1)} · Enemies ${enemiesAlive} · Scene children ${meshes} ${this.contextLost ? '· CONTEXT LOST' : ''}`
+        this.perfOverlayEl!.innerHTML = `Wave ${Math.max(1, Math.floor(this.gameTime / 60) + 1)} · Enemies ${enemiesAlive} · Scene ${meshes} · Geo ${mem.geometries} · Tex ${mem.textures} · Calls ${calls} ${this.contextLost ? '· CONTEXT LOST' : ''}`
       }
     } else if (this.perfOverlayEl) {
       this.perfOverlayEl.remove(); this.perfOverlayEl = undefined
@@ -3474,9 +3491,9 @@ class Game {
     const shardCount = 10
     const shards: { m: THREE.Mesh; v: THREE.Vector3; life: number }[] = []
     for (let i = 0; i < shardCount; i++) {
-      const g = new THREE.BoxGeometry(0.15, 0.15, 0.15)
-      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 })
-      const m = new THREE.Mesh(g, mat)
+      let m = this.shardPool.pop()
+      if (!m) m = new THREE.Mesh(this.sharedShardGeom, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 }))
+      else (m.material as THREE.MeshBasicMaterial).color.setHex(color)
       m.position.copy(pos)
       m.position.y = 0.6
       this.scene.add(m)
@@ -3496,7 +3513,7 @@ class Game {
         alive = alive || s.life > 0
       }
       if (alive) requestAnimationFrame(tick)
-      else for (const s of shards) this.scene.remove(s.m)
+      else for (const s of shards) { this.scene.remove(s.m); this.shardPool.push(s.m) }
     }
     tick()
   }
@@ -3627,7 +3644,8 @@ class Game {
       // expire old points
       while (this.lassoPoints.length && (this.gameTime - this.lassoPoints[0].t) > this.lassoDuration) this.lassoPoints.shift()
       // update tube mesh
-      if (this.lassoMesh) {
+      if (this.lassoMesh && this.gameTime >= this.lassoNextGeomAt) {
+        this.lassoNextGeomAt = this.gameTime + 0.08
         const positions = this.lassoPoints.map(q => q.p.clone().setY(0.02))
         if (positions.length >= 2) {
           const curve = new THREE.CatmullRomCurve3(positions)
