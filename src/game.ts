@@ -1168,10 +1168,14 @@ class Game {
     const dbgBtn = document.createElement('button') as HTMLButtonElement
     dbgBtn.className = 'card'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
+    const dailyBtn = document.createElement('button') as HTMLButtonElement
+    dailyBtn.className = 'card'
+    dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
     btnRow.appendChild(startBtn)
     btnRow.appendChild(optBtn)
     btnRow.appendChild(chgBtn)
     btnRow.appendChild(dbgBtn)
+    btnRow.appendChild(dailyBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
@@ -1189,6 +1193,12 @@ class Game {
     }
     chgBtn.onclick = () => this.showChangelog()
     dbgBtn.onclick = () => this.showDebugPanel()
+    dailyBtn.onclick = () => {
+      this.isDaily = true
+      this.dailyId = this.getNewYorkDate()
+      this.buildDailyPlan(this.dailyId)
+      begin()
+    }
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -1550,7 +1560,8 @@ class Game {
   makeChoiceCard(title: string, desc: string, icon: string, apply: () => void) {
     const c = document.createElement('button')
     c.className = 'card'
-    c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}</div>`
+    const dailyTag = this.isDaily ? ' (Daily)' : ''
+    c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}${dailyTag}</div>`
     c.onclick = () => {
       // Enforce max counts
       const isWeaponLevelUp = /(\(\s*Level up\s*\))$/i.test(title)
@@ -3067,6 +3078,71 @@ class Game {
     else this.audio.resumeMusic()
   }
 
+  // Daily Disk mode
+  isDaily = false
+  dailyId = ''
+  dailyWavePlan: EnemyType[] = []
+
+  private getNewYorkDate() {
+    // Compute date in America/New_York without libs by offset approximation
+    const now = new Date()
+    // Use Intl to get NY components
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false })
+    const parts = fmt.formatToParts(now)
+    const y = parts.find(p => p.type === 'year')!.value
+    const m = parts.find(p => p.type === 'month')!.value
+    const d = parts.find(p => p.type === 'day')!.value
+    const h = Number(parts.find(p => p.type === 'hour')!.value)
+    // Roll date at 03:00 NY time
+    let dateStr = `${y}-${m}-${d}`
+    if (h < 3) {
+      const prev = new Date(now)
+      prev.setUTCDate(prev.getUTCDate() - 1)
+      const partsPrev = fmt.formatToParts(prev)
+      const y2 = partsPrev.find(p => p.type === 'year')!.value
+      const m2 = partsPrev.find(p => p.type === 'month')!.value
+      const d2 = partsPrev.find(p => p.type === 'day')!.value
+      dateStr = `${y2}-${m2}-${d2}`
+    }
+    return dateStr
+  }
+
+  private seedRng(seed: number) {
+    // xorshift32
+    let x = seed | 0
+    return () => {
+      x ^= x << 13; x ^= x >>> 17; x ^= x << 5
+      return (x >>> 0) / 0xffffffff
+    }
+  }
+
+  private hashString(s: string) {
+    let h = 2166136261 >>> 0
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0 }
+    return h >>> 0
+  }
+
+  private buildDailyPlan(id: string) {
+    const rnd = this.seedRng(this.hashString(id))
+    // Build 15 minutes worth of wave types by sampling from our existing pools
+    const pools: EnemyType[][] = [
+      ['runner'],
+      ['zigzag'],
+      ['spinner','shooter'],
+      ['charger','splitter'],
+      ['orbiter','bomber'],
+      ['teleport','sniper'],
+      ['weaver'],
+      ['brute'],
+    ]
+    const plan: EnemyType[] = []
+    for (let minute = 0; minute < 15; minute++) {
+      const pool = pools[Math.floor(rnd() * pools.length)]
+      plan[minute] = pool[Math.floor(rnd() * pool.length)]
+    }
+    this.dailyWavePlan = plan
+  }
+
   fireSideBullet(dir: THREE.Vector3) {
     const start = new THREE.Vector3()
     this.player.weaponAnchor.getWorldPosition(start)
@@ -3168,8 +3244,10 @@ class Game {
   spawnEnemyByWave(minute: number) {
     // Decide type by minute
     let type: EnemyType = 'slime'
-    // Wave table extended to 10 minutes with unique flavors (merge of upstream + new)
-    if (minute >= 10) {
+    // Daily plan override
+    if (this.isDaily && this.dailyWavePlan[minute] != null) {
+      type = this.dailyWavePlan[minute]
+    } else if (minute >= 10) {
       // Post-wave 10: cycle earlier waves with twists so each feels unique
       const cycle = (minute - 10) % 6 // cycles through 0..5 mapping to waves 4..9 flavors
       switch (cycle) {
@@ -3543,6 +3621,13 @@ class Game {
     this.audio.playEnemyDown()
     this.hitCount += 1
     this.updateHitCounter()
+  }
+
+  // Leaderboard submit helper that respects Daily mode
+  private submitScore(name: string, timeSurvived: number, score: number) {
+    const payload: any = { name, timeSurvived, score }
+    if (this.isDaily) { payload.mode = 'daily'; payload.dailyId = this.dailyId }
+    fetch('/.netlify/functions/leaderboard-submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {})
   }
   private async toggleFullscreen() {
     try {
@@ -3946,17 +4031,18 @@ class Game {
 
   private async submitLeaderboard(name: string, timeSurvived: number, score: number) {
     try {
+      const payload: any = { name, timeSurvived, score }
+      if (this.isDaily) { payload.mode = 'daily'; payload.dailyId = this.dailyId }
       await fetch('/.netlify/functions/leaderboard-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, timeSurvived, score })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       })
     } catch {}
   }
 
   private async refreshLeaderboard() {
     try {
-      const res = await fetch('/.netlify/functions/leaderboard-top')
+      const qs = this.isDaily ? `?mode=daily&dailyId=${encodeURIComponent(this.dailyId)}` : ''
+      const res = await fetch('/.netlify/functions/leaderboard-top' + qs)
       const data = await res.json()
       const list = this.overlay.querySelector('#lb-list') as HTMLDivElement
       if (!list) return

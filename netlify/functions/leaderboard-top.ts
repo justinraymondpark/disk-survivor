@@ -5,7 +5,7 @@ const TOP_N = 13
 const BUCKET = 'leaderboard'
 const KEY = 'entries.json'
 
-type Entry = { name: string; timeSurvived: number; score: number; createdAt: string }
+type Entry = { name: string; timeSurvived: number; score: number; createdAt: string; mode?: 'normal' | 'daily'; dailyId?: string }
 
 type Stored = { entries: Entry[] }
 
@@ -38,7 +38,10 @@ export const handler: Handler = async (event) => {
 
   try {
     const store = makeStore()
-    const json = (await (store as any).get(KEY, { type: 'json' })) as Stored | null
+    const mode = (event.queryStringParameters?.mode === 'daily' ? 'daily' : 'normal') as 'normal' | 'daily'
+    const dailyId = event.queryStringParameters?.dailyId || ''
+    const bucketKey = mode === 'daily' ? `daily/${dailyId}.json` : KEY
+    const json = (await (store as any).get(bucketKey, { type: 'json' })) as Stored | null
     const entries = Array.isArray(json?.entries) ? (json!.entries as Entry[]) : []
     const sorted = [...entries].sort((a, b) => (b.timeSurvived - a.timeSurvived) || (b.score - a.score)).slice(0, TOP_N)
     return ok(JSON.stringify({ entries: sorted }), 200, 'application/json')

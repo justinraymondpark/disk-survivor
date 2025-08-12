@@ -161,6 +161,14 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 No license specified yet. Add one if you plan to distribute.
 
 # Disk Survivor
+## Development notes
+
+- Performance matters: when adding new gameplay features (weapons, enemies, FX, UI), consider their impact on allocations and GPU load.
+  - Prefer pooling meshes and reusing shared geometries/materials.
+  - Throttle dynamic geometry rebuilds and CanvasTexture updates.
+  - Avoid per-frame allocations in hot loops; dispose of resources on removal.
+  - Test on mobile/low-end GPUs and watch the in-game perf overlay (Geo/Tex/Calls) for trends.
+
 
 Isometric 3D survivor-like built with Vite + TypeScript + Three.js.
 

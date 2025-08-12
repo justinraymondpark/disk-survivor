@@ -5,7 +5,7 @@ const BUCKET = 'leaderboard'
 const KEY = 'entries.json'
 const TOP_N = 100
 
-interface Entry { name: string; timeSurvived: number; score: number; createdAt: string }
+interface Entry { name: string; timeSurvived: number; score: number; createdAt: string; mode?: 'normal' | 'daily'; dailyId?: string }
 interface Stored { entries: Entry[] }
 
 function makeStore() {
@@ -39,19 +39,23 @@ export const handler: Handler = async (event) => {
     const name = String((incoming.name ?? '').toString())
     const timeSurvived = Number(incoming.timeSurvived ?? NaN)
     const score = Number(incoming.score ?? NaN)
+    const mode = (incoming.mode === 'daily' ? 'daily' : 'normal') as 'normal' | 'daily'
+    const dailyId = mode === 'daily' ? String(incoming.dailyId || '') : ''
 
     if (!name || !isFinite(timeSurvived) || !isFinite(score)) return error('Invalid payload', 400)
+    if (mode === 'daily' && !/^\d{4}-\d{2}-\d{2}$/.test(dailyId)) return error('Invalid dailyId', 400)
 
     const trimmedName = name.slice(0, 20)
 
-    const current = (await (store as any).get(KEY, { type: 'json' })) as Stored | null
+    const bucketKey = mode === 'daily' ? `daily/${dailyId}.json` : KEY
+    const current = (await (store as any).get(bucketKey, { type: 'json' })) as Stored | null
     const entries: Entry[] = Array.isArray(current?.entries) ? (current!.entries as Entry[]) : []
 
-    entries.push({ name: trimmedName, timeSurvived: Math.max(0, Math.floor(timeSurvived)), score: Math.max(0, Math.floor(score)), createdAt: new Date().toISOString() })
+    entries.push({ name: trimmedName, timeSurvived: Math.max(0, Math.floor(timeSurvived)), score: Math.max(0, Math.floor(score)), createdAt: new Date().toISOString(), mode, dailyId: mode === 'daily' ? dailyId : undefined })
 
     const sorted = entries.sort((a, b) => (b.timeSurvived - a.timeSurvived) || (b.score - a.score)).slice(0, TOP_N)
 
-    await (store as any).set(KEY, JSON.stringify({ entries: sorted }), { contentType: 'application/json' })
+    await (store as any).set(bucketKey, JSON.stringify({ entries: sorted }), { contentType: 'application/json' })
 
     return ok(JSON.stringify({ ok: true }))
   } catch (e: any) {
