@@ -6,7 +6,7 @@
   - Toggled on/off like other uptime-based weapons; much shorter range/duration than Magic Lasso
   - Levels increase uptime (more on than off), DPS, and ground paint lifetime
 
-  - Tweak: Paint swath size tripled; paint is now opaque. Radius increases more with each level and each swath has slight random size variance. Swath color changed to `#2c826e`; enemies painted use `#3c9e87` to differentiate from XP cubes. Stronger level scaling: longer uptime, longer ground lifetime, larger radius, and denser coverage per level.
+  - Tweak: Paint swath size tripled; paint is now opaque. Radius increases more with each level and each swath has slight random size variance. Swath color changed to `#2c826e`; enemies painted use `#3c9e87` to differentiate from XP cubes. Stronger level scaling: longer uptime, longer ground lifetime, larger radius, and denser coverage per level. Optional debug toggle to show floating damage numbers above enemies.
 
 ## v0.1.20 (2025-08-11)
 

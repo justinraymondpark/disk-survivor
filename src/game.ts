@@ -342,6 +342,7 @@ type Enemy = {
   hitTintUntil?: number
   hitTintColor?: number
   faceOuchUntil?: number
+  nextDmgToastTime?: number
 }
 
 type Pickup = {
@@ -501,6 +502,8 @@ class Game {
   hitCounterEl!: HTMLDivElement
   // Pending level-ups to resolve sequentially
   pendingLevelUps = 0
+  // Debug toggles
+  debugShowDamage = false
 
   private showDebugPanel() {
     if (!this.debugOverlay) {
@@ -582,6 +585,17 @@ class Game {
     // B closes
     const onKey = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'b') backBtn.click() }
     window.addEventListener('keydown', onKey, { once: true })
+    // Debug option: show damage toasts
+    const dmgRow = document.createElement('div')
+    dmgRow.className = 'card'
+    dmgRow.style.padding = '6px'
+    dmgRow.style.marginTop = '8px'
+    const dmgChk = document.createElement('input'); dmgChk.type = 'checkbox'; dmgChk.checked = this.debugShowDamage
+    dmgChk.onchange = () => { this.debugShowDamage = dmgChk.checked }
+    const dmgLab = document.createElement('span'); dmgLab.textContent = ' Show damage toasts over enemies'
+    dmgLab.style.marginLeft = '6px'
+    dmgRow.appendChild(dmgChk); dmgRow.appendChild(dmgLab)
+    wrap.appendChild(dmgRow)
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     startBtn.onclick = () => {
       // Collect selections
@@ -2195,9 +2209,16 @@ class Game {
           const ep = e.mesh.position.clone(); ep.y = 0
           const dist = ep.distanceTo(s.pos)
           if (dist <= s.radius) {
-            e.hp -= this.paintDps * dt
+            const dmg = this.paintDps * dt
+            e.hp -= dmg
             // Permanently paint enemies green-ish when touched
             e.baseColorHex = 0x3c9e87
+            // Damage toast (throttle per enemy)
+            const nowT = this.gameTime
+            if ((e.nextDmgToastTime ?? 0) <= nowT) {
+              this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+              e.nextDmgToastTime = nowT + 0.15
+            }
             if (e.hp <= 0) {
               e.alive = false
               this.scene.remove(e.mesh)
@@ -3260,6 +3281,30 @@ class Game {
     this.audio.playEnemyDown()
     this.hitCount += 1
     this.updateHitCounter()
+  }
+
+  private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
+    if (!this.debugShowDamage) return
+    const screen = this.worldToScreen(pos)
+    const el = document.createElement('div')
+    el.textContent = `-${amount.toFixed(0)}`
+    Object.assign(el.style as CSSStyleDeclaration, {
+      position: 'fixed', left: `${screen.x}px`, top: `${screen.y}px`, transform: 'translate(-50%, -50%)`,
+      color, fontFamily: 'ui-monospace, monospace', fontSize: '13px',
+      textShadow: '0 0 6px rgba(0,0,0,0.6)', pointerEvents: 'none', zIndex: '30', opacity: '1', transition: 'opacity 500ms, transform 500ms'
+    })
+    document.body.appendChild(el)
+    requestAnimationFrame(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%, -90%)' })
+    setTimeout(() => el.remove(), 520)
+  }
+
+  private worldToScreen(p: THREE.Vector3) {
+    const v = p.clone()
+    this._tmpProj.copy(v)
+    this._tmpProj.project(this.camera)
+    const x = (this._tmpProj.x * 0.5 + 0.5) * window.innerWidth
+    const y = (-this._tmpProj.y * 0.5 + 0.5) * window.innerHeight
+    return { x, y }
   }
 
   private spawnExplosion(source: THREE.Mesh) {
