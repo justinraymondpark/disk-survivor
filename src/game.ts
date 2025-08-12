@@ -870,13 +870,21 @@ class Game {
     fsFab.id = 'fs-fab'
     fsFab.title = 'Fullscreen'
     fsFab.textContent = '⛶'
-    Object.assign(fsFab.style, {
-      position: 'fixed', right: '12px', bottom: '12px', width: '34px', height: '34px',
-      borderRadius: '8px', background: 'rgba(20,28,44,0.9)', color: '#9be3ff',
-      border: '1px solid #1f2a44', font: '16px ui-monospace, monospace',
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      cursor: 'pointer', zIndex: '40'
-    } as CSSStyleDeclaration)
+    fsFab.style.position = 'fixed'
+    fsFab.style.right = '12px'
+    fsFab.style.bottom = '12px'
+    fsFab.style.width = '34px'
+    fsFab.style.height = '34px'
+    fsFab.style.borderRadius = '8px'
+    fsFab.style.background = 'rgba(20,28,44,0.9)'
+    fsFab.style.color = '#9be3ff'
+    fsFab.style.border = '1px solid #1f2a44'
+    fsFab.style.font = '16px ui-monospace, monospace'
+    fsFab.style.display = 'inline-flex'
+    ;(fsFab.style as any).alignItems = 'center'
+    ;(fsFab.style as any).justifyContent = 'center'
+    fsFab.style.cursor = 'pointer'
+    fsFab.style.zIndex = '40'
     fsFab.onclick = () => this.toggleFullscreen()
     this.root.appendChild(fsFab)
     this.fullscreenBtn = fsFab
