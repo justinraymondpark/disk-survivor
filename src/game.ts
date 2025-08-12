@@ -377,6 +377,8 @@ class Game {
   contextLost = false
   // Small fullscreen button
   fullscreenBtn?: HTMLButtonElement
+  optionsFab?: HTMLButtonElement
+  changelogFab?: HTMLButtonElement
   // Debug toggles/overlay
   debugPerfOverlay = false
   perfOverlayEl?: HTMLDivElement
@@ -950,6 +952,28 @@ class Game {
     fsFab.onclick = () => this.toggleFullscreen()
     this.root.appendChild(fsFab)
     this.fullscreenBtn = fsFab
+    // Options and Changelog FABs (small) near fullscreen (only visible on title screen)
+    const makeSmallFab = (label: string) => {
+      const b = document.createElement('button') as HTMLButtonElement
+      b.className = 'card'
+      b.style.position = 'fixed'
+      b.style.bottom = '12px'
+      b.style.width = '34px'; b.style.height = '34px'; b.style.padding = '0'
+      b.style.borderRadius = '8px'
+      b.style.background = 'rgba(20,28,44,0.9)'
+      b.style.color = '#9be3ff'
+      b.style.border = '1px solid #1f2a44'
+      b.style.font = '16px ui-monospace, monospace'
+      b.style.display = 'inline-flex'; (b.style as any).alignItems = 'center'; (b.style as any).justifyContent = 'center'
+      b.style.cursor = 'pointer'
+      b.style.zIndex = '40'
+      b.innerHTML = `<span style="line-height:16px">${label}</span>`
+      b.style.display = 'none'
+      this.root.appendChild(b)
+      return b
+    }
+    this.optionsFab = makeSmallFab('⚙️'); this.optionsFab.style.right = '56px'
+    this.changelogFab = makeSmallFab('🧾'); this.changelogFab.style.right = '100px'
 
     // HP bar
     this.hpBar = document.createElement('div')
@@ -1159,13 +1183,13 @@ class Game {
     const btnRow = document.createElement('div')
     btnRow.className = 'title-buttons'
     btnRow.style.display = 'grid'
-    btnRow.style.gridTemplateColumns = 'repeat(2, minmax(140px, 1fr))'
-    btnRow.style.gap = '8px'
-    btnRow.style.width = 'min(520px, 90vw)'
+    btnRow.style.gridTemplateColumns = 'repeat(2, minmax(120px, 1fr))'
+    btnRow.style.gap = '6px'
+    btnRow.style.width = 'min(440px, 92vw)'
     btnRow.style.margin = '0 auto'
     const startBtn = document.createElement('button') as HTMLButtonElement
     startBtn.className = 'card selected'
-    startBtn.style.padding = '10px'
+    startBtn.style.padding = '8px'
     startBtn.innerHTML = '<strong>Start</strong>'
     const optBtn = document.createElement('button') as HTMLButtonElement
     optBtn.className = 'card'
@@ -1175,11 +1199,11 @@ class Game {
     chgBtn.innerHTML = '<strong>Change Log</strong>'
     const dbgBtn = document.createElement('button') as HTMLButtonElement
     dbgBtn.className = 'card'
-    dbgBtn.style.padding = '10px'
+    dbgBtn.style.padding = '8px'
     dbgBtn.innerHTML = '<strong>Debug Mode</strong>'
     const dailyBtn = document.createElement('button') as HTMLButtonElement
     dailyBtn.className = 'card'
-    dailyBtn.style.padding = '10px'
+    dailyBtn.style.padding = '8px'
     dailyBtn.innerHTML = `<strong>Daily Disk</strong><div class="carddesc">${this.getNewYorkDate()}</div>`
     btnRow.appendChild(startBtn)
     // Small corner buttons for Options (gear) and Changelog (list)
@@ -1217,14 +1241,25 @@ class Game {
     }
     startBtn.onclick = begin
     const openOptions = () => {
-      optBtn.innerHTML = '<strong>Options</strong><div class="carddesc">Coming soon</div>'
-      setTimeout(() => (optBtn.innerHTML = '<strong>Options</strong>'), 1200)
+      const note = document.createElement('div') as HTMLDivElement
+      note.className = 'overlay'
+      const card = document.createElement('div') as HTMLDivElement
+      card.className = 'card'
+      card.innerHTML = '<strong>Options</strong><div class="carddesc">Coming soon</div>'
+      note.appendChild(card)
+      this.root.appendChild(note)
+      setTimeout(() => note.remove(), 1000)
     }
     optBtn.onclick = openOptions
     optSmall.onclick = openOptions
     const openChangelog = () => this.showChangelog()
     chgBtn.onclick = openChangelog
     chgSmall.onclick = openChangelog
+    // Show corner FABs only on title screen
+    if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
+    if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
+    this.optionsFab?.addEventListener('click', openOptions)
+    this.changelogFab?.addEventListener('click', openChangelog)
     dbgBtn.onclick = () => this.showDebugPanel()
     dailyBtn.onclick = () => {
       this.isDaily = true
@@ -1970,6 +2005,13 @@ class Game {
         if (dpadLeft && !this.uiDpadPrevLeft) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
         if (dpadRight && !this.uiDpadPrevRight) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
       }
+      // Vertical mapping to previous/next
+      const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.6 || gp.buttons?.[12]?.pressed)
+      const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.6 || gp.buttons?.[13]?.pressed)
+      if (cards.length > 0) {
+        if (up && !this.uiDpadPrevUp) this.uiSelectIndex = (this.uiSelectIndex - 1 + cards.length) % cards.length
+        if (down && !this.uiDpadPrevDown) this.uiSelectIndex = (this.uiSelectIndex + 1) % cards.length
+      }
       // Vertical navigation also maps to previous/next
       const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.6 || gp.buttons?.[12]?.pressed)
       const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.6 || gp.buttons?.[13]?.pressed)
@@ -1981,6 +2023,8 @@ class Game {
       if (a || enter) (cards[this.uiSelectIndex] || cards[0])?.click()
       this.uiDpadPrevLeft = dpadLeft
       this.uiDpadPrevRight = dpadRight
+      this.uiDpadPrevUp = up
+      this.uiDpadPrevDown = down
       this.uiDpadPrevUp = up
       this.uiDpadPrevDown = down
       // Title art animation disabled (kept static)
