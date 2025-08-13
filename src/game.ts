@@ -3477,7 +3477,7 @@ class Game {
     this.altDriveMesh = slot
     // Floppy stack
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      // Per-face materials: top uses provided 128x128 texture; sides/bottom neutral color
+      // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
       const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
@@ -3485,10 +3485,10 @@ class Game {
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const neutral = 0x2b2f3a
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
-      const matSide = new THREE.MeshBasicMaterial({ color: neutral })
-      const matBottom = new THREE.MeshBasicMaterial({ color: neutral })
+      const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
+      const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
       const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
       // Default groups are 6 in order: +x, -x, +y, -y, +z, -z
       // Remap into materials array [top, bottom, side]
@@ -3574,6 +3574,8 @@ class Game {
         } else {
           this.showDebugPanel()
         }
+        // Ensure opaque background is removed before gameplay
+        if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
         // Restore iso camera orientation
         if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
         if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
