@@ -589,6 +589,7 @@ class Game {
   altIntroAnims?: { m: THREE.Mesh; t: number; dur: number; startRX: number; endRX: number }[]
   altSelectDance?: { m: THREE.Mesh; t: number; dur: number; startScale: number; startRZ: number; makeInsert: () => void }
   altTapStartTime = 0
+  altSwipeDidCycle = false
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -3560,8 +3561,9 @@ class Game {
 		// Touch swipe for mobile: detect horizontal swipes
 		this.altTouchOnDown = (e: PointerEvent) => {
 			if (e.pointerType !== 'touch') return
-			this.altSwipeStartX = e.clientX
-			this.altSwipeActive = true
+      this.altSwipeStartX = e.clientX
+      this.altSwipeActive = true
+      this.altSwipeDidCycle = false
 			// Maximize swipe hit area
 			this.altPrevTouchAction = (document.body.style as any).touchAction
 			;(document.body.style as any).touchAction = 'none'
@@ -3569,20 +3571,20 @@ class Game {
 		}
 		this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
-			const dx = e.clientX - this.altSwipeStartX
-			// While moving, step exactly one slot per threshold crossed
-			if (Math.abs(dx) > 40) {
-				this.cycleAltFloppies(dx > 0 ? -1 : 1)
-				this.altSwipeStartX = e.clientX
-			}
+      const dx = e.clientX - this.altSwipeStartX
+      // While moving, step one slot and lock until finger lifts (prevents jitter)
+      if (!this.altSwipeDidCycle && Math.abs(dx) > 40) {
+        this.cycleAltFloppies(dx > 0 ? -1 : 1)
+        this.altSwipeDidCycle = true
+      }
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
       const dtap = performance.now() - this.altTapStartTime
-      if (Math.abs(dx) > 40) {
+      if (!this.altSwipeDidCycle && Math.abs(dx) > 40) {
         this.cycleAltFloppies(dx > 0 ? -1 : 1)
-      } else if (dtap < 250) {
+      } else if (!this.altSwipeDidCycle && dtap < 250) {
         // Treat as tap: run selection dance then insert
         const selF = this.altFloppies[0]
         const makeInsert = () => onChoose(selF.label)
