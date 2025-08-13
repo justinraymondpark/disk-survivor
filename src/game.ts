@@ -590,6 +590,17 @@ class Game {
   altSelectDance?: { m: THREE.Mesh; t: number; dur: number; startScale: number; startRZ: number; makeInsert: () => void }
   altTapStartTime = 0
   altSwipeDidCycle = false
+
+	private disposeAltBg() {
+		const bg = this.altBgMesh as (THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>) | undefined
+		if (!bg) return
+		this.scene.remove(bg)
+		;(bg.geometry as THREE.BufferGeometry).dispose()
+		const matAny = bg.material as (THREE.Material | THREE.Material[])
+		if (Array.isArray(matAny)) matAny.forEach((m) => m.dispose())
+		else matAny.dispose()
+		this.altBgMesh = undefined
+	}
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -3540,14 +3551,7 @@ class Game {
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
 			// Remove background plane and restore hidden UI
-			if (this.altBgMesh) {
-				this.scene.remove(this.altBgMesh)
-				this.altBgMesh.geometry.dispose()
-				const mat = this.altBgMesh.material
-				if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
-				else mat.dispose()
-				this.altBgMesh = undefined
-			}
+			this.disposeAltBg()
 			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
 			// Restore camera layers
 			this.camera.layers.set(0)
@@ -3565,14 +3569,7 @@ class Game {
           this.showDebugPanel()
         }
         // Ensure opaque background is removed before gameplay
-			if (this.altBgMesh) {
-				this.scene.remove(this.altBgMesh)
-				this.altBgMesh.geometry.dispose()
-				const mat2 = this.altBgMesh.material
-				if (Array.isArray(mat2)) mat2.forEach((m) => m.dispose())
-				else mat2.dispose()
-				this.altBgMesh = undefined
-			}
+			this.disposeAltBg()
         // Restore iso camera orientation
         if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
         if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
