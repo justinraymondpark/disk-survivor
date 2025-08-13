@@ -3477,13 +3477,34 @@ class Game {
     this.altDriveMesh = slot
     // Floppy stack
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      // Solid colors (reverted from textures for now)
-      const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
-      const bodyMat = new THREE.MeshBasicMaterial({ color })
-			// Allow depth to ensure proper stacking/occlusion
-			bodyMat.depthTest = true
-			bodyMat.depthWrite = true
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.8), bodyMat)
+      // Per-face materials: top uses provided 128x128 texture; sides/bottom neutral color
+      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : 'debugmode.png'
+      const loader = new THREE.TextureLoader()
+      const texTop = loader.load(`/textures/title/${texName}`)
+      ;(texTop as any).colorSpace = THREE.SRGBColorSpace
+      texTop.minFilter = THREE.LinearFilter
+      texTop.magFilter = THREE.NearestFilter
+      texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
+      const neutral = 0x2b2f3a
+      const matTop = new THREE.MeshBasicMaterial({ map: texTop })
+      const matSide = new THREE.MeshBasicMaterial({ color: neutral })
+      const matBottom = new THREE.MeshBasicMaterial({ color: neutral })
+      const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
+      // Default groups are 6 in order: +x, -x, +y, -y, +z, -z
+      // Remap into materials array [top, bottom, side]
+      const groups: { start: number; count: number; materialIndex: number }[] = []
+      geom.clearGroups()
+      // top (+y): index 2
+      groups.push({ start: 2 * 6, count: 6, materialIndex: 0 })
+      // bottom (-y): index 3
+      groups.push({ start: 3 * 6, count: 6, materialIndex: 1 })
+      // sides: +x, -x, +z, -z
+      groups.push({ start: 0 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 1 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 4 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 5 * 6, count: 6, materialIndex: 2 })
+      for (const ginfo of groups) geom.addGroup(ginfo.start, ginfo.count, ginfo.materialIndex)
+      const body = new THREE.Mesh(geom, [matTop, matBottom, matSide])
 			body.renderOrder = 1001
       // Create canvas texture for label text
       const c = document.createElement('canvas'); c.width = 256; c.height = 128
