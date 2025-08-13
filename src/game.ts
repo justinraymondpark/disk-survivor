@@ -400,6 +400,12 @@ class Game {
   sharedXPOrbMat = new THREE.MeshBasicMaterial({ color: 0x66ff88 })
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
+  // XP tier materials
+  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0x33e6c6 })
+  sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
+  sharedXPTier10Mat = new THREE.MeshBasicMaterial({ color: 0x6699ff })
+  sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
+  sharedXPTier50Mat = new THREE.MeshBasicMaterial({ color: 0xffdd55 })
   sharedVacuumGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5)
   sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x66ccff })
   projectilePool: Projectile[] = []
@@ -1451,13 +1457,25 @@ class Game {
       // Glowing blue cube
       mesh = new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
     } else {
-      // XP bundle cube (purple)
-      mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPCubeMat)
+      // XP bundle cube (tiered)
+      const wave = Math.max(0, Math.floor(this.gameTime / 60))
+              let v3 = 0.2
+             if (wave >= 2) { v3 = 0.25 }
+       if (wave >= 4) { v3 = 0.25 }
+       if (wave >= 6) { v3 = 0.3 }
+       if (wave >= 8) { v3 = 0.3 }
+       if (wave >= 10) { v3 = 0.28 }
+       if (wave >= 12) { v3 = 0.25 }
+       if (wave >= 15) { v3 = 0.22 }
+       const r = Math.random()
+       const tier = r < v3 ? 3 : 5
+      const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : this.sharedXPTier20Mat
+      mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     }
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
     this.scene.add(mesh)
-    const xpValue = kind === 'xp' ? this.computeXpBundleValue() : undefined
+    const xpValue = kind === 'xp' ? (typeof (mesh.material) !== 'undefined' ? (mesh.material === this.sharedXPTier3Mat ? 3 : mesh.material === this.sharedXPTier5Mat ? 5 : mesh.material === this.sharedXPTier10Mat ? 10 : 20) : undefined) : undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
 
@@ -1774,41 +1792,63 @@ class Game {
     this.updateInventoryUI()
   }
 
-  // When enemy dies, spawn XP
+  // When enemy dies, spawn XP (replacement odds by wave)
   spawnXP(position: THREE.Vector3) {
-    const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
-    mesh.position.copy(position)
-    mesh.position.y = 0.35
-    this.scene.add(mesh)
-    this.xpOrbs.push({ mesh, value: 1, alive: true })
-  }
+    const wave = Math.max(0, Math.floor(this.gameTime / 60))
+    let v1 = 0.8, v3 = 0.2, v5 = 0, v10 = 0, v20 = 0
+    if (wave >= 2) { v1 = 0.7; v3 = 0.25; v5 = 0.05 }
+    if (wave >= 4) { v1 = 0.5; v3 = 0.25; v5 = 0.25 }
+    if (wave >= 6) { v1 = 0.35; v3 = 0.3; v5 = 0.25; v10 = 0.1 }
+    if (wave >= 8) { v1 = 0.25; v3 = 0.3; v5 = 0.3; v10 = 0.15; v20 = 0 }
+    if (wave >= 10) { v1 = 0.18; v3 = 0.28; v5 = 0.32; v10 = 0.16; v20 = 0.06 }
+    if (wave >= 12) { v1 = 0.12; v3 = 0.25; v5 = 0.32; v10 = 0.22; v20 = 0.09 }
+    if (wave >= 15) { v1 = 0.08; v3 = 0.22; v5 = 0.3; v10 = 0.28; v20 = 0.12 }
+    // touch v20 to satisfy TS
+    if (v20 < 0) { /* no-op */ }
 
-  private getCurrentWave(): number {
-    return Math.max(0, Math.floor(this.gameTime / 60))
-  }
+    const r = Math.random()
+    let value = 1
+    if (r < v1) value = 1
+    else if (r < v1 + v3) value = 3
+    else if (r < v1 + v3 + v5) value = 5
+    else if (r < v1 + v3 + v5 + v10) value = 10
+    else value = 20
 
-  private computeXpBundleValue(multiplier: number = 1): number {
-    const wave = this.getCurrentWave()
-    const base = 3 + Math.floor(wave * 0.8)
-    const variance = 1 + Math.floor(wave / 4)
-    const rolled = base + Math.floor(Math.random() * (variance + 1))
-    return Math.min(Math.floor(rolled * multiplier), 50)
-  }
-
-  private dropXpBundleAt(position: THREE.Vector3, multiplier: number = 1): void {
-    const mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPCubeMat)
+    if (value === 1) {
+      const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
+      mesh.position.copy(position)
+      mesh.position.y = 0.35
+      this.scene.add(mesh)
+      this.xpOrbs.push({ mesh, value: 1, alive: true })
+      return
+    }
+    const mat = value === 3 ? this.sharedXPTier3Mat
+      : value === 5 ? this.sharedXPTier5Mat
+      : value === 10 ? this.sharedXPTier10Mat
+      : this.sharedXPTier20Mat
+    const mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     mesh.position.copy(position)
     mesh.position.y = 0.4
     this.scene.add(mesh)
-    const xpValue = this.computeXpBundleValue(multiplier)
-    this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue })
+    this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue: value })
   }
+
+  // getCurrentWave unused after replacement odds; keep if later needed
+  // private getCurrentWave(): number {
+  //   return Math.max(0, Math.floor(this.gameTime / 60))
+  // }
+
+     // Deprecated: computeXpBundleValue and dropXpBundleAt removed (replaced by replacement odds in spawnXP)
+
 
   private dropXpOnDeath(e: Enemy): void {
     const pos = e.mesh.position.clone()
     if (e.type === 'giant') {
-      // Large XP cube plus a few small orbs for a satisfying drop
-      this.dropXpBundleAt(pos, 2.5)
+      // 50 XP gold bundle + 3 random cubes (replacement odds)
+      const gold = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.72, 0.72), this.sharedXPTier50Mat)
+      gold.position.copy(pos); gold.position.y = 0.55
+      this.scene.add(gold)
+      this.pickups.push({ mesh: gold, kind: 'xp', alive: true, xpValue: 50 })
       for (let i = 0; i < 3; i++) {
         const offset = new THREE.Vector3((Math.random() - 0.5) * 0.8, 0, (Math.random() - 0.5) * 0.8)
         this.spawnXP(pos.clone().add(offset))

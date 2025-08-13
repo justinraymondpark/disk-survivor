@@ -3,6 +3,8 @@
 - Alt Title: more robust fade logic for non-selected disks
 - Gameplay: wave-scaled XP bundles (higher-value cubes appear in later waves)
 - Gameplay: giants now always drop a large XP cube plus a few orbs regardless of how they are killed
+- Gameplay: XP chips now use replacement odds by wave (1→3→5→10→20), not extra bundles; higher tiers replace the 1 XP chip as waves rise
+- Gameplay: Giant drop is a 50 XP gold cube plus three additional random cubes (using the same replacement odds)
 
 ## 0.1.22
 - Docs: README adds quick "Play online" link near the top
