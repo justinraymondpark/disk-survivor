@@ -2027,12 +2027,19 @@ class Game {
       if (this.optionsFab) this.optionsFab.style.display = 'none'
       if (this.changelogFab) this.changelogFab.style.display = 'none'
       if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none'
-			// Keep background aligned to camera and positioned in front
+      // Keep background aligned to camera and positioned in front; add subtle float to disks
 			if (this.altBgMesh) {
 			this.altBgMesh.position.copy(this.camera.position)
 			this.altBgMesh.quaternion.copy(this.camera.quaternion)
 			this.altBgMesh.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 			}
+      // Subtle floatiness
+      const t = performance.now() * 0.001
+      for (let i = 0; i < this.altFloppies.length; i++) {
+        const f = this.altFloppies[i].mesh
+        f.position.y += Math.sin(t * 1.6 + i) * 0.002
+        f.rotation.z = Math.sin(t * 0.8 + i * 0.5) * 0.02
+      }
       // Render and continue
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
@@ -2079,8 +2086,8 @@ class Game {
       // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
-      // Ensure FABs visible on classic title only (not Alt Title)
-      if (!this.altTitleActive) {
+    // Ensure FABs visible on title screens (classic or Alt Title)
+    if (this.showTitle || this.altTitleActive) {
         if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
         if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
         if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
@@ -3379,6 +3386,18 @@ class Game {
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
     drive.position.set(0, 1.2, 0)
     drive.renderOrder = 1001
+    // Front label texture: "Disk Survivor"
+    const frontCanvas = document.createElement('canvas'); frontCanvas.width = 512; frontCanvas.height = 128
+    const fctx = frontCanvas.getContext('2d')!
+    fctx.fillStyle = '#0a0a0a'; fctx.fillRect(0, 0, frontCanvas.width, frontCanvas.height)
+    fctx.fillStyle = '#e7efe4'; fctx.font = 'bold 60px monospace'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'
+    fctx.fillText('DISK SURVIVOR', frontCanvas.width / 2, frontCanvas.height / 2)
+    const frontTex = new THREE.CanvasTexture(frontCanvas)
+    const frontMat = new THREE.MeshBasicMaterial({ map: frontTex })
+    const frontGeom = new THREE.PlaneGeometry(4.2, 0.6)
+    const frontLabel = new THREE.Mesh(frontGeom, frontMat)
+    frontLabel.position.set(0, 0.65, 0.31)
+    drive.add(frontLabel)
     const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
     slotMat.depthTest = false
     slotMat.depthWrite = false
@@ -3388,8 +3407,10 @@ class Game {
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
-		const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      const bodyMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
+      // Per-disk colors
+      const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
+      const bodyMat = new THREE.MeshBasicMaterial({ color })
 			// Allow depth to ensure proper stacking/occlusion
 			bodyMat.depthTest = true
 			bodyMat.depthWrite = true
@@ -3422,7 +3443,9 @@ class Game {
       const angle = (i * 0.06)
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
-      m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.08, 0.7 - visualIndex * 0.02)
+      m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
+      // 2x size
+      m.scale.setScalar(2)
       m.rotation.y = angle
       g.add(m)
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y })
@@ -3498,13 +3521,13 @@ class Game {
     if (this.altFloppies.length === 0) return
     if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
     else this.altFloppies.unshift(this.altFloppies.pop()!)
-		for (let i = 0; i < this.altFloppies.length; i++) {
+    for (let i = 0; i < this.altFloppies.length; i++) {
 			const f = this.altFloppies[i]
       // Ensure selected (index 0) is visually on top by mapping logical order to reversed visual index
       const visualIndex = this.altFloppies.length - 1 - i
       const baseX = -0.45 + visualIndex * 0.58
-      const baseY = 0.05 + visualIndex * 0.08 + (i === 0 ? 0.10 : 0)
-      const baseZ = 0.7 - visualIndex * 0.02 + (i === 0 ? 0.02 : 0)
+      const baseY = 0.05 + visualIndex * 0.16 + (i === 0 ? 0.16 : 0)
+      const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
 		}
