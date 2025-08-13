@@ -576,6 +576,11 @@ class Game {
   altEnterDebounceUntil = 0
   altBgMesh?: THREE.Mesh
 	altHiddenDom?: HTMLElement[]
+	altTouchOnDown?: (e: PointerEvent) => void
+	altTouchOnMove?: (e: PointerEvent) => void
+	altTouchOnUp?: (e: PointerEvent) => void
+	altSwipeStartX = 0
+	altSwipeActive = false
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2014,7 +2019,12 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
-			// Background plane is parented to camera; no per-frame alignment needed
+			// Keep background aligned to camera and positioned in front
+			if (this.altBgMesh) {
+				this.altBgMesh.position.copy(this.camera.position)
+				this.altBgMesh.quaternion.copy(this.camera.quaternion)
+				this.altBgMesh.position.add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(this.camera.quaternion))
+			}
       // Render and continue
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
@@ -3314,19 +3324,20 @@ class Game {
 		hide(this.hud)
 		hide(this.optionsFab)
 		hide(this.changelogFab)
-		// Add opaque full-screen background as a child of the camera so it covers entire view
-    const frustumWidth = (this.camera.right - this.camera.left)
-    const frustumHeight = (this.camera.top - this.camera.bottom)
+		// Add opaque full-screen background in world, aligned to camera each frame
+		const frustumWidth = (this.camera.right - this.camera.left)
+		const frustumHeight = (this.camera.top - this.camera.bottom)
 		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.DoubleSide })
-    bgMat.depthTest = false
-    bgMat.depthWrite = false
-		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 2.0, frustumHeight * 2.0)
-    const bg = new THREE.Mesh(bgGeom, bgMat)
-    bg.renderOrder = 1000
-    // Place slightly in front of camera (negative Z in camera space)
-    bg.position.set(0, 0, -0.5)
-    this.camera.add(bg)
-    this.altBgMesh = bg
+		bgMat.depthTest = false
+		bgMat.depthWrite = false
+		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 2.2, frustumHeight * 2.2)
+		const bg = new THREE.Mesh(bgGeom, bgMat)
+		bg.renderOrder = 1000
+		bg.position.copy(this.camera.position)
+		bg.quaternion.copy(this.camera.quaternion)
+		bg.position.add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(this.camera.quaternion))
+		this.scene.add(bg)
+		this.altBgMesh = bg
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
     // Drive slot (simple box with inset)
@@ -3382,7 +3393,7 @@ class Game {
 			g.add(m)
 			this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
 		}
-    // Input: swipe/left-right cycles
+		// Input: swipe/left-right cycles
 		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
       const sel = this.altFloppies[0].mesh
       // Insert animation into drive
@@ -3396,6 +3407,10 @@ class Game {
 			// Remove background plane and restore hidden UI
 			if (this.altBgMesh) { this.camera.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+			// Remove swipe listeners
+			if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
+			if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
+			if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
         if (lbl === 'START') {
           // Start as usual
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
@@ -3415,18 +3430,33 @@ class Game {
       else if (e.key === 'ArrowLeft') cycle(-1)
       else if (e.key === 'Enter') onChoose(this.altFloppies[0].label)
     }
-    window.addEventListener('keydown', onKey)
+		window.addEventListener('keydown', onKey)
+		// Touch swipe for mobile: detect horizontal swipes
+		this.altTouchOnDown = (e: PointerEvent) => { this.altSwipeStartX = e.clientX; this.altSwipeActive = true }
+		this.altTouchOnMove = (e: PointerEvent) => {
+			if (!this.altSwipeActive) return
+			const dx = e.clientX - this.altSwipeStartX
+			if (Math.abs(dx) > 40) { this.cycleAltFloppies(dx > 0 ? -1 : 1); this.altSwipeStartX = e.clientX }
+		}
+		this.altTouchOnUp = () => { this.altSwipeActive = false }
+		window.addEventListener('pointerdown', this.altTouchOnDown)
+		window.addEventListener('pointermove', this.altTouchOnMove)
+		window.addEventListener('pointerup', this.altTouchOnUp)
   }
 
   private cycleAltFloppies(dir: number) {
     if (this.altFloppies.length === 0) return
 		if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
 		else this.altFloppies.unshift(this.altFloppies.pop()!)
-    for (let i = 0; i < this.altFloppies.length; i++) {
-      const f = this.altFloppies[i]
-			f.target.set(-0.45 + i * 0.58, 0.05 + i * 0.08, 0.7 - i * 0.02)
+		for (let i = 0; i < this.altFloppies.length; i++) {
+			const f = this.altFloppies[i]
+			// Ensure selected (index 0) is visually on top with higher Y and slight Z forward
+			const baseX = -0.45 + i * 0.58
+			const baseY = 0.05 + i * 0.08 + (i === 0 ? 0.10 : 0)
+			const baseZ = 0.7 - i * 0.02 + (i === 0 ? 0.02 : 0)
+			f.target.set(baseX, baseY, baseZ)
 			f.targetRot = (i * 0.06)
-    }
+		}
   }
 
   private chooseAltFloppy(lbl: 'START'|'DAILY'|'DEBUG') {
@@ -3439,7 +3469,7 @@ class Game {
 		this.altTitleGroup = undefined
 		this.altTitleActive = false
 		// Remove background plane and restore hidden UI
-		if (this.altBgMesh) { this.camera.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+		if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
 		if (lbl === 'START') {
 			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
