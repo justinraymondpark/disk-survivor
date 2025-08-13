@@ -2075,7 +2075,8 @@ class Game {
             }
             if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, alpha))
           }
-          const curr = ((mesh.material as any)?.opacity ?? 1) as number
+          const matAny = mesh.material as any
+          const curr = Array.isArray(matAny) ? (matAny[0]?.opacity ?? 1) : (matAny?.opacity ?? 1)
           const next = Math.max(0, curr - dt * 4)
           applyAlpha(mesh, next)
           mesh.visible = next > 0.01
@@ -3547,6 +3548,7 @@ class Game {
 		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
 		const end = g.worldToLocal(endWorld.clone())
     this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
+      this.disposeAltBg()
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
@@ -3614,7 +3616,9 @@ class Game {
         // Treat as tap: run selection dance then insert
         const selF = this.altFloppies[0]
         const makeInsert = () => onChoose(selF.label)
-        this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
+      this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
+      // Ensure background will be removed even if dance completes while other code paths are skipped
+      setTimeout(() => this.disposeAltBg(), 700)
       }
       this.altSwipeActive = false
       ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
@@ -3648,6 +3652,7 @@ class Game {
     const start = sel.position.clone()
     const end = new THREE.Vector3(0, 2.5, 0.3)
 	this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
+		this.disposeAltBg()
 		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
 		this.altTitleGroup = undefined
 		this.altTitleActive = false
