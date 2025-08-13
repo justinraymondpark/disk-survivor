@@ -1827,10 +1827,22 @@ class Game {
   // When enemy dies, spawn XP (replacement odds by wave)
   spawnXP(position: THREE.Vector3) {
     const wave = Math.max(0, Math.floor(this.gameTime / 60))
-    const v3 = wave >= 2 ? 0.25 : 0.2
+    // Baseline chip + replacement odds
+    let p1 = 0.8, p3 = 0.2, p5 = 0
+    if (wave >= 2) { p1 = 0.7; p3 = 0.25; p5 = 0.05 }
+    if (wave >= 4) { p1 = 0.5; p3 = 0.25; p5 = 0.25 }
+
     const r = Math.random()
-    const tier = r < v3 ? 3 : 5
-    const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : tier === 20 ? this.sharedXPTier20Mat : this.sharedXPTier50Mat
+    if (r < p1) {
+      const chip = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
+      chip.position.copy(position)
+      chip.position.y = 0.35
+      this.scene.add(chip)
+      this.xpOrbs.push({ mesh: chip, value: 1, alive: true })
+      return
+    }
+    const tier = r < p1 + p3 ? 3 : 5
+    const mat = tier === 3 ? this.sharedXPTier3Mat : this.sharedXPTier5Mat
     const mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     mesh.position.copy(position)
     mesh.position.y = 0.4
@@ -3707,40 +3719,40 @@ class Game {
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
     const end = new THREE.Vector3(0, 2.5, 0.3)
-	this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
-		this.disposeAltBg()
-		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
-		this.altTitleGroup = undefined
-		this.altTitleActive = false
-			// Remove background plane and restore hidden UI
-		if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
-		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
-		// Remove swipe listeners and restore touch-action
-			// Restore gameplay scene visibility
-        if (this.altHiddenScene) {
-				if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
-				if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
-				const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
-				bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
-          if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
-				this.altHiddenScene = undefined
-			}
+    this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
+      this.disposeAltBg()
+      if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
+      this.altTitleGroup = undefined
+      this.altTitleActive = false
+      // Remove background plane and restore hidden UI
+      if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+      if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+      // Restore gameplay scene visibility
+      if (this.altHiddenScene) {
+        if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
+        if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
+        const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
+        bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
+        if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
+        this.altHiddenScene = undefined
+      }
       if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
-		if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
-		if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
-		;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
+      if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
+      if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
+      ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
       // Restore iso camera orientation
       if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
       if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
-		if (lbl === 'START') {
-			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-		} else if (lbl === 'DAILY') {
-			this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
-			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-		} else {
-			this.showDebugPanel()
-		}
-	} }
+      if (lbl === 'START') {
+        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+      } else if (lbl === 'DAILY') {
+        this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+      } else {
+        this.showDebugPanel()
+      }
+    } };
+
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
     // Visual flash ring similar to shockwave
     const ringGeom = new THREE.RingGeometry(radius * 0.6, radius * 0.62, 32)
