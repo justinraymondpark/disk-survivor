@@ -2054,14 +2054,32 @@ class Game {
         const f = this.altFloppies[i]
         const mesh = f.mesh
         const ph = f.floatPhase ?? 0
-        // During insert or selection dance, freeze other disks' float and fade them out
+        // During insert or selection dance, freeze other disks' float and fade them out (body + label)
         if ((this.altInsertAnim || this.altSelectDance) && (!this.altInsertAnim || mesh !== this.altInsertAnim.m) && (!this.altSelectDance || mesh !== this.altSelectDance.m)) {
-          const mat = mesh.material as THREE.MeshBasicMaterial
-          if (!mat.transparent) mat.transparent = true
-          mat.opacity = Math.max(0, (mat.opacity ?? 1) - dt * 3)
+          const applyAlpha = (obj: any, alpha: number) => {
+            if (obj && obj.material) {
+              const m = obj.material as any
+              if (Array.isArray(m)) m.forEach((mm) => { mm.transparent = true; mm.opacity = alpha })
+              else { m.transparent = true; m.opacity = alpha }
+            }
+            if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, alpha))
+          }
+          const curr = ((mesh.material as any)?.opacity ?? 1) as number
+          const next = Math.max(0, curr - dt * 4)
+          applyAlpha(mesh, next)
+          mesh.visible = next > 0.01
         } else {
-          const mat = mesh.material as THREE.MeshBasicMaterial
-          if (mat.transparent) mat.opacity = Math.min(1, (mat.opacity ?? 1) + dt * 3)
+          // Restore visibility/alpha and sway while idle
+          const applyAlpha = (obj: any, alpha: number) => {
+            if (obj && obj.material) {
+              const m = obj.material as any
+              if (Array.isArray(m)) m.forEach((mm) => { mm.transparent = true; mm.opacity = alpha })
+              else { m.transparent = true; m.opacity = alpha }
+            }
+            if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, alpha))
+          }
+          applyAlpha(mesh, 1)
+          mesh.visible = true
           mesh.position.y = f.target.y + Math.sin(t * 1.6 + ph) * 0.025
           // XY sway (toward camera plane)
           const swayX = Math.sin(t * 0.9 + ph) * 0.02
