@@ -3578,7 +3578,7 @@ class Game {
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
     const end = new THREE.Vector3(0, 2.5, 0.3)
-	this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, startRX: sel.rotation.x, endRX: 0, onDone: () => {
+	this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
 		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
 		this.altTitleGroup = undefined
 		this.altTitleActive = false
