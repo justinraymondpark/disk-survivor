@@ -298,7 +298,6 @@ type Projectile = {
   last: THREE.Vector3
     kind?: 'rocket' | 'side' | 'bullet'
 }
-
 type Enemy = {
   mesh: THREE.Mesh
   alive: boolean
@@ -401,7 +400,7 @@ class Game {
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   // XP tier materials
-  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0x33e6c6 })
+  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0xff66cc })
   sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   sharedXPTier10Mat = new THREE.MeshBasicMaterial({ color: 0x6699ff })
   sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
@@ -411,6 +410,33 @@ class Game {
   projectilePool: Projectile[] = []
   // Lasso update throttle
   lassoNextGeomAt = 0
+  // Debug: plentiful pickups (affects heal/vacuum odds)
+  plentifulPickups = true
+
+  private makeHorseshoeMagnet(): THREE.Mesh {
+    // U-shape built from two cylinders and a top arc (torus segment)
+    const group = new THREE.Group()
+    const legGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 12)
+    const mat = new THREE.MeshBasicMaterial({ color: 0xcc3322 })
+    const left = new THREE.Mesh(legGeom, mat)
+    const right = new THREE.Mesh(legGeom, mat)
+    left.position.set(-0.18, 0.3, 0)
+    right.position.set(0.18, 0.3, 0)
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.08, 8, 24, Math.PI), mat)
+    arc.rotation.set(Math.PI / 2, 0, 0)
+    arc.position.set(0, 0.6, 0)
+    group.add(left, right, arc)
+    // Silver tips
+    const tipMat = new THREE.MeshBasicMaterial({ color: 0xdddddd })
+    const tipGeom = new THREE.CylinderGeometry(0.085, 0.085, 0.08, 10)
+    const t1 = new THREE.Mesh(tipGeom, tipMat); t1.position.copy(left.position).setY(0.04)
+    const t2 = new THREE.Mesh(tipGeom, tipMat); t2.position.copy(right.position).setY(0.04)
+    group.add(t1, t2)
+    group.rotation.x = 0
+    const wrapper = new THREE.Mesh(new THREE.BoxGeometry(0.001,0.001,0.001), new THREE.MeshBasicMaterial({ visible: false }))
+    wrapper.add(group)
+    return wrapper
+  }
 
   private disposeObjectDeep(obj: THREE.Object3D) {
     obj.traverse((node: any) => {
@@ -1440,8 +1466,11 @@ class Game {
     let kind: Pickup['kind']
     if (forceKind) kind = forceKind
     else {
-      if (roll < 0.03) kind = 'vacuum' // rarer
-      else if (roll < 0.33) kind = 'heal'
+      // Odds reduced if plentifulPickups is off
+      const vacOdds = this.plentifulPickups ? 0.03 : 0.005
+      const healOdds = this.plentifulPickups ? 0.33 : 0.1
+      if (roll < vacOdds) kind = 'vacuum'
+      else if (roll < healOdds) kind = 'heal'
       else kind = 'xp'
     }
     let mesh: THREE.Mesh
@@ -1454,28 +1483,21 @@ class Game {
       mesh = new THREE.Mesh(prism, mat)
       mesh.rotation.x = -Math.PI / 2
     } else if (kind === 'vacuum') {
-      // Glowing blue cube
-      mesh = new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
+      // Horseshoe magnet pickup
+      mesh = this.makeHorseshoeMagnet()
     } else {
       // XP bundle cube (tiered)
       const wave = Math.max(0, Math.floor(this.gameTime / 60))
-              let v3 = 0.2
-             if (wave >= 2) { v3 = 0.25 }
-       if (wave >= 4) { v3 = 0.25 }
-       if (wave >= 6) { v3 = 0.3 }
-       if (wave >= 8) { v3 = 0.3 }
-       if (wave >= 10) { v3 = 0.28 }
-       if (wave >= 12) { v3 = 0.25 }
-       if (wave >= 15) { v3 = 0.22 }
-       const r = Math.random()
-       const tier = r < v3 ? 3 : 5
-      const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : this.sharedXPTier20Mat
+      const v3 = wave >= 2 ? 0.25 : 0.2
+      const r = Math.random()
+      const tier = r < v3 ? 3 : 5
+      const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : tier === 20 ? this.sharedXPTier20Mat : this.sharedXPTier50Mat
       mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     }
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
     this.scene.add(mesh)
-    const xpValue = kind === 'xp' ? (typeof (mesh.material) !== 'undefined' ? (mesh.material === this.sharedXPTier3Mat ? 3 : mesh.material === this.sharedXPTier5Mat ? 5 : mesh.material === this.sharedXPTier10Mat ? 10 : 20) : undefined) : undefined
+    const xpValue = kind === 'xp' ? (typeof (mesh.material) !== 'undefined' ? (mesh.material === this.sharedXPTier3Mat ? 3 : mesh.material === this.sharedXPTier5Mat ? 5 : mesh.material === this.sharedXPTier10Mat ? 10 : mesh.material === this.sharedXPTier20Mat ? 20 : 50) : undefined) : undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
 
@@ -1585,7 +1607,6 @@ class Game {
     cards.forEach((c, i) => c.classList.toggle('selected', i === 0))
     setTimeout(() => { cards.forEach((c) => (c.disabled = false)) }, 500)
   }
-
   rollChoices(num: number) {
     const pool: { title: string; desc: string; icon: string; apply: () => void }[] = []
 
@@ -1795,51 +1816,16 @@ class Game {
   // When enemy dies, spawn XP (replacement odds by wave)
   spawnXP(position: THREE.Vector3) {
     const wave = Math.max(0, Math.floor(this.gameTime / 60))
-    let v1 = 0.8, v3 = 0.2, v5 = 0, v10 = 0, v20 = 0
-    if (wave >= 2) { v1 = 0.7; v3 = 0.25; v5 = 0.05 }
-    if (wave >= 4) { v1 = 0.5; v3 = 0.25; v5 = 0.25 }
-    if (wave >= 6) { v1 = 0.35; v3 = 0.3; v5 = 0.25; v10 = 0.1 }
-    if (wave >= 8) { v1 = 0.25; v3 = 0.3; v5 = 0.3; v10 = 0.15; v20 = 0 }
-    if (wave >= 10) { v1 = 0.18; v3 = 0.28; v5 = 0.32; v10 = 0.16; v20 = 0.06 }
-    if (wave >= 12) { v1 = 0.12; v3 = 0.25; v5 = 0.32; v10 = 0.22; v20 = 0.09 }
-    if (wave >= 15) { v1 = 0.08; v3 = 0.22; v5 = 0.3; v10 = 0.28; v20 = 0.12 }
-    // touch v20 to satisfy TS
-    if (v20 < 0) { /* no-op */ }
-
+    const v3 = wave >= 2 ? 0.25 : 0.2
     const r = Math.random()
-    let value = 1
-    if (r < v1) value = 1
-    else if (r < v1 + v3) value = 3
-    else if (r < v1 + v3 + v5) value = 5
-    else if (r < v1 + v3 + v5 + v10) value = 10
-    else value = 20
-
-    if (value === 1) {
-      const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
-      mesh.position.copy(position)
-      mesh.position.y = 0.35
-      this.scene.add(mesh)
-      this.xpOrbs.push({ mesh, value: 1, alive: true })
-      return
-    }
-    const mat = value === 3 ? this.sharedXPTier3Mat
-      : value === 5 ? this.sharedXPTier5Mat
-      : value === 10 ? this.sharedXPTier10Mat
-      : this.sharedXPTier20Mat
+    const tier = r < v3 ? 3 : 5
+    const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : tier === 20 ? this.sharedXPTier20Mat : this.sharedXPTier50Mat
     const mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     mesh.position.copy(position)
     mesh.position.y = 0.4
     this.scene.add(mesh)
-    this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue: value })
+    this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue: tier })
   }
-
-  // getCurrentWave unused after replacement odds; keep if later needed
-  // private getCurrentWave(): number {
-  //   return Math.max(0, Math.floor(this.gameTime / 60))
-  // }
-
-     // Deprecated: computeXpBundleValue and dropXpBundleAt removed (replaced by replacement odds in spawnXP)
-
 
   private dropXpOnDeath(e: Enemy): void {
     const pos = e.mesh.position.clone()
@@ -1906,7 +1892,6 @@ class Game {
     requestAnimationFrame(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, -70%)' })
     setTimeout(() => t.remove(), 650)
   }
-
   applyTheme(theme: Theme) {
     if (this.currentTheme === theme) return
     this.currentTheme = theme
@@ -2246,7 +2231,6 @@ class Game {
     // Hide non-gameplay FABs during gameplay
     if (this.optionsFab) this.optionsFab.style.display = 'none'
     if (this.changelogFab) this.changelogFab.style.display = 'none'
-
     // Always allow free rotation before theme select
     this.input.updateGamepad()
     let aimVector = new THREE.Vector3()
@@ -2596,7 +2580,6 @@ class Game {
         }
       }
     }
-
     // Sata Cable Tail update (follow and flap)
     if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
       // Keep tail anchored to player local, and just animate local offsets for a floppy feel
@@ -3263,7 +3246,6 @@ class Game {
         this.gainXP(orb.value)
       }
     }
-
     for (const pk of this.pickups) {
       if (!pk.alive) continue
       pk.mesh.rotation.y += dt * 2
@@ -4252,7 +4234,6 @@ class Game {
       }, 150)
     } catch {}
   }
-
   private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
     if (!this.debugShowDamage) return
     const screen = this.worldToScreen(pos)
@@ -4591,19 +4572,11 @@ class Game {
   private levelUpDotMatrix() {
     this.sideBulletDamageMultiplier = Math.min(2.0, this.sideBulletDamageMultiplier + 0.2)
   }
-
   private levelUpWhirl() {
     this.whirlLevel += 1
     this.whirlRadius = Math.min(3.8, this.whirlRadius + 0.3)
     this.whirlDamage += 6
     this.whirlSpeed = Math.min(4.2, this.whirlSpeed + 0.2)
-    // Add more saws at key levels up to 6
-    if (this.whirlSaws.length < 6 && (this.whirlLevel === 2 || this.whirlLevel === 4)) {
-      const createSaw = () => new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 8, 16), new THREE.MeshBasicMaterial({ color: 0xffcc66 }))
-      const s = createSaw()
-      this.scene.add(s)
-      this.whirlSaws.push(s)
-    }
   }
 
   private levelUpSataTail() {
