@@ -2021,6 +2021,10 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
+      // Ensure non-title FABs remain hidden while Alt Title is active
+      if (this.optionsFab) this.optionsFab.style.display = 'none'
+      if (this.changelogFab) this.changelogFab.style.display = 'none'
+      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none'
 			// Keep background aligned to camera and positioned in front
 			if (this.altBgMesh) {
 			this.altBgMesh.position.copy(this.camera.position)
@@ -2073,9 +2077,12 @@ class Game {
       // Title art animation disabled (kept static)
       // Render and continue loop without running game logic
       this.renderer.render(this.scene, this.camera)
-      // Ensure FABs visible on title
-      if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
-      if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
+      // Ensure FABs visible on classic title only (not Alt Title)
+      if (!this.altTitleActive) {
+        if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
+        if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
+        if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
+      }
       requestAnimationFrame(() => this.loop())
       return
     }
@@ -2161,6 +2168,9 @@ class Game {
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Show touch pause only during gameplay
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
+      if (this.optionsFab) this.optionsFab.style.display = 'none'
+      if (this.changelogFab) this.changelogFab.style.display = 'none'
+      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none'
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
       return
@@ -3348,11 +3358,8 @@ class Game {
 		bg.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 		this.scene.add(bg)
 		this.altBgMesh = bg
-		// Force camera to only render Alt Title layer while active
-		this.camera.layers.set(this.altLayer)
-		g.traverse((obj) => obj.layers.enable(this.altLayer))
-		this.altBgMesh.layers.enable(this.altLayer)
-		this.scene.children.forEach((obj) => { if (obj !== g && obj !== this.altBgMesh) obj.layers.disable(this.altLayer) })
+    // Keep everything on default layer; rely on oversized opaque background + DOM hides
+    // Ensures we don't accidentally hide needed DOM buttons
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
     // Drive slot (simple box with inset)
