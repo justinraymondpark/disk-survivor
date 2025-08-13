@@ -3506,14 +3506,7 @@ class Game {
       for (const ginfo of groups) geom.addGroup(ginfo.start, ginfo.count, ginfo.materialIndex)
       const body = new THREE.Mesh(geom, [matTop, matBottom, matSide])
 			body.renderOrder = 1001
-      // Create canvas texture for label text
-      const c = document.createElement('canvas'); c.width = 256; c.height = 128
-      const ctx = c.getContext('2d')!
-      ctx.fillStyle = '#e7efe4'; ctx.fillRect(0, 0, c.width, c.height)
-      ctx.fillStyle = '#0a0a0a'; ctx.font = 'bold 36px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillText(label === 'START' ? 'START' : label === 'DAILY' ? 'DAILY DISK' : 'DEBUG MODE', c.width / 2, c.height / 2)
-      const tex = new THREE.CanvasTexture(c)
-      // Removing text labels (textures already include text)
+      // No overlay text label (top texture already includes text)
       return body
     }
     const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
