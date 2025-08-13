@@ -3317,7 +3317,7 @@ class Game {
 		// Add opaque full-screen background as a child of the camera so it covers entire view
     const frustumWidth = (this.camera.right - this.camera.left)
     const frustumHeight = (this.camera.top - this.camera.bottom)
-		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.BackSide })
+		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.DoubleSide })
     bgMat.depthTest = false
     bgMat.depthWrite = false
 		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 2.0, frustumHeight * 2.0)
@@ -3345,12 +3345,13 @@ class Game {
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
-    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
+		const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
       const bodyMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
-      bodyMat.depthTest = false
-      bodyMat.depthWrite = false
+			// Allow depth to ensure proper stacking/occlusion
+			bodyMat.depthTest = true
+			bodyMat.depthWrite = true
       const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 1.8), bodyMat)
-      body.renderOrder = 1001
+			body.renderOrder = 1001
       // Create canvas texture for label text
       const c = document.createElement('canvas'); c.width = 256; c.height = 128
       const ctx = c.getContext('2d')!
@@ -3359,11 +3360,12 @@ class Game {
       ctx.fillText(label === 'START' ? 'START' : label === 'DAILY' ? 'DAILY DISK' : 'DEBUG MODE', c.width / 2, c.height / 2)
       const tex = new THREE.CanvasTexture(c)
       const labelGeom = new THREE.PlaneGeometry(1.2, 0.5)
-      const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false })
-      labelMat.depthTest = false
-      labelMat.depthWrite = false
+			const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false })
+			// Keep label visible on top surface
+			labelMat.depthTest = true
+			labelMat.depthWrite = false
       const labelMesh = new THREE.Mesh(labelGeom, labelMat)
-      labelMesh.renderOrder = 1002
+			labelMesh.renderOrder = 1002
       labelMesh.rotation.x = -Math.PI / 2
       labelMesh.position.set(0, 0.035, 0.2)
       body.add(labelMesh)
@@ -3371,22 +3373,23 @@ class Game {
     }
     const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
     this.altFloppies = []
-    for (let i = 0; i < items.length; i++) {
-      const m = makeFloppy(items[i])
-      const angle = (i * 0.05)
-      // Tighten spacing and center under slot
-      m.position.set(-0.45 + i * 0.6, 0.0 + i * 0.012, 0.7 - i * 0.008)
-      m.rotation.y = angle
-      g.add(m)
-      this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
-    }
+		for (let i = 0; i < items.length; i++) {
+			const m = makeFloppy(items[i])
+			const angle = (i * 0.06)
+			// Stack with visible elevation; center under slot
+			m.position.set(-0.45 + i * 0.58, 0.05 + i * 0.08, 0.7 - i * 0.02)
+			m.rotation.y = angle
+			g.add(m)
+			this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
+		}
     // Input: swipe/left-right cycles
-    const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
+		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
       const sel = this.altFloppies[0].mesh
       // Insert animation into drive
       const start = sel.position.clone()
-      const end = new THREE.Vector3(0, 2.5, 0.3)
-		this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+			const slotPos = this.altDriveMesh ? this.altDriveMesh.position.clone() : new THREE.Vector3(0, 1.3, 0.31)
+			const end = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
+		this.altInsertAnim = { m: sel, t: 0, dur: 520, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
@@ -3417,12 +3420,12 @@ class Game {
 
   private cycleAltFloppies(dir: number) {
     if (this.altFloppies.length === 0) return
-    if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
-    else this.altFloppies.unshift(this.altFloppies.pop()!)
+		if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
+		else this.altFloppies.unshift(this.altFloppies.pop()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
       const f = this.altFloppies[i]
-      f.target.set(-0.45 + i * 0.6, 0.0 + i * 0.012, 0.7 - i * 0.008)
-      f.targetRot = (i * 0.05)
+			f.target.set(-0.45 + i * 0.58, 0.05 + i * 0.08, 0.7 - i * 0.02)
+			f.targetRot = (i * 0.06)
     }
   }
 
