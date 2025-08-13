@@ -3459,8 +3459,8 @@ class Game {
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
-      // Initially vertical (thin side) to match drive's head-on view
-      m.rotation.set(0, 0, 0)
+      // Initially flat (labels up) so faces are visible; will rotate to vertical on insert
+      m.rotation.set(-Math.PI / 2, 0, 0)
       // 2x size
       m.scale.setScalar(2)
       m.rotation.y = angle
@@ -3550,8 +3550,8 @@ class Game {
       const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
-      // Ensure disks are vertical in idle; rotate flat only during insert animation if desired later
-      f.mesh.rotation.x = 0
+      // Keep disks face-up during idle (flat)
+      f.mesh.rotation.x = -Math.PI / 2
 		}
   }
 
