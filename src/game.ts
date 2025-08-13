@@ -572,7 +572,7 @@ class Game {
   altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
-  altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; onDone: () => void }
+  altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
   altEnterDebounceUntil = 0
   altBgMesh?: THREE.Mesh
 	altHiddenDom?: HTMLElement[]
@@ -2018,6 +2018,7 @@ class Game {
         const p = new THREE.Vector3().lerpVectors(anim.start, anim.end, e)
         anim.m.position.copy(p)
         anim.m.rotation.y = anim.startR + (anim.endR - anim.startR) * e
+        anim.m.rotation.x = anim.startRX + (anim.endRX - anim.startRX) * e
         if (u >= 1) { const done = anim.onDone; this.altInsertAnim = undefined; done() }
       }
       // Smoothly tween floppy positions/rotations
@@ -3458,8 +3459,8 @@ class Game {
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
-      // Lay each floppy flat (labels up)
-      m.rotation.set(-Math.PI / 2, 0, 0)
+      // Initially vertical (thin side) to match drive's head-on view
+      m.rotation.set(0, 0, 0)
       // 2x size
       m.scale.setScalar(2)
       m.rotation.y = angle
@@ -3475,7 +3476,7 @@ class Game {
 		// Convert world slot position into group-local for consistent animation target
 		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
 		const end = g.worldToLocal(endWorld.clone())
-		this.altInsertAnim = { m: sel, t: 0, dur: 520, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+    		this.altInsertAnim = { m: sel, t: 0, dur: 520, start, end, startR: sel.rotation.y, endR: 0, startRX: sel.rotation.x, endRX: 0, onDone: () => {
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
@@ -3549,6 +3550,8 @@ class Game {
       const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
+      // Ensure disks are vertical in idle; rotate flat only during insert animation if desired later
+      f.mesh.rotation.x = 0
 		}
   }
 
