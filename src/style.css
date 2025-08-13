@@ -21,6 +21,8 @@ html, body {
   margin: 0;
   background: #0d0f1a;
   overflow: hidden;
+  /* Prevent fractional device-pixel rounding gaps */
+  image-rendering: pixelated;
 }
 
 /* Title buttons: 2x2 grid by default */
@@ -37,6 +39,10 @@ html, body {
   display: block;
   width: 100vw;
   height: 100vh;
+  /* Nudge to cover potential subpixel seams on some DPRs */
+  position: fixed;
+  left: 0;
+  top: 0;
 }
 
 #hud {

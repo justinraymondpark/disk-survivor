@@ -575,6 +575,7 @@ class Game {
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; onDone: () => void }
   altEnterDebounceUntil = 0
   altBgMesh?: THREE.Mesh
+	altHiddenDom?: HTMLElement[]
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2007,8 +2008,7 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
-      // Keep background aligned to camera
-      if (this.altBgMesh) this.altBgMesh.quaternion.copy(this.camera.quaternion)
+			// Background plane is parented to camera; no per-frame alignment needed
       // Render and continue
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
@@ -3278,17 +3278,19 @@ class Game {
     this.scene.add(g)
     // Scale up to fill most of the screen (tuned)
     g.scale.set(4, 4, 4)
-    // Hide HUD/other FABs while Alt Title is active (DOM sits above canvas)
-    if (this.hud) this.hud.style.display = 'none'
-    if (this.optionsFab) this.optionsFab.style.display = 'none'
-    if (this.changelogFab) this.changelogFab.style.display = 'none'
-    // Add opaque full-screen background as a child of the camera so it covers entire view
+		// Hide UI while Alt Title is active (DOM sits above canvas)
+		this.altHiddenDom = []
+		const hide = (el?: HTMLElement | null) => { if (el) { if (!this.altHiddenDom!.includes(el)) this.altHiddenDom!.push(el); el.style.display = 'none' } }
+		hide(this.hud)
+		hide(this.optionsFab)
+		hide(this.changelogFab)
+		// Add opaque full-screen background as a child of the camera so it covers entire view
     const frustumWidth = (this.camera.right - this.camera.left)
     const frustumHeight = (this.camera.top - this.camera.bottom)
-    const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a })
+		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.BackSide })
     bgMat.depthTest = false
     bgMat.depthWrite = false
-    const bgGeom = new THREE.PlaneGeometry(frustumWidth * 1.1, frustumHeight * 1.1)
+		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 2.0, frustumHeight * 2.0)
     const bg = new THREE.Mesh(bgGeom, bgMat)
     bg.renderOrder = 1000
     // Place slightly in front of camera (negative Z in camera space)
@@ -3354,10 +3356,13 @@ class Game {
       // Insert animation into drive
       const start = sel.position.clone()
       const end = new THREE.Vector3(0, 2.5, 0.3)
-      this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
-        this.scene.remove(this.altTitleGroup!)
-        this.altTitleGroup = undefined
-        this.altTitleActive = false
+		this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+			this.scene.remove(this.altTitleGroup!)
+			this.altTitleGroup = undefined
+			this.altTitleActive = false
+			// Remove background plane and restore hidden UI
+			if (this.altBgMesh) { this.camera.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
         if (lbl === 'START') {
           // Start as usual
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
@@ -3396,19 +3401,22 @@ class Game {
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
     const end = new THREE.Vector3(0, 2.5, 0.3)
-    this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
-      if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
-      this.altTitleGroup = undefined
-      this.altTitleActive = false
-      if (lbl === 'START') {
-        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-      } else if (lbl === 'DAILY') {
-        this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
-        this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-      } else {
-        this.showDebugPanel()
-      }
-    } }
+	this.altInsertAnim = { m: sel, t: 0, dur: 450, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
+		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
+		this.altTitleGroup = undefined
+		this.altTitleActive = false
+		// Remove background plane and restore hidden UI
+		if (this.altBgMesh) { this.camera.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+		if (lbl === 'START') {
+			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+		} else if (lbl === 'DAILY') {
+			this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+		} else {
+			this.showDebugPanel()
+		}
+	} }
   }
 
   fireSideBullet(dir: THREE.Vector3) {

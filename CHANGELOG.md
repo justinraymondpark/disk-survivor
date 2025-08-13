@@ -1,5 +1,8 @@
 ## 0.1.22
 - Docs: README adds quick "Play online" link near the top
+- Alt Title: add true opaque camera-attached background plane (no UI/game bleed-through)
+- Alt Title: clean up background plane and restore hidden UI after selection
+- Fix: reduce chance of thin black bar by pinning canvas and covering subpixel seams
 
 ## 0.1.21
 - Gameplay: Wave 10 “Boo” behavior (advance fast when not watched; creep when in view)
