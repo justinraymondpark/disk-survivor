@@ -1,3 +1,7 @@
+## 0.1.23
+- Alt Title: ensure background is disposed on selection across both code paths
+- Alt Title: more robust fade logic for non-selected disks
+
 ## 0.1.22
 - Docs: README adds quick "Play online" link near the top
 - Alt Title: add true opaque camera-attached background plane (no UI/game bleed-through)
