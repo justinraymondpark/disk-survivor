@@ -1,6 +1,8 @@
 ## 0.1.23
 - Alt Title: ensure background is disposed on selection across both code paths
 - Alt Title: more robust fade logic for non-selected disks
+- Gameplay: wave-scaled XP bundles (higher-value cubes appear in later waves)
+- Gameplay: giants now always drop a large XP cube plus a few orbs regardless of how they are killed
 
 ## 0.1.22
 - Docs: README adds quick "Play online" link near the top

@@ -1457,7 +1457,7 @@ class Game {
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
     this.scene.add(mesh)
-    const xpValue = kind === 'xp' ? (Math.random() < 0.5 ? 3 : 5) : undefined
+    const xpValue = kind === 'xp' ? this.computeXpBundleValue() : undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
 
@@ -1611,7 +1611,7 @@ class Game {
       const lvl = (this.ownedUpgrades.get('XP Amplifier') ?? 0) + 1
       if (lvl <= 1) this.xpGainMultiplier = 1.2
       else if (lvl === 2) this.xpGainMultiplier = 3
-      else this.xpGainMultiplier = 1 + lvl * 1
+      else this.xpGainMultiplier = Math.min(6, 1 + lvl * 1)
       this.xpGainMultiplier = Math.min(6, this.xpGainMultiplier)
     })
 
@@ -1781,6 +1781,41 @@ class Game {
     mesh.position.y = 0.35
     this.scene.add(mesh)
     this.xpOrbs.push({ mesh, value: 1, alive: true })
+  }
+
+  private getCurrentWave(): number {
+    return Math.max(0, Math.floor(this.gameTime / 60))
+  }
+
+  private computeXpBundleValue(multiplier: number = 1): number {
+    const wave = this.getCurrentWave()
+    const base = 3 + Math.floor(wave * 0.8)
+    const variance = 1 + Math.floor(wave / 4)
+    const rolled = base + Math.floor(Math.random() * (variance + 1))
+    return Math.min(Math.floor(rolled * multiplier), 50)
+  }
+
+  private dropXpBundleAt(position: THREE.Vector3, multiplier: number = 1): void {
+    const mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPCubeMat)
+    mesh.position.copy(position)
+    mesh.position.y = 0.4
+    this.scene.add(mesh)
+    const xpValue = this.computeXpBundleValue(multiplier)
+    this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue })
+  }
+
+  private dropXpOnDeath(e: Enemy): void {
+    const pos = e.mesh.position.clone()
+    if (e.type === 'giant') {
+      // Large XP cube plus a few small orbs for a satisfying drop
+      this.dropXpBundleAt(pos, 2.5)
+      for (let i = 0; i < 3; i++) {
+        const offset = new THREE.Vector3((Math.random() - 0.5) * 0.8, 0, (Math.random() - 0.5) * 0.8)
+        this.spawnXP(pos.clone().add(offset))
+      }
+    } else {
+      this.spawnXP(pos)
+    }
   }
 
   gainXP(amount: number) {
@@ -2456,16 +2491,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              // Big prize for giants
-              if (e.type === 'giant') {
-                const pos = e.mesh.position.clone()
-                // Drop several XP or a large value
-                for (let i = 0; i < 5; i++) this.spawnXP(pos.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, 0, (Math.random()-0.5)*0.6)))
-                this.spawnXP(pos.clone())
-                this.spawnXP(pos.clone())
-              } else {
-                this.spawnXP(e.mesh.position.clone())
-              }
+              this.dropXpOnDeath(e)
               if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
             } else this.audio.playImpact()
           }
@@ -2511,7 +2537,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              this.spawnXP(e.mesh.position.clone())
+              this.dropXpOnDeath(e)
             } else {
               this.audio.playImpact()
               // Brief grey tint and face ouch
@@ -2579,7 +2605,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              this.spawnXP(e.mesh.position.clone())
+              this.dropXpOnDeath(e)
               // Zap effect on kill
               this.spawnZapEffect(wp, e.mesh.position.clone())
             } else {
@@ -2658,10 +2684,10 @@ class Game {
              if (e.face) this.scene.remove(e.face)
              this.disposeObjectDeep(e.mesh)
              if (e.face) this.disposeObjectDeep(e.face)
-              this.onEnemyDown()
-              this.score += 1
-              this.updateHud()
-              this.spawnXP(e.mesh.position.clone())
+                             this.onEnemyDown()
+               this.score += 1
+               this.updateHud()
+               this.dropXpOnDeath(e)
             }
           }
         }
@@ -3166,7 +3192,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              this.spawnXP(e.mesh.position.clone())
+              this.dropXpOnDeath(e)
               if (Math.random() < 0.25) this.dropPickup(e.mesh.position.clone())
             } else {
               this.audio.playImpact()
@@ -3763,7 +3789,7 @@ class Game {
             if (e.face) this.scene.remove(e.face)
             this.onEnemyDown()
             this.score += 1
-            this.spawnXP(e.mesh.position.clone())
+            this.dropXpOnDeath(e)
           } else {
             this.audio.playImpact()
           }
@@ -4362,7 +4388,7 @@ class Game {
           if (e.face) this.scene.remove(e.face)
           this.onEnemyDown()
           this.score += 1
-          this.spawnXP(e.mesh.position.clone())
+          this.dropXpOnDeath(e)
         } else {
           this.audio.playImpact()
         }
@@ -4453,7 +4479,7 @@ class Game {
           this.onEnemyDown()
           this.score += 1
           this.updateHud()
-          this.spawnXP(e.mesh.position.clone())
+          this.dropXpOnDeath(e)
         } else {
           this.audio.playImpact()
         }
