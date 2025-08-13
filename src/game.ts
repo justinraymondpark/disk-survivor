@@ -586,6 +586,7 @@ class Game {
 	altHiddenScene?: { ground: boolean; player: boolean; bills: boolean[] }
   altPrevIsoRot?: THREE.Euler
   altPrevIsoPos?: THREE.Vector3
+  altIntroAnims?: { m: THREE.Mesh; t: number; dur: number; startRX: number; endRX: number }[]
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2026,6 +2027,21 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
+      // Intro rotation: from vertical (0) to face-up (-PI/2)
+      if (!this.altIntroAnims) {
+        this.altIntroAnims = this.altFloppies.map((f) => ({ m: f.mesh, t: 0, dur: 600, startRX: 0, endRX: -Math.PI / 2 }))
+      }
+      if (this.altIntroAnims) {
+        let doneAll = true
+        for (const a of this.altIntroAnims) {
+          a.t = Math.min(a.dur, a.t + dt * 1000)
+          const u = a.t / a.dur
+          const e = u < 0.5 ? 2 * u * u : -1 + (4 - 2 * u) * u
+          a.m.rotation.x = a.startRX + (a.endRX - a.startRX) * e
+          if (a.t < a.dur) doneAll = false
+        }
+        if (doneAll) this.altIntroAnims = undefined
+      }
       // Ensure non-title FABs remain hidden while Alt Title is active
       if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
       if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
@@ -3459,8 +3475,8 @@ class Game {
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
-      // Initially flat (labels up) so faces are visible; will rotate to vertical on insert
-      m.rotation.set(-Math.PI / 2, 0, 0)
+      // Start vertical (thin side) and ease to face-up during intro
+      m.rotation.set(0, 0, 0)
       // 2x size
       m.scale.setScalar(2)
       m.rotation.y = angle
@@ -3550,8 +3566,8 @@ class Game {
       const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
-      // Keep disks face-up during idle (flat)
-      f.mesh.rotation.x = -Math.PI / 2
+      // Keep disks face-up during idle (flat) once intro completes
+      if (!this.altIntroAnims) f.mesh.rotation.x = -Math.PI / 2
 		}
   }
 
