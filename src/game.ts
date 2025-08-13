@@ -3477,18 +3477,9 @@ class Game {
     this.altDriveMesh = slot
     // Floppy stack
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      // Try to apply texture if available in /textures/title/
-      let bodyMat: THREE.MeshBasicMaterial
-      try {
-        const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : 'debugmode.png'
-        const tex = new THREE.TextureLoader().load(`/textures/title/${texName}`)
-        tex.colorSpace = THREE.SRGBColorSpace as any
-        bodyMat = new THREE.MeshBasicMaterial({ map: tex })
-      } catch {
-        // Per-disk fallback colors
-        const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
-        bodyMat = new THREE.MeshBasicMaterial({ color })
-      }
+      // Solid colors (reverted from textures for now)
+      const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
+      const bodyMat = new THREE.MeshBasicMaterial({ color })
 			// Allow depth to ensure proper stacking/occlusion
 			bodyMat.depthTest = true
 			bodyMat.depthWrite = true
