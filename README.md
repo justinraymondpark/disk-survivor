@@ -2,6 +2,8 @@
 
 Arcade “survivor”-style browser game built with Three.js and Vite. Move a heroic floppy disk, pick a web-1.0 theme, collect weapons/upgrades, and survive ever-growing waves.
 
+Play online: https://garfieldslament.com/
+
 ### Quick start
 
 - **Prereqs**: Node 18+ (or 20+) and npm

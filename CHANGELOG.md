@@ -1,3 +1,6 @@
+## 0.1.22
+- Docs: README adds quick "Play online" link near the top
+
 ## 0.1.21
 - Gameplay: Wave 10 “Boo” behavior (advance fast when not watched; creep when in view)
 - Gameplay: Post-wave-10 spawn cadence stays high for consistent challenge
