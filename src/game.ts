@@ -865,6 +865,7 @@ class Game {
   audio = new AudioManager()
   groundMesh!: THREE.Mesh
   groundTex?: THREE.CanvasTexture
+  grid!: THREE.GridHelper
   billboardGeocities!: THREE.Object3D
   billboardYahoo!: THREE.Object3D
   billboardDialup!: THREE.Object3D
@@ -937,10 +938,10 @@ class Game {
       if (this.groundTex) this.groundTex.needsUpdate = true
     })
 
-    const grid = new THREE.GridHelper(200, 200, 0x334455, 0x223344)
-    ;(grid.material as THREE.LineBasicMaterial).transparent = true
-    ;(grid.material as THREE.LineBasicMaterial).opacity = 0.35
-    this.scene.add(grid)
+    this.grid = new THREE.GridHelper(200, 200, 0x334455, 0x223344)
+    ;(this.grid.material as THREE.LineBasicMaterial).transparent = true
+    ;(this.grid.material as THREE.LineBasicMaterial).opacity = 0.35
+    this.scene.add(this.grid)
 
     this.billboardGeocities = this.makeBillboard('GEOCITIES', new THREE.Vector3(-6, 0.01, -6))
     this.billboardYahoo = this.makeBillboard('YAHOO DIR', new THREE.Vector3(8, 0.01, 4))
@@ -3330,8 +3331,9 @@ class Game {
     this.altTitleGroup = g
     this.scene.add(g)
 		// Hide gameplay scene elements explicitly (ground, player, billboards)
-		this.altHiddenScene = { ground: false, player: false, bills: [] }
-		if (this.groundMesh) { this.altHiddenScene.ground = this.groundMesh.visible; this.groundMesh.visible = false }
+    this.altHiddenScene = { ground: false, player: false, bills: [] }
+    if (this.groundMesh) { this.altHiddenScene.ground = this.groundMesh.visible; this.groundMesh.visible = false }
+    if (this.grid) { (this.grid as any)._prevVisible = this.grid.visible; this.grid.visible = false }
 		if (this.player?.group) { this.altHiddenScene.player = this.player.group.visible; this.player.group.visible = false }
 		const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
 		this.altHiddenScene.bills = bills.map((b) => (b ? (b.visible || false) : false))
@@ -3476,12 +3478,17 @@ class Game {
 			this.altPrevTouchAction = (document.body.style as any).touchAction
 			;(document.body.style as any).touchAction = 'none'
 		}
-		this.altTouchOnMove = (e: PointerEvent) => {
-			if (!this.altSwipeActive || e.pointerType !== 'touch') return
-			const dx = e.clientX - this.altSwipeStartX
-			if (Math.abs(dx) > 40) { this.cycleAltFloppies(dx > 0 ? -1 : 1); this.altSwipeStartX = e.clientX }
-		}
-		this.altTouchOnUp = (e: PointerEvent) => { if (e.pointerType === 'touch') { this.altSwipeActive = false; (document.body.style as any).touchAction = this.altPrevTouchAction || '' } }
+    this.altTouchOnMove = (e: PointerEvent) => {
+      if (!this.altSwipeActive || e.pointerType !== 'touch') return
+      // Only detect swipe at the end to move exactly one slot per gesture
+    }
+    this.altTouchOnUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
+      const dx = e.clientX - this.altSwipeStartX
+      if (Math.abs(dx) > 40) this.cycleAltFloppies(dx > 0 ? -1 : 1)
+      this.altSwipeActive = false
+      ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
+    }
 		window.addEventListener('pointerdown', this.altTouchOnDown, { passive: true } as any)
 		window.addEventListener('pointermove', this.altTouchOnMove, { passive: true } as any)
 		window.addEventListener('pointerup', this.altTouchOnUp, { passive: true } as any)
@@ -3517,11 +3524,12 @@ class Game {
 		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
 		// Remove swipe listeners and restore touch-action
 			// Restore gameplay scene visibility
-			if (this.altHiddenScene) {
+        if (this.altHiddenScene) {
 				if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
 				if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
 				const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
 				bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
+          if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
 				this.altHiddenScene = undefined
 			}
 		if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)

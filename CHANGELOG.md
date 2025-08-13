@@ -9,6 +9,8 @@
   - Swipe area spans full screen; temporarily sets touch-action to none while swiping on mobile
 - Alt Title: hide ground/player/billboards while active to ensure pure focus on the title scene
 - Alt Title: fix stack mapping so visually top disk is always the selected one
+  - Hide debug isometric grid during Alt Title
+  - Touch swipe now advances exactly one disk per gesture (detected on release)
 - Alt Title: clean up background plane and restore hidden UI after selection
 - Fix: reduce chance of thin black bar by pinning canvas and covering subpixel seams
 - Pause: reliable controller navigation on pause menu (D-pad/left stick selects; A confirms)
