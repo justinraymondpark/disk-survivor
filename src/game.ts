@@ -3748,10 +3748,10 @@ class Game {
       } else if (lbl === 'DAILY') {
         this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
         this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-      } else {
+            } else {
         this.showDebugPanel()
       }
-        };
+      }};
   }
  
    private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
