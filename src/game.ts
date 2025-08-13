@@ -569,7 +569,7 @@ class Game {
   // Alt Title state
   altTitleActive = false
   altTitleGroup?: THREE.Group
-  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG'; target: THREE.Vector3; targetRot: number }[] = []
+  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; onDone: () => void }
@@ -2024,21 +2024,23 @@ class Game {
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
       // Ensure non-title FABs remain hidden while Alt Title is active
-      if (this.optionsFab) this.optionsFab.style.display = 'none'
-      if (this.changelogFab) this.changelogFab.style.display = 'none'
-      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none'
+      if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
+      if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
+      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
       // Keep background aligned to camera and positioned in front; add subtle float to disks
 			if (this.altBgMesh) {
 			this.altBgMesh.position.copy(this.camera.position)
 			this.altBgMesh.quaternion.copy(this.camera.quaternion)
 			this.altBgMesh.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 			}
-      // Subtle floatiness
+      // Slightly stronger floatiness
       const t = performance.now() * 0.001
       for (let i = 0; i < this.altFloppies.length; i++) {
-        const f = this.altFloppies[i].mesh
-        f.position.y += Math.sin(t * 1.6 + i) * 0.002
-        f.rotation.z = Math.sin(t * 0.8 + i * 0.5) * 0.02
+        const f = this.altFloppies[i]
+        const mesh = f.mesh
+        const ph = f.floatPhase ?? 0
+        mesh.position.y = f.target.y + Math.sin(t * 1.6 + ph) * 0.025
+        mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
       }
       // Render and continue
       this.renderer.render(this.scene, this.camera)
@@ -3347,8 +3349,8 @@ class Game {
 		bills.forEach((b) => { if (b) b.visible = false })
     // Scale up to fill most of the screen (tuned)
     g.scale.set(4, 4, 4)
-    // Birds-eye view: rotate the entire group to flatten toward camera
-    g.rotation.x = -Math.PI / 2
+    // Birds-eye view: rotate disks to lay flat, labels face up
+    // Keep group unrotated; rotate individual floppies and adjust positions
 		// Hide UI while Alt Title is active (DOM sits above canvas)
 		this.altHiddenDom = []
 		const hide = (el?: HTMLElement | null) => { if (el) { if (!this.altHiddenDom!.includes(el)) this.altHiddenDom!.push(el); el.style.display = 'none' } }
@@ -3434,7 +3436,7 @@ class Game {
 			labelMat.depthWrite = false
       const labelMesh = new THREE.Mesh(labelGeom, labelMat)
       labelMesh.renderOrder = 1002
-      // Keep label facing camera under birds-eye
+      // Label lies on top of the floppy (face up)
       labelMesh.rotation.x = -Math.PI / 2
       labelMesh.position.set(0, 0.035, 0.2)
       body.add(labelMesh)
@@ -3449,11 +3451,13 @@ class Game {
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
+      // Lay each floppy flat (labels up)
+      m.rotation.set(-Math.PI / 2, 0, 0)
       // 2x size
       m.scale.setScalar(2)
       m.rotation.y = angle
       g.add(m)
-      this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y })
+      this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
 		// Input: swipe/left-right cycles
 		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
