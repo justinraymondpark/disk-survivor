@@ -2027,21 +2027,8 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
-      // Intro rotation: from vertical (0) to face-up (-PI/2)
-      if (!this.altIntroAnims) {
-        this.altIntroAnims = this.altFloppies.map((f) => ({ m: f.mesh, t: 0, dur: 600, startRX: 0, endRX: -Math.PI / 2 }))
-      }
-      if (this.altIntroAnims) {
-        let doneAll = true
-        for (const a of this.altIntroAnims) {
-          a.t = Math.min(a.dur, a.t + dt * 1000)
-          const u = a.t / a.dur
-          const e = u < 0.5 ? 2 * u * u : -1 + (4 - 2 * u) * u
-          a.m.rotation.x = a.startRX + (a.endRX - a.startRX) * e
-          if (a.t < a.dur) doneAll = false
-        }
-        if (doneAll) this.altIntroAnims = undefined
-      }
+      // Intro rotation removed (per request): disks stay face-up until selection triggers insert
+      this.altIntroAnims = undefined
       // Ensure non-title FABs remain hidden while Alt Title is active
       if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
       if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
@@ -2058,8 +2045,17 @@ class Game {
         const f = this.altFloppies[i]
         const mesh = f.mesh
         const ph = f.floatPhase ?? 0
-        mesh.position.y = f.target.y + Math.sin(t * 1.6 + ph) * 0.025
-        mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
+        // During insert animation, freeze other disks' float and fade them out
+        if (this.altInsertAnim && mesh !== this.altInsertAnim.m) {
+          const mat = mesh.material as THREE.MeshBasicMaterial
+          if (!mat.transparent) mat.transparent = true
+          mat.opacity = Math.max(0, (mat.opacity ?? 1) - dt * 3)
+        } else {
+          const mat = mesh.material as THREE.MeshBasicMaterial
+          if (mat.transparent) mat.opacity = Math.min(1, (mat.opacity ?? 1) + dt * 3)
+          mesh.position.y = f.target.y + Math.sin(t * 1.6 + ph) * 0.025
+          mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
+        }
       }
       // Render and continue
       this.renderer.render(this.scene, this.camera)
@@ -3492,7 +3488,7 @@ class Game {
 		// Convert world slot position into group-local for consistent animation target
 		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
 		const end = g.worldToLocal(endWorld.clone())
-    		this.altInsertAnim = { m: sel, t: 0, dur: 520, start, end, startR: sel.rotation.y, endR: 0, startRX: sel.rotation.x, endRX: 0, onDone: () => {
+		this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: -Math.PI / 2, endRX: 0, onDone: () => {
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
