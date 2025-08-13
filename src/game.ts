@@ -2027,10 +2027,10 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
-      // Force idle orientation: face-up labels, unless the disk is currently inserting
+      // Force idle orientation: vertical/thin-side, unless the disk is currently inserting
       if (!this.altInsertAnim) {
         for (const f of this.altFloppies) {
-          f.mesh.rotation.x = -Math.PI / 2
+          f.mesh.rotation.x = 0
         }
       }
       // Intro rotation removed (per request): disks stay face-up until selection triggers insert
@@ -3477,8 +3477,8 @@ class Game {
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
-      // Idle face-up orientation
-      m.rotation.set(-Math.PI / 2, 0, 0)
+      // Idle vertical orientation (thin side)
+      m.rotation.set(0, 0, 0)
       // 2x size
       m.scale.setScalar(2)
       m.rotation.y = angle
@@ -3494,7 +3494,7 @@ class Game {
 		// Convert world slot position into group-local for consistent animation target
 		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
 		const end = g.worldToLocal(endWorld.clone())
-    this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: -Math.PI / 2, endRX: 0, onDone: () => {
+    this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
@@ -3568,8 +3568,8 @@ class Game {
       const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
-      // Keep disks face-up during idle (flat)
-      f.mesh.rotation.x = -Math.PI / 2
+      // Keep disks vertical during idle (thin side)
+      f.mesh.rotation.x = 0
 		}
   }
 
