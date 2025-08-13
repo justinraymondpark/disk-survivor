@@ -3347,6 +3347,8 @@ class Game {
 		bills.forEach((b) => { if (b) b.visible = false })
     // Scale up to fill most of the screen (tuned)
     g.scale.set(4, 4, 4)
+    // Birds-eye view: rotate the entire group to flatten toward camera
+    g.rotation.x = -Math.PI / 2
 		// Hide UI while Alt Title is active (DOM sits above canvas)
 		this.altHiddenDom = []
 		const hide = (el?: HTMLElement | null) => { if (el) { if (!this.altHiddenDom!.includes(el)) this.altHiddenDom!.push(el); el.style.display = 'none' } }
@@ -3385,6 +3387,8 @@ class Game {
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
     drive.position.set(0, 1.2, 0)
+    // Tilt drive up slightly toward camera (~15deg)
+    drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
     // Front label texture: "Disk Survivor"
     const frontCanvas = document.createElement('canvas'); frontCanvas.width = 512; frontCanvas.height = 128
@@ -3429,7 +3433,8 @@ class Game {
 			labelMat.depthTest = true
 			labelMat.depthWrite = false
       const labelMesh = new THREE.Mesh(labelGeom, labelMat)
-			labelMesh.renderOrder = 1002
+      labelMesh.renderOrder = 1002
+      // Keep label facing camera under birds-eye
       labelMesh.rotation.x = -Math.PI / 2
       labelMesh.position.set(0, 0.035, 0.2)
       body.add(labelMesh)

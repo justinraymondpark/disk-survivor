@@ -12,6 +12,7 @@
   - Hide debug isometric grid during Alt Title
   - Touch swipe now advances exactly one disk per gesture (detected on release)
 - Alt Title: themed floppy colors (Start black, Daily green, Debug grey), 2x floppy size, subtle float motion; front drive label "DISK SURVIVOR"; FABs visible on Alt Title
+  - Birds-eye layout for Alt Title (group rotated overhead), drive tilted ~15° toward camera
 - Alt Title: clean up background plane and restore hidden UI after selection
 - Fix: reduce chance of thin black bar by pinning canvas and covering subpixel seams
 - Pause: reliable controller navigation on pause menu (D-pad/left stick selects; A confirms)
