@@ -3458,9 +3458,18 @@ class Game {
     this.altDriveMesh = slot
     // Floppy stack
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
-      // Per-disk colors
-      const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
-      const bodyMat = new THREE.MeshBasicMaterial({ color })
+      // Try to apply texture if available in /textures/title/
+      let bodyMat: THREE.MeshBasicMaterial
+      try {
+        const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : 'debugmode.png'
+        const tex = new THREE.TextureLoader().load(`/textures/title/${texName}`)
+        tex.colorSpace = THREE.SRGBColorSpace as any
+        bodyMat = new THREE.MeshBasicMaterial({ map: tex })
+      } catch {
+        // Per-disk fallback colors
+        const color = label === 'START' ? 0x111111 : label === 'DAILY' ? 0x2c826e : 0x555555
+        bodyMat = new THREE.MeshBasicMaterial({ color })
+      }
 			// Allow depth to ensure proper stacking/occlusion
 			bodyMat.depthTest = true
 			bodyMat.depthWrite = true
@@ -3558,10 +3567,15 @@ class Game {
 			;(document.body.style as any).touchAction = 'none'
       this.altTapStartTime = performance.now()
 		}
-    this.altTouchOnMove = (e: PointerEvent) => {
-      if (!this.altSwipeActive || e.pointerType !== 'touch') return
-      // Only detect swipe at the end to move exactly one slot per gesture
-    }
+		this.altTouchOnMove = (e: PointerEvent) => {
+			if (!this.altSwipeActive || e.pointerType !== 'touch') return
+			const dx = e.clientX - this.altSwipeStartX
+			// While moving, step exactly one slot per threshold crossed
+			if (Math.abs(dx) > 40) {
+				this.cycleAltFloppies(dx > 0 ? -1 : 1)
+				this.altSwipeStartX = e.clientX
+			}
+		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
