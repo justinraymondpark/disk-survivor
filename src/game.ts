@@ -583,6 +583,7 @@ class Game {
 	altSwipeActive = false
 	altLayer = 1
 	altPrevTouchAction?: string
+	altHiddenScene?: { ground: boolean; player: boolean; bills: boolean[] }
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -3328,6 +3329,13 @@ class Game {
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
+		// Hide gameplay scene elements explicitly (ground, player, billboards)
+		this.altHiddenScene = { ground: false, player: false, bills: [] }
+		if (this.groundMesh) { this.altHiddenScene.ground = this.groundMesh.visible; this.groundMesh.visible = false }
+		if (this.player?.group) { this.altHiddenScene.player = this.player.group.visible; this.player.group.visible = false }
+		const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
+		this.altHiddenScene.bills = bills.map((b) => (b ? (b.visible || false) : false))
+		bills.forEach((b) => { if (b) b.visible = false })
     // Scale up to fill most of the screen (tuned)
     g.scale.set(4, 4, 4)
 		// Hide UI while Alt Title is active (DOM sits above canvas)
@@ -3406,15 +3414,17 @@ class Game {
     }
     const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
     this.altFloppies = []
-		for (let i = 0; i < items.length; i++) {
-			const m = makeFloppy(items[i])
-			const angle = (i * 0.06)
-			// Stack with visible elevation; center under slot
-			m.position.set(-0.45 + i * 0.58, 0.05 + i * 0.08, 0.7 - i * 0.02)
-			m.rotation.y = angle
-			g.add(m)
-			this.altFloppies.push({ mesh: m, label: items[i] as any, target: m.position.clone(), targetRot: m.rotation.y })
-		}
+    for (let i = 0; i < items.length; i++) {
+      const label = items[i]
+      const m = makeFloppy(label)
+      const angle = (i * 0.06)
+      // Build in reverse so first logical item ends up visually on top
+      const visualIndex = items.length - 1 - i
+      m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.08, 0.7 - visualIndex * 0.02)
+      m.rotation.y = angle
+      g.add(m)
+      this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y })
+    }
 		// Input: swipe/left-right cycles
 		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
       const sel = this.altFloppies[0].mesh
@@ -3479,16 +3489,17 @@ class Game {
 
   private cycleAltFloppies(dir: number) {
     if (this.altFloppies.length === 0) return
-		if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
-		else this.altFloppies.unshift(this.altFloppies.pop()!)
+    if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
+    else this.altFloppies.unshift(this.altFloppies.pop()!)
 		for (let i = 0; i < this.altFloppies.length; i++) {
 			const f = this.altFloppies[i]
-			// Ensure selected (index 0) is visually on top with higher Y and slight Z forward
-			const baseX = -0.45 + i * 0.58
-			const baseY = 0.05 + i * 0.08 + (i === 0 ? 0.10 : 0)
-			const baseZ = 0.7 - i * 0.02 + (i === 0 ? 0.02 : 0)
+      // Ensure selected (index 0) is visually on top by mapping logical order to reversed visual index
+      const visualIndex = this.altFloppies.length - 1 - i
+      const baseX = -0.45 + visualIndex * 0.58
+      const baseY = 0.05 + visualIndex * 0.08 + (i === 0 ? 0.10 : 0)
+      const baseZ = 0.7 - visualIndex * 0.02 + (i === 0 ? 0.02 : 0)
 			f.target.set(baseX, baseY, baseZ)
-			f.targetRot = (i * 0.06)
+      f.targetRot = (visualIndex * 0.06)
 		}
   }
 
@@ -3501,10 +3512,18 @@ class Game {
 		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
 		this.altTitleGroup = undefined
 		this.altTitleActive = false
-		// Remove background plane and restore hidden UI
+			// Remove background plane and restore hidden UI
 		if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
 		// Remove swipe listeners and restore touch-action
+			// Restore gameplay scene visibility
+			if (this.altHiddenScene) {
+				if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
+				if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
+				const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
+				bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
+				this.altHiddenScene = undefined
+			}
 		if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
 		if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
 		if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
