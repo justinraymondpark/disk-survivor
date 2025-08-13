@@ -138,6 +138,54 @@ Arcade “survivor”-style browser game built with Three.js and Vite. Move a he
 - Changelog:
   - `CHANGELOG.md` is bundled via Vite `?raw` and shown in a modal. Keep newest entries at the top; mirror commit summaries.
 
+### Recently added/important context (for a new chat)
+
+- Paint.exe weapon
+  - Emits opaque green swaths on the ground (`#2c826e`) that damage enemies on them; painted enemies turn a slightly different green `#3c9e87` permanently.
+  - Toggled on/off; as it levels: more uptime, longer linger (`paintDuration`), larger radius, denser coverage, higher DPS. Circles have slight size variance.
+  - Swaths are pooled meshes to reduce churn. See `paint*` fields and logic in `src/game.ts`.
+
+- Universal hit-tint
+  - Any enemy damaged gets a brief (~60ms) 10% desaturated tint and a matching “ouch” on the face canvas. State lives on `Enemy` (`baseColorHex`, `hitTintUntil`, etc.). Handled via `onEnemyDamaged(...)` and the enemy update branch that restores `baseColorHex` afterward.
+
+- Enemies and waves
+  - Wave 10 “Boo” behavior: enemies move fast when not looked at; very slow when looked at.
+  - Post-wave-10 maintains high spawn counts by mixing prior waves.
+  - Rare elites: ~1 in 500 are extra aggressive.
+  - Giants: briefly enrage after successive hits; calm down after a short time without hits; drop a large XP reward.
+  - Note: spawned enemies keep their original attributes; waves do not overwrite existing enemies’ stats.
+
+- Daily Disk mode
+  - Daily wave plan randomized per day using a simple xorshift PRNG seeded from New York date (rollover 3 AM America/New_York).
+  - Separate leaderboard namespace using `mode` and `dailyId` in Netlify Functions.
+  - UI shows current date on the button. Pending: “Previous Days” browser on Game Over; optional weapon/upgrade limits per day and theme variations.
+
+- Performance
+  - Pooled transient objects: paint disks and explosion shards (safe). Projectile pooling was tried and reverted due to gameplay regressions; keep projectiles non-pooled.
+  - Throttled lasso geometry rebuilds and reduced CanvasTexture churn, especially for enemy faces on mobile.
+  - Explicit disposal on enemy removal; shared geometries/materials for common meshes.
+  - WebGL context loss handled; when lost, render loop idles until restored and textures mark `needsUpdate`.
+  - Lightweight perf overlay toggled from the debug panel; shows enemies, scene children, `renderer.info.memory.*` and `render.calls`.
+
+- Fullscreen + FABs
+  - Small fullscreen FAB lives bottom-right; Options and Changelog are matching small FABs that show on the title screen only.
+
+- Controller navigation
+  - Title and pause overlays support d-pad/left stick for horizontal and vertical movement and A/Enter to activate; Start button is ignored on the title so it doesn’t immediately pause.
+
+- Alt Title (3D floppy/drive title)
+  - Built in `showAltTitle()` in `src/game.ts`. Uses a small Three.js scene: drive slot plus a stack of floppies with CanvasTexture labels (“START”, “DAILY DISK”, “DEBUG MODE”).
+  - Current tuning: group scale ≈ 4x; floppies tightened and centered under the slot.
+  - An opaque background plane is attached directly to the camera, oversized to fully cover the viewport. Depth test/write is disabled and `renderOrder` is high so it draws over game/UI.
+  - A/Enter has a short debounce after entering the Alt Title to prevent immediate selection. Left/right (or d-pad) cycles between floppies; A/Enter inserts the front disk with a brief ease-in-out animation, then dispatches to the chosen mode.
+  - If it needs reframing, adjust `g.scale.set(...)` and the stack target positions in `cycleAltFloppies(...)`.
+
+### House rules for future edits
+
+- Preserve existing indentation style and width (tabs vs. spaces) in all files.
+- After changes, update `CHANGELOG.md` (newest at top) with concise notes; commit and push if the change doesn’t introduce known issues.
+- Favor readability: explicit property sets over giant object literals that can trip TS/transpilers.
+
 ### Pending / next ideas
 
 - Add a “near” enemy count to the pause debug line to reflect on-screen pressure.
