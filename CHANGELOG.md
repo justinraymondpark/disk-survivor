@@ -3,6 +3,8 @@
 - Alt Title: more robust fade logic for non-selected disks
 - Gameplay: wave-scaled XP bundles (higher-value cubes appear in later waves)
 - Gameplay: giants now always drop a large XP cube plus a few orbs regardless of how they are killed
+- Gameplay: XP cubes are now tiered with fixed values and colors (3/5/10/20; 50 reserved for giants). Wave increases the chance of higher tiers.
+- Gameplay: Giant drop baseline set to 50 XP with a visibly larger cube model
 
 ## 0.1.22
 - Docs: README adds quick "Play online" link near the top
