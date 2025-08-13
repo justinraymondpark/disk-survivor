@@ -587,6 +587,8 @@ class Game {
   altPrevIsoRot?: THREE.Euler
   altPrevIsoPos?: THREE.Vector3
   altIntroAnims?: { m: THREE.Mesh; t: number; dur: number; startRX: number; endRX: number }[]
+  altSelectDance?: { m: THREE.Mesh; t: number; dur: number; startScale: number; startRZ: number; makeInsert: () => void }
+  altTapStartTime = 0
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2051,8 +2053,8 @@ class Game {
         const f = this.altFloppies[i]
         const mesh = f.mesh
         const ph = f.floatPhase ?? 0
-        // During insert animation, freeze other disks' float and fade them out
-        if (this.altInsertAnim && mesh !== this.altInsertAnim.m) {
+        // During insert or selection dance, freeze other disks' float and fade them out
+        if ((this.altInsertAnim || this.altSelectDance) && (!this.altInsertAnim || mesh !== this.altInsertAnim.m) && (!this.altSelectDance || mesh !== this.altSelectDance.m)) {
           const mat = mesh.material as THREE.MeshBasicMaterial
           if (!mat.transparent) mat.transparent = true
           mat.opacity = Math.max(0, (mat.opacity ?? 1) - dt * 3)
@@ -2060,8 +2062,24 @@ class Game {
           const mat = mesh.material as THREE.MeshBasicMaterial
           if (mat.transparent) mat.opacity = Math.min(1, (mat.opacity ?? 1) + dt * 3)
           mesh.position.y = f.target.y + Math.sin(t * 1.6 + ph) * 0.025
+          // XY sway (toward camera plane)
+          const swayX = Math.sin(t * 0.9 + ph) * 0.02
+          const swayZ = Math.cos(t * 0.7 + ph) * 0.02
+          mesh.position.x = f.target.x + swayX
+          mesh.position.z = f.target.z + swayZ
           mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
         }
+      }
+      // Selection dance animation
+      if (this.altSelectDance) {
+        const a = this.altSelectDance
+        a.t = Math.min(a.dur, a.t + dt * 1000)
+        const u = a.t / a.dur
+        const e = u < 0.5 ? 2 * u * u : -1 + (4 - 2 * u) * u
+        const scale = a.startScale * (1 + 0.06 * Math.sin(u * Math.PI * 4) * (1 - u))
+        a.m.scale.setScalar(scale)
+        a.m.rotation.z = a.startRZ + 0.1 * Math.sin(u * Math.PI * 4) * (1 - u)
+        if (a.t >= a.dur) { const go = a.makeInsert; this.altSelectDance = undefined; go() }
       }
       // Render and continue
       this.renderer.render(this.scene, this.camera)
@@ -3538,6 +3556,7 @@ class Game {
 			// Maximize swipe hit area
 			this.altPrevTouchAction = (document.body.style as any).touchAction
 			;(document.body.style as any).touchAction = 'none'
+      this.altTapStartTime = performance.now()
 		}
     this.altTouchOnMove = (e: PointerEvent) => {
       if (!this.altSwipeActive || e.pointerType !== 'touch') return
@@ -3546,7 +3565,15 @@ class Game {
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
-      if (Math.abs(dx) > 40) this.cycleAltFloppies(dx > 0 ? -1 : 1)
+      const dtap = performance.now() - this.altTapStartTime
+      if (Math.abs(dx) > 40) {
+        this.cycleAltFloppies(dx > 0 ? -1 : 1)
+      } else if (dtap < 250) {
+        // Treat as tap: run selection dance then insert
+        const selF = this.altFloppies[0]
+        const makeInsert = () => onChoose(selF.label)
+        this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
+      }
       this.altSwipeActive = false
       ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
     }
