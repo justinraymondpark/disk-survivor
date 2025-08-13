@@ -574,7 +574,7 @@ class Game {
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
   altEnterDebounceUntil = 0
-  altBgMesh?: THREE.Mesh
+  altBgMesh?: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>
 	altHiddenDom?: HTMLElement[]
 	altTouchOnDown?: (e: PointerEvent) => void
 	altTouchOnMove?: (e: PointerEvent) => void
@@ -3513,17 +3513,7 @@ class Game {
       ctx.fillStyle = '#0a0a0a'; ctx.font = 'bold 36px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
       ctx.fillText(label === 'START' ? 'START' : label === 'DAILY' ? 'DAILY DISK' : 'DEBUG MODE', c.width / 2, c.height / 2)
       const tex = new THREE.CanvasTexture(c)
-      const labelGeom = new THREE.PlaneGeometry(1.2, 0.5)
-			const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false })
-			// Keep label visible on top surface
-			labelMat.depthTest = true
-			labelMat.depthWrite = false
-      const labelMesh = new THREE.Mesh(labelGeom, labelMat)
-      labelMesh.renderOrder = 1002
-      // Label lies on top of the floppy (face up)
-      labelMesh.rotation.x = -Math.PI / 2
-      labelMesh.position.set(0, 0.035, 0.2)
-      body.add(labelMesh)
+      // Removing text labels (textures already include text)
       return body
     }
     const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
@@ -3557,7 +3547,14 @@ class Game {
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
 			// Remove background plane and restore hidden UI
-			if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+			if (this.altBgMesh) {
+				this.scene.remove(this.altBgMesh)
+				this.altBgMesh.geometry.dispose()
+				const mat = this.altBgMesh.material
+				if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+				else mat.dispose()
+				this.altBgMesh = undefined
+			}
 			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
 			// Restore camera layers
 			this.camera.layers.set(0)
@@ -3575,7 +3572,14 @@ class Game {
           this.showDebugPanel()
         }
         // Ensure opaque background is removed before gameplay
-        if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+			if (this.altBgMesh) {
+				this.scene.remove(this.altBgMesh)
+				this.altBgMesh.geometry.dispose()
+				const mat2 = this.altBgMesh.material
+				if (Array.isArray(mat2)) mat2.forEach((m) => m.dispose())
+				else mat2.dispose()
+				this.altBgMesh = undefined
+			}
         // Restore iso camera orientation
         if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
         if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
