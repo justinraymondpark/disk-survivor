@@ -3,6 +3,8 @@
 - Alt Title: add true opaque camera-attached background plane (no UI/game bleed-through)
 - Alt Title: floppy insertion target moved into slot; stack now clearly elevates selected disk at top; proper depth for occlusion
 - Alt Title: add touch swipe navigation (left/right) and align background to fully hide gameplay/UI
+  - Hide HUD, FABs, XP/HP bars, hit counter, and wave label during Alt Title
+  - Larger world-space background plane aligned to camera each frame
 - Alt Title: clean up background plane and restore hidden UI after selection
 - Fix: reduce chance of thin black bar by pinning canvas and covering subpixel seams
 - Pause: reliable controller navigation on pause menu (D-pad/left stick selects; A confirms)

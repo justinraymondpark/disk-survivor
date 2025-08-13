@@ -2021,9 +2021,9 @@ class Game {
       }
 			// Keep background aligned to camera and positioned in front
 			if (this.altBgMesh) {
-				this.altBgMesh.position.copy(this.camera.position)
-				this.altBgMesh.quaternion.copy(this.camera.quaternion)
-				this.altBgMesh.position.add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(this.camera.quaternion))
+			this.altBgMesh.position.copy(this.camera.position)
+			this.altBgMesh.quaternion.copy(this.camera.quaternion)
+			this.altBgMesh.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 			}
       // Render and continue
       this.renderer.render(this.scene, this.camera)
@@ -3324,18 +3324,26 @@ class Game {
 		hide(this.hud)
 		hide(this.optionsFab)
 		hide(this.changelogFab)
+		hide(this.fullscreenBtn)
+		hide(this.hpBar)
+		hide(this.inventory)
+		hide(this.xpBar)
+		hide(this.hitCounterEl)
+		hide(this.pauseTouchBtn)
+		// Elements that may have been created outside of field refs
+		hide(document.querySelector('#wave') as HTMLElement)
 		// Add opaque full-screen background in world, aligned to camera each frame
 		const frustumWidth = (this.camera.right - this.camera.left)
 		const frustumHeight = (this.camera.top - this.camera.bottom)
 		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.DoubleSide })
 		bgMat.depthTest = false
 		bgMat.depthWrite = false
-		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 2.2, frustumHeight * 2.2)
+		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 3.0, frustumHeight * 3.0)
 		const bg = new THREE.Mesh(bgGeom, bgMat)
 		bg.renderOrder = 1000
 		bg.position.copy(this.camera.position)
 		bg.quaternion.copy(this.camera.quaternion)
-		bg.position.add(new THREE.Vector3(0, 0, -0.5).applyQuaternion(this.camera.quaternion))
+		bg.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 		this.scene.add(bg)
 		this.altBgMesh = bg
     // Debounce A/Enter so we don't select immediately on entry
@@ -3396,10 +3404,12 @@ class Game {
 		// Input: swipe/left-right cycles
 		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
       const sel = this.altFloppies[0].mesh
-      // Insert animation into drive
-      const start = sel.position.clone()
-			const slotPos = this.altDriveMesh ? this.altDriveMesh.position.clone() : new THREE.Vector3(0, 1.3, 0.31)
-			const end = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
+		// Insert animation into drive
+		const start = sel.position.clone()
+		const slotPos = this.altDriveMesh ? this.altDriveMesh.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.3, 0.31)
+		// Convert world slot position into group-local for consistent animation target
+		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
+		const end = g.worldToLocal(endWorld.clone())
 		this.altInsertAnim = { m: sel, t: 0, dur: 520, start, end, startR: sel.rotation.y, endR: 0, onDone: () => {
 			this.scene.remove(this.altTitleGroup!)
 			this.altTitleGroup = undefined
@@ -3432,16 +3442,20 @@ class Game {
     }
 		window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
-		this.altTouchOnDown = (e: PointerEvent) => { this.altSwipeStartX = e.clientX; this.altSwipeActive = true }
+		this.altTouchOnDown = (e: PointerEvent) => {
+			if (e.pointerType !== 'touch') return
+			this.altSwipeStartX = e.clientX
+			this.altSwipeActive = true
+		}
 		this.altTouchOnMove = (e: PointerEvent) => {
-			if (!this.altSwipeActive) return
+			if (!this.altSwipeActive || e.pointerType !== 'touch') return
 			const dx = e.clientX - this.altSwipeStartX
 			if (Math.abs(dx) > 40) { this.cycleAltFloppies(dx > 0 ? -1 : 1); this.altSwipeStartX = e.clientX }
 		}
-		this.altTouchOnUp = () => { this.altSwipeActive = false }
-		window.addEventListener('pointerdown', this.altTouchOnDown)
-		window.addEventListener('pointermove', this.altTouchOnMove)
-		window.addEventListener('pointerup', this.altTouchOnUp)
+		this.altTouchOnUp = (e: PointerEvent) => { if (e.pointerType === 'touch') this.altSwipeActive = false }
+		window.addEventListener('pointerdown', this.altTouchOnDown, { passive: true } as any)
+		window.addEventListener('pointermove', this.altTouchOnMove, { passive: true } as any)
+		window.addEventListener('pointerup', this.altTouchOnUp, { passive: true } as any)
   }
 
   private cycleAltFloppies(dir: number) {
