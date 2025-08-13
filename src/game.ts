@@ -584,6 +584,8 @@ class Game {
 	altLayer = 1
 	altPrevTouchAction?: string
 	altHiddenScene?: { ground: boolean; player: boolean; bills: boolean[] }
+  altPrevIsoRot?: THREE.Euler
+  altPrevIsoPos?: THREE.Vector3
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -2029,9 +2031,9 @@ class Game {
       if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
       // Keep background aligned to camera and positioned in front; add subtle float to disks
 			if (this.altBgMesh) {
-			this.altBgMesh.position.copy(this.camera.position)
-			this.altBgMesh.quaternion.copy(this.camera.quaternion)
-			this.altBgMesh.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
+        this.altBgMesh.position.copy(this.camera.position)
+        this.altBgMesh.quaternion.copy(this.camera.quaternion)
+        this.altBgMesh.position.add(new THREE.Vector3(0, 0, -5.0).applyQuaternion(this.camera.quaternion))
 			}
       // Slightly stronger floatiness
       const t = performance.now() * 0.001
@@ -3349,8 +3351,13 @@ class Game {
 		bills.forEach((b) => { if (b) b.visible = false })
     // Scale up to fill most of the screen (tuned)
     g.scale.set(4, 4, 4)
-    // Birds-eye view: rotate disks to lay flat, labels face up
-    // Keep group unrotated; rotate individual floppies and adjust positions
+    // Temporarily switch to a pure top-down view by rotating isoPivot to identity
+    this.altPrevIsoRot = this.isoPivot.rotation.clone()
+    this.altPrevIsoPos = this.isoPivot.position.clone()
+    this.isoPivot.rotation.set(0, 0, 0)
+    this.isoPivot.position.set(0, 0, 0)
+    this.camera.position.set(0, 10, 0)
+    this.camera.lookAt(0, 0, 0)
 		// Hide UI while Alt Title is active (DOM sits above canvas)
 		this.altHiddenDom = []
 		const hide = (el?: HTMLElement | null) => { if (el) { if (!this.altHiddenDom!.includes(el)) this.altHiddenDom!.push(el); el.style.display = 'none' } }
@@ -3490,6 +3497,9 @@ class Game {
         } else {
           this.showDebugPanel()
         }
+        // Restore iso camera orientation
+        if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
+        if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
       } }
     }
     const cycle = (dir: number) => this.cycleAltFloppies(dir)
@@ -3564,10 +3574,13 @@ class Game {
           if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
 				this.altHiddenScene = undefined
 			}
-		if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
+      if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
 		if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
 		if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
 		;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
+      // Restore iso camera orientation
+      if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
+      if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
 		if (lbl === 'START') {
 			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
 		} else if (lbl === 'DAILY') {
