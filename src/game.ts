@@ -581,6 +581,8 @@ class Game {
 	altTouchOnUp?: (e: PointerEvent) => void
 	altSwipeStartX = 0
 	altSwipeActive = false
+	altLayer = 1
+	altPrevTouchAction?: string
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -3312,7 +3314,7 @@ class Game {
     this.altTitleActive = true
     // Hide classic title UI
     this.titleOverlay.style.display = 'none'
-    // Group anchored near origin in front of camera
+		// Group anchored near origin in front of camera
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
@@ -3346,6 +3348,11 @@ class Game {
 		bg.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 		this.scene.add(bg)
 		this.altBgMesh = bg
+		// Force camera to only render Alt Title layer while active
+		this.camera.layers.set(this.altLayer)
+		g.traverse((obj) => obj.layers.enable(this.altLayer))
+		this.altBgMesh.layers.enable(this.altLayer)
+		this.scene.children.forEach((obj) => { if (obj !== g && obj !== this.altBgMesh) obj.layers.disable(this.altLayer) })
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
     // Drive slot (simple box with inset)
@@ -3415,8 +3422,10 @@ class Game {
 			this.altTitleGroup = undefined
 			this.altTitleActive = false
 			// Remove background plane and restore hidden UI
-			if (this.altBgMesh) { this.camera.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
+			if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+			// Restore camera layers
+			this.camera.layers.set(0)
 			// Remove swipe listeners
 			if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
 			if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
@@ -3446,13 +3455,16 @@ class Game {
 			if (e.pointerType !== 'touch') return
 			this.altSwipeStartX = e.clientX
 			this.altSwipeActive = true
+			// Maximize swipe hit area
+			this.altPrevTouchAction = (document.body.style as any).touchAction
+			;(document.body.style as any).touchAction = 'none'
 		}
 		this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
 			const dx = e.clientX - this.altSwipeStartX
 			if (Math.abs(dx) > 40) { this.cycleAltFloppies(dx > 0 ? -1 : 1); this.altSwipeStartX = e.clientX }
 		}
-		this.altTouchOnUp = (e: PointerEvent) => { if (e.pointerType === 'touch') this.altSwipeActive = false }
+		this.altTouchOnUp = (e: PointerEvent) => { if (e.pointerType === 'touch') { this.altSwipeActive = false; (document.body.style as any).touchAction = this.altPrevTouchAction || '' } }
 		window.addEventListener('pointerdown', this.altTouchOnDown, { passive: true } as any)
 		window.addEventListener('pointermove', this.altTouchOnMove, { passive: true } as any)
 		window.addEventListener('pointerup', this.altTouchOnUp, { passive: true } as any)
@@ -3485,6 +3497,11 @@ class Game {
 		// Remove background plane and restore hidden UI
 		if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+		// Remove swipe listeners and restore touch-action
+		if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
+		if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
+		if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
+		;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
 		if (lbl === 'START') {
 			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
 		} else if (lbl === 'DAILY') {

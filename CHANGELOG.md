@@ -5,6 +5,8 @@
 - Alt Title: add touch swipe navigation (left/right) and align background to fully hide gameplay/UI
   - Hide HUD, FABs, XP/HP bars, hit counter, and wave label during Alt Title
   - Larger world-space background plane aligned to camera each frame
+  - Camera renders only the Alt Title layer while active; prevents gameplay bleed-through
+  - Swipe area spans full screen; temporarily sets touch-action to none while swiping on mobile
 - Alt Title: clean up background plane and restore hidden UI after selection
 - Fix: reduce chance of thin black bar by pinning canvas and covering subpixel seams
 - Pause: reliable controller navigation on pause menu (D-pad/left stick selects; A confirms)
