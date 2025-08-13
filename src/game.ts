@@ -2075,7 +2075,7 @@ class Game {
         const a = this.altSelectDance
         a.t = Math.min(a.dur, a.t + dt * 1000)
         const u = a.t / a.dur
-        const e = u < 0.5 ? 2 * u * u : -1 + (4 - 2 * u) * u
+        // Ease value reserved for future position tweening; not needed now
         const scale = a.startScale * (1 + 0.06 * Math.sin(u * Math.PI * 4) * (1 - u))
         a.m.scale.setScalar(scale)
         a.m.rotation.z = a.startRZ + 0.1 * Math.sin(u * Math.PI * 4) * (1 - u)
