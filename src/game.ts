@@ -848,6 +848,12 @@ class Game {
   uiStartPrev = false
   isPaused = false
   pausePrev = false
+	// Pause overlay nav state (controller)
+	pauseNavIdx = 0
+	pauseNavPrevUp = false
+	pauseNavPrevDown = false
+	pauseNavPrevA = false
+	pauseNavRaf = 0
   audio = new AudioManager()
   groundMesh!: THREE.Mesh
   groundTex?: THREE.CanvasTexture
@@ -3199,6 +3205,30 @@ class Game {
     this.pauseOverlay.style.display = this.isPaused ? 'flex' : 'none'
     if (this.isPaused) this.audio.pauseMusic()
     else this.audio.resumeMusic()
+    // Start/stop controller nav for pause overlay
+    if (this.isPaused) {
+      const actions = Array.from(this.pauseOverlay.querySelectorAll('#btn-resume, #btn-restart, #btn-mainmenu, #btn-fullscreen')) as HTMLButtonElement[]
+      this.pauseNavIdx = 0
+      const setSel = () => actions.forEach((b, i) => b.classList.toggle('selected', i === this.pauseNavIdx))
+      setSel()
+      const step = () => {
+        if (!this.isPaused) { this.pauseNavRaf = 0; return }
+        const gp = this.input.getActiveGamepad()
+        const up = !!gp && ((gp.axes?.[1] ?? 0) < -0.5 || gp.buttons?.[12]?.pressed)
+        const down = !!gp && ((gp.axes?.[1] ?? 0) > 0.5 || gp.buttons?.[13]?.pressed)
+        const a = !!gp && gp.buttons?.[0]?.pressed
+        if (up && !this.pauseNavPrevUp) { this.pauseNavIdx = (this.pauseNavIdx - 1 + actions.length) % actions.length; setSel() }
+        if (down && !this.pauseNavPrevDown) { this.pauseNavIdx = (this.pauseNavIdx + 1) % actions.length; setSel() }
+        if (a && !this.pauseNavPrevA) actions[this.pauseNavIdx]?.click()
+        this.pauseNavPrevUp = up; this.pauseNavPrevDown = down; this.pauseNavPrevA = a
+        this.pauseNavRaf = requestAnimationFrame(step)
+      }
+      if (!this.pauseNavRaf) this.pauseNavRaf = requestAnimationFrame(step)
+    } else if (this.pauseNavRaf) {
+      cancelAnimationFrame(this.pauseNavRaf)
+      this.pauseNavRaf = 0
+      this.pauseNavPrevUp = this.pauseNavPrevDown = this.pauseNavPrevA = false
+    }
   }
 
   // Daily Disk mode
