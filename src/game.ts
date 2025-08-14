@@ -801,6 +801,36 @@ class Game {
     const form = document.createElement('div')
     form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '6px'
     scroll.appendChild(form)
+    // Jeeves Maze Editor
+    const mazeCard = document.createElement('div')
+    mazeCard.className = 'card'
+    mazeCard.style.padding = '8px'
+    mazeCard.style.marginTop = '6px'
+    const mazeTitle = document.createElement('div'); mazeTitle.innerHTML = '<strong>Jeeves Maze Editor</strong>'
+    const mazeInfo = document.createElement('div'); mazeInfo.className = 'carddesc'; mazeInfo.textContent = 'Toggle cells to place/remove blocks. Click Start to apply. Grid snap = 3.'
+    const gridEl = document.createElement('div')
+    gridEl.style.display = 'grid'
+    ;(gridEl.style as any).gridTemplateColumns = 'repeat(17, 16px)'
+    gridEl.style.gap = '2px'
+    gridEl.style.marginTop = '6px'
+    const cells: HTMLButtonElement[] = []
+    const minG = -24, maxG = 24, stepG = 3
+    const on = new Set(this.debugJeevesLayout.map(c => `${c.x},${c.z}`))
+    for (let z = minG; z <= maxG; z += stepG) {
+      for (let x = minG; x <= maxG; x += stepG) {
+        const b = document.createElement('button') as HTMLButtonElement
+        b.className = 'card'
+        b.style.minWidth = '16px'; b.style.minHeight = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
+        const key = `${x},${z}`
+        const setState = (active: boolean) => { b.style.background = active ? '#5a4a35' : '#2b2f3a'; (b as any).__active = active }
+        setState(on.has(key))
+        b.onclick = () => setState(!(b as any).__active)
+        ;(b as any).__x = x; (b as any).__z = z
+        cells.push(b); gridEl.appendChild(b)
+      }
+    }
+    mazeCard.append(mazeTitle, mazeInfo, gridEl)
+    scroll.appendChild(mazeCard)
     // Jeeves Maze Painter
     const mazeWrap = document.createElement('div')
     mazeWrap.className = 'card dbg-row'
@@ -967,6 +997,10 @@ class Game {
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     startBtn.onclick = () => {
+      // Save Jeeves layout prior to starting
+      const layout: { x: number; z: number }[] = []
+      cells.forEach(c => { if ((c as any).__active) layout.push({ x: (c as any).__x, z: (c as any).__z }) })
+      this.debugJeevesLayout = layout
       // Collect selections
       const rows = Array.from(form.children) as any[]
       const selectedWeapons = rows.filter(r => r.__kind === 'weapon' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
@@ -1114,6 +1148,8 @@ class Game {
   obstacleCellSize = 2
   themeLocked = false
   themeChosen = false
+  // Debug: custom obstacle layout for Jeeves (pixel-grid editor)
+  debugJeevesLayout: { x: number; z: number }[] = []
   // Controller UI state
   uiSelectIndex = 0
   uiNavCooldown = 0
@@ -2267,6 +2303,14 @@ class Game {
           addBox(x, z, 0x5a4a35, 2)
         }
       }
+      // Apply debug custom layout if provided (drawn grid wins)
+      if (this.debugJeevesLayout.length > 0) {
+        // Clear all and rebuild from layout
+        for (const m of obstacles) this.scene.remove(m)
+        obstacles.length = 0
+        this.themeObstacleCells.clear()
+        for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 2)
+      } else {
       // Carve corridors using simple walkers (wider steps reduce tiny gaps)
       const carve = (sx: number, sz: number, len: number) => {
         let x = sx, z = sz
@@ -2295,6 +2339,7 @@ class Game {
           const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
           this.themeObstacleCells.delete(key)
         }
+      }
       }
     }
     this.themeObstacles = obstacles
