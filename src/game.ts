@@ -4131,9 +4131,8 @@ class Game {
     const narrowPortrait = (aspectNow < 0.65) && (window.innerWidth <= 520)
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
-    // Center the whole bundle vertically (raise further) and nudge up on-screen
-    g.position.y = (this.camera.top + this.camera.bottom) * 0.25 + 0.2
-    g.position.z = -0.5
+    // Center bundle: our floppies are around z≈+0.66, so shift group back to center vertically
+    g.position.set(0, 0, -0.66)
     // Nudge drive and slot to stay centered with floppies group
     const driveYOffset = 0.2
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
@@ -4225,16 +4224,17 @@ class Game {
       matSide.color.offsetHSL(0, 0, -0.1)
       // Ensure materials render with depth so side faces show
       ;[matTop, matSide, matBottom].forEach((m) => { m.depthTest = true; m.depthWrite = true; (m as any).transparent = false })
-      const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
+      // Thicken disk a touch so bottom face is readable during insert
+      const geom = new THREE.BoxGeometry(1.8, 0.08, 1.8)
       // Default groups are 6 in order: +x, -x, +y, -y, +z, -z
       // Remap into materials array [top, bottom, side] to ensure bottom face uses the solid color
       const groups: { start: number; count: number; materialIndex: number }[] = []
       geom.clearGroups()
-      // top (+y): index 2
+      // top (+y): index 2 → material 0 (texture)
       groups.push({ start: 2 * 6, count: 6, materialIndex: 0 })
-      // bottom (-y): index 3
+      // bottom (-y): index 3 → material 1 (solid)
       groups.push({ start: 3 * 6, count: 6, materialIndex: 1 })
-      // sides: +x, -x, +z, -z
+      // sides: +x, -x, +z, -z → material 2 (solid darker)
       groups.push({ start: 0 * 6, count: 6, materialIndex: 2 })
       groups.push({ start: 1 * 6, count: 6, materialIndex: 2 })
       groups.push({ start: 4 * 6, count: 6, materialIndex: 2 })
@@ -4326,8 +4326,7 @@ class Game {
       this.altSwipeDidCycle = false
       this.altDragging = true
       // Initialize drag immediately so first frame moves
-      this.altDragDX = 0
-      if (this.altFloppies[0]) { const f = this.altFloppies[0]; f.mesh.position.x = f.target.x }
+      this.altDragDX = 0.001
       // Maximize swipe hit area
       this.altPrevTouchAction = (document.body.style as any).touchAction
       ;(document.body.style as any).touchAction = 'none'
