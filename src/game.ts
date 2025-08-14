@@ -382,6 +382,8 @@ class Game {
   changelogFab?: HTMLButtonElement
   // Debug toggles/overlay
   debugPerfOverlay = false
+  // Debug mode: Kernel Panic
+  kernelPanic = false
   plentifulPickups = true
   perfOverlayEl?: HTMLDivElement
   perfOverlayNextUpdate = 0
@@ -979,7 +981,12 @@ class Game {
     const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
     pickLab.style.marginLeft = '6px'
     pickRow.appendChild(pickChk); pickRow.appendChild(pickLab)
+    // Kernel Panic button
+    const kpBtn = document.createElement('button'); kpBtn.className = 'card'; kpBtn.textContent = 'Kernel Panic'
+    kpBtn.style.padding = '4px 8px'; kpBtn.style.fontSize = '12px'; kpBtn.style.marginTop = '6px'
+    kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
     wrap.appendChild(pickRow)
+    wrap.appendChild(kpBtn)
     const emojiMap: Record<string, string> = {
       'CRT Beam': '🔦',
       'Dot Matrix': '🖨️',
@@ -3210,6 +3217,10 @@ class Game {
     }
 
     // Special weapons passive timers
+    // Speed boost in Kernel Panic
+    const speedMul = this.kernelPanic ? 1.4 : 1.0
+    for (const e of this.enemies) if (e.alive) e.speed = (e.baseSpeed ?? e.speed) * speedMul
+
     if (this.ownedWeapons.has('Dial-up Burst')) {
       this.modemWaveTimer += dt
       if (this.modemWaveTimer >= this.modemWaveInterval) {
@@ -3247,12 +3258,13 @@ class Game {
       this.lastWaveMinute = minute
     }
     // Baseline spawn interval gets faster over time (softened for perf)
-    const baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
+    let baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
+    if (this.kernelPanic) baseInterval *= 0.45 // much faster spawns
     // Gentle sine modulation (~10% swing)
     this.spawnPhase += dt * 0.8
     const sineMod = 1 + 0.1 * Math.sin(this.spawnPhase)
     // Ensure a hard ceiling on interval so it never stalls
-    const modInterval = Math.max(0.5, baseInterval * sineMod)
+    const modInterval = Math.max(0.3, baseInterval * sineMod)
     // Occasional micro-bursts: short-lived faster spawning
     if (this.microBurstLeft <= 0 && Math.random() < 0.001) {
       // 1–2 seconds of quicker spawns
