@@ -1076,13 +1076,13 @@ class Game {
     wavesBtn.style.marginTop = '6px'
     wavesBtn.style.padding = '4px 8px'
     wavesBtn.style.fontSize = '12px'
-    // Kernel Panic button near Waves
+    // Move Waves and Kernel Panic into bottom actions
     const kpBtn = document.createElement('button'); kpBtn.className = 'card'; kpBtn.innerHTML = 'Kernel Panic'
-    kpBtn.style.marginTop = '6px'
     kpBtn.style.padding = '4px 8px'
     kpBtn.style.fontSize = '12px'
     kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
-    wrap.appendChild(wavesBtn)
+    wavesBtn.tabIndex = 0; kpBtn.tabIndex = 0
+    btnRow.insertBefore(wavesBtn, startBtn)
     btnRow.appendChild(kpBtn)
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
