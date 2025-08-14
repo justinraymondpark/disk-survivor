@@ -981,12 +981,7 @@ class Game {
     const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
     pickLab.style.marginLeft = '6px'
     pickRow.appendChild(pickChk); pickRow.appendChild(pickLab)
-    // Kernel Panic button
-    const kpBtn = document.createElement('button'); kpBtn.className = 'card'; kpBtn.textContent = 'Kernel Panic'
-    kpBtn.style.padding = '4px 8px'; kpBtn.style.fontSize = '12px'; kpBtn.style.marginTop = '6px'
-    kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
     wrap.appendChild(pickRow)
-    wrap.appendChild(kpBtn)
     const emojiMap: Record<string, string> = {
       'CRT Beam': '🔦',
       'Dot Matrix': '🖨️',
@@ -1080,9 +1075,18 @@ class Game {
     wavesBtn.style.marginTop = '6px'
     wavesBtn.style.padding = '4px 8px'
     wavesBtn.style.fontSize = '12px'
+    // Kernel Panic button near Waves
+    const kpBtn = document.createElement('button'); kpBtn.className = 'card'; kpBtn.innerHTML = 'Kernel Panic'
+    kpBtn.style.marginTop = '6px'
+    kpBtn.style.padding = '4px 8px'
+    kpBtn.style.fontSize = '12px'
+    kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
     wrap.appendChild(wavesBtn)
+    wrap.appendChild(kpBtn)
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
+    // move focus to bottom buttons
+    backBtn.tabIndex = 0; startBtn.tabIndex = 0
     startBtn.onclick = () => {
       // Collect selections
       const rows = Array.from(form.children) as any[]
