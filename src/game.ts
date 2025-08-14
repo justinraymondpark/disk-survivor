@@ -5851,6 +5851,14 @@ class Game {
     view.appendChild(canvas)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    // Scene and camera must be created before first resize to avoid TDZ
+    const scene = new THREE.Scene()
+    const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+    const pivot = new THREE.Group(); scene.add(pivot)
+    cam.position.set(0, 2.1, 3.6); cam.lookAt(0, 0.6, 0); pivot.add(cam)
+    const light = new THREE.AmbientLight(0xffffff, 0.9); scene.add(light)
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x111522 }))
+    ground.rotation.x = -Math.PI / 2; ground.position.y = 0; scene.add(ground)
     const rsz = () => {
       const w = Math.max(1, view.clientWidth)
       const h = Math.max(1, view.clientHeight)
@@ -5859,13 +5867,6 @@ class Game {
       cam.updateProjectionMatrix()
     }
     rsz(); new ResizeObserver(rsz).observe(view)
-    const scene = new THREE.Scene()
-    const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
-    const pivot = new THREE.Group(); scene.add(pivot)
-    cam.position.set(0, 2.1, 3.6); cam.lookAt(0, 0.6, 0); pivot.add(cam)
-    const light = new THREE.AmbientLight(0xffffff, 0.9); scene.add(light)
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x111522 }))
-    ground.rotation.x = -Math.PI / 2; ground.position.y = 0; scene.add(ground)
 
     let currentMesh: THREE.Object3D | undefined
     const buildEnemyMesh = (t: EnemyType) => {
@@ -5915,6 +5916,7 @@ class Game {
     enemies.forEach((t, i) => {
       const b = document.createElement('button') as HTMLButtonElement
       b.className = 'card'; b.style.width = '100%'; b.innerHTML = `<strong>${t.toUpperCase()}</strong>`
+      b.style.minHeight = '34px'; b.style.padding = '6px'
       b.onclick = () => select(t)
       list.appendChild(b)
       if (i === 0) select(t)
