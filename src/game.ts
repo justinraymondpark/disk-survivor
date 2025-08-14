@@ -3600,8 +3600,9 @@ class Game {
         if (dist < 1.2) {
           e.alive = false
           this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
-          this.spawnExplosion(e.mesh)
+          this.spawnStylishExplosion(e.mesh)
           this.onEnemyDown()
+          // Reduced bomber damage to 1 (unchanged) but add brief stun knockback feel
           this.player.hp = Math.max(0, this.player.hp - 1)
           this.updateHPBar()
           if (this.player.hp <= 0) { this.onPlayerDeath(); return }
@@ -5118,6 +5119,68 @@ class Game {
     tick()
   }
 
+  // More dramatic explosion for bomber
+  private spawnStylishExplosion(source: THREE.Mesh) {
+    const pos = source.position.clone()
+    const color = ((source.material as any)?.color?.getHex?.() ?? 0xff8855) as number
+    this.scene.remove(source)
+    // Core flash
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffddaa, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending }))
+    flash.position.copy(pos).setY(0.7)
+    this.scene.add(flash)
+    // Shock ring
+    const ringGeom = new THREE.RingGeometry(0.2, 0.22, 48)
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffaa66, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+    const ring = new THREE.Mesh(ringGeom, ringMat)
+    ring.rotation.x = -Math.PI / 2
+    ring.position.copy(pos).setY(0.05)
+    this.scene.add(ring)
+    // Shards
+    const shardCount = 14
+    const shards: { m: THREE.Mesh; v: THREE.Vector3; life: number }[] = []
+    for (let i = 0; i < shardCount; i++) {
+      let m = this.shardPool.pop()
+      if (!m) m = new THREE.Mesh(this.sharedShardGeom, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 }))
+      else (m.material as THREE.MeshBasicMaterial).color.setHex(color)
+      m.position.copy(pos)
+      m.position.y = 0.7
+      this.scene.add(m)
+      const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).normalize()
+      const speed = 3.5 + Math.random() * 2.5
+      shards.push({ m, v: dir.multiplyScalar(speed), life: 0.35 })
+    }
+    const start = performance.now()
+    const dur = 260
+    const tick = () => {
+      const t = (performance.now() - start) / dur
+      if (t <= 1) {
+        const r = 0.2 + 1.9 * t
+        ring.geometry.dispose()
+        ring.geometry = new THREE.RingGeometry(r * 0.98, r, 64)
+        ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - t)
+        ;(flash.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.95 * (1 - t))
+      }
+      // Shards animate slightly longer than the ring
+      const dt = 1 / 60
+      let alive = false
+      for (const s of shards) {
+        if (s.life <= 0) continue
+        s.m.position.addScaledVector(s.v, dt)
+        s.v.multiplyScalar(0.9)
+        ;(s.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, s.life / 0.35)
+        s.life -= dt
+        alive = alive || s.life > 0
+      }
+      if (t < 1 || alive) requestAnimationFrame(tick)
+      else {
+        this.scene.remove(ring); ringGeom.dispose(); (ring.material as any).dispose?.()
+        this.scene.remove(flash); (flash.geometry as any).dispose?.(); (flash.material as any).dispose?.()
+        for (const s of shards) { this.scene.remove(s.m); this.shardPool.push(s.m) }
+      }
+    }
+    tick()
+  }
+
   private spawnZapEffect(a: THREE.Vector3, b: THREE.Vector3, intensity = 1) {
     // Brighter, thicker lightning bolt with branching
     const drawBolt = (from: THREE.Vector3, to: THREE.Vector3, width: number, color: number, lifeMs: number) => {
@@ -5786,7 +5849,13 @@ class Game {
     view.appendChild(canvas)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-    const rsz = () => { renderer.setSize(view.clientWidth, view.clientHeight, false) }
+    const rsz = () => {
+      const w = Math.max(1, view.clientWidth)
+      const h = Math.max(1, view.clientHeight)
+      renderer.setSize(w, h, false)
+      cam.aspect = w / h
+      cam.updateProjectionMatrix()
+    }
     rsz(); new ResizeObserver(rsz).observe(view)
     const scene = new THREE.Scene()
     const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
@@ -5796,7 +5865,7 @@ class Game {
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x111522 }))
     ground.rotation.x = -Math.PI / 2; ground.position.y = 0; scene.add(ground)
 
-    let currentMesh: THREE.Mesh | undefined
+    let currentMesh: THREE.Object3D | undefined
     const buildEnemyMesh = (t: EnemyType) => {
       // Reuse geometry/color mapping from spawner
       let geom: THREE.BufferGeometry; let color = 0xaa55ff
@@ -5817,14 +5886,27 @@ class Game {
         case 'giant': geom = new THREE.SphereGeometry(1.3, 16, 16); color = 0xff44aa; break
         default: geom = new THREE.SphereGeometry(0.6, 16, 16); color = 0xaa55ff
       }
-      return new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+      const group = new THREE.Group()
+      const body = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+      body.position.set(0, 0.6, 0)
+      group.add(body)
+      // Add billboard face similar to gameplay
+      try {
+        const faceTex = this.makeFaceTexture(t)
+        const faceSize = t === 'brute' ? 1.2 : 0.9
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(faceSize, faceSize), new THREE.MeshBasicMaterial({ map: faceTex, transparent: true }))
+        face.name = 'bestiary-face'
+        face.position.set(0, 0.95, 0.0)
+        group.add(face)
+      } catch {}
+      return group
     }
 
     const select = (t: EnemyType) => {
       blurb.textContent = bios[t] || ''
-      if (currentMesh) { scene.remove(currentMesh); this.disposeObjectDeep(currentMesh) }
+      if (currentMesh) { scene.remove(currentMesh as any); this.disposeObjectDeep(currentMesh as any) }
       currentMesh = buildEnemyMesh(t)
-      if (currentMesh) { currentMesh.position.set(0, 0.6, 0); scene.add(currentMesh) }
+      if (currentMesh) { scene.add(currentMesh as any) }
     }
 
     // Populate list
@@ -5837,7 +5919,11 @@ class Game {
     })
 
     const tick = () => {
-      if (currentMesh) currentMesh.rotation.y += 0.01
+      if (currentMesh) {
+        currentMesh.rotation.y += 0.01
+        const face = (currentMesh as THREE.Object3D).getObjectByName?.('bestiary-face') as THREE.Mesh | undefined
+        if (face) face.lookAt(cam.position)
+      }
       renderer.render(scene, cam)
       if (overlay.parentElement) requestAnimationFrame(tick)
     }
