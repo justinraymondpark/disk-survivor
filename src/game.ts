@@ -618,6 +618,28 @@ class Game {
   // Debug toggles
   debugShowDamage = false
 
+  private makeHorseshoeMagnet(): THREE.Object3D {
+    const group = new THREE.Group()
+    const legGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 12)
+    const mat = new THREE.MeshBasicMaterial({ color: 0x2266ff })
+    const left = new THREE.Mesh(legGeom, mat)
+    const right = new THREE.Mesh(legGeom, mat)
+    left.position.set(-0.18, 0.3, 0)
+    right.position.set(0.18, 0.3, 0)
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.08, 8, 24, Math.PI), mat)
+    arc.rotation.set(Math.PI / 2, 0, 0)
+    arc.position.set(0, 0.6, 0)
+    group.add(left, right, arc)
+    const tipMat = new THREE.MeshBasicMaterial({ color: 0xdddddd })
+    const tipGeom = new THREE.CylinderGeometry(0.085, 0.085, 0.08, 10)
+    const t1 = new THREE.Mesh(tipGeom, tipMat); t1.position.copy(left.position).setY(0.04)
+    const t2 = new THREE.Mesh(tipGeom, tipMat); t2.position.copy(right.position).setY(0.04)
+    group.add(t1, t2)
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.001, 0.001), new THREE.MeshBasicMaterial({ visible: false }))
+    shell.add(group)
+    return shell
+  }
+
   private showDebugPanel() {
     if (!this.debugOverlay) {
       this.debugOverlay = document.createElement('div') as HTMLDivElement
