@@ -2667,12 +2667,38 @@ class Game {
       this.spawnGiant()
     }
 
-    // Obstacles pushback
-    for (const o of this.themeObstacles) {
-      const d2 = this.player.group.position.distanceToSquared(o.position)
-      if (d2 < 1.6 ** 2) {
-        const push = this.player.group.position.clone().sub(o.position).setY(0).normalize().multiplyScalar(0.08)
-        this.player.group.position.add(push)
+    // Obstacles pushback (AABB resolve on Jeeves; legacy soft push elsewhere)
+    if (this.currentTheme === 'jeeves') {
+      const cs = this.obstacleCellSize
+      const pos = this.player.group.position
+      const key = `${Math.floor(pos.x / cs)},${Math.floor(pos.z / cs)}`
+      const [cx, cz] = key.split(',').map(Number)
+      const cells = [key, `${cx+1},${cz}`, `${cx-1},${cz}`, `${cx},${cz+1}`, `${cx},${cz-1}`]
+      const pr = this.player.radius ?? 0.5
+      for (const k of cells) {
+        const arr = this.themeObstacleCells.get(k)
+        if (!arr) continue
+        for (const m of arr) {
+          // Half extents from geometry parameters (fallback to 1)
+          const p = (m.geometry as any).parameters || {}
+          const halfX = (p.width ? p.width / 2 : 1)
+          const halfZ = (p.depth ? p.depth / 2 : 1)
+          const dx = pos.x - m.position.x
+          const dz = pos.z - m.position.z
+          if (Math.abs(dx) < halfX + pr && Math.abs(dz) < halfZ + pr) {
+            const px = halfX + pr - Math.abs(dx)
+            const pz = halfZ + pr - Math.abs(dz)
+            if (px < pz) pos.x += Math.sign(dx || 1) * px; else pos.z += Math.sign(dz || 1) * pz
+          }
+        }
+      }
+    } else {
+      for (const o of this.themeObstacles) {
+        const d2 = this.player.group.position.distanceToSquared(o.position)
+        if (d2 < 1.6 ** 2) {
+          const push = this.player.group.position.clone().sub(o.position).setY(0).normalize().multiplyScalar(0.08)
+          this.player.group.position.add(push)
+        }
       }
     }
     // Optional: enemy→obstacle collision on Jeeves only (simple grid lookup)
