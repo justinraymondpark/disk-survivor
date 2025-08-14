@@ -645,6 +645,7 @@ class Game {
     if (!this.debugOverlay) return
     const wrap = document.createElement('div')
     wrap.className = 'card'
+    wrap.classList.add('debug-panel')
     wrap.style.minWidth = '520px'
     wrap.style.maxWidth = '80vw'
     wrap.style.maxHeight = '80vh'
