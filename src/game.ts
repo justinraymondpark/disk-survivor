@@ -381,6 +381,7 @@ class Game {
   changelogFab?: HTMLButtonElement
   // Debug toggles/overlay
   debugPerfOverlay = false
+  plentifulPickups = true
   perfOverlayEl?: HTMLDivElement
   perfOverlayNextUpdate = 0
   pauseDebounceUntil = 0
@@ -401,13 +402,13 @@ class Game {
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   // XP tier materials
-  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0x33e6c6 })
+  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0xff66cc })
   sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   sharedXPTier10Mat = new THREE.MeshBasicMaterial({ color: 0x6699ff })
   sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
   sharedXPTier50Mat = new THREE.MeshBasicMaterial({ color: 0xffdd55 })
   sharedVacuumGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5)
-  sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x66ccff })
+  sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x2266ff })
   projectilePool: Projectile[] = []
   // Lasso update throttle
   lassoNextGeomAt = 0
@@ -643,6 +644,17 @@ class Game {
     const form = document.createElement('div')
     form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '6px'
     scroll.appendChild(form)
+    // Plentiful Pickups toggle
+    const pickRow = document.createElement('div')
+    pickRow.className = 'card'
+    pickRow.style.padding = '6px'
+    pickRow.style.marginTop = '8px'
+    const pickChk = document.createElement('input'); pickChk.type = 'checkbox'; pickChk.checked = this.plentifulPickups
+    pickChk.onchange = () => { this.plentifulPickups = pickChk.checked }
+    const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
+    pickLab.style.marginLeft = '6px'
+    pickRow.appendChild(pickChk); pickRow.appendChild(pickLab)
+    wrap.appendChild(pickRow)
     const emojiMap: Record<string, string> = {
       'CRT Beam': '🔦',
       'Dot Matrix': '🖨️',
@@ -1440,8 +1452,10 @@ class Game {
     let kind: Pickup['kind']
     if (forceKind) kind = forceKind
     else {
-      if (roll < 0.03) kind = 'vacuum' // rarer
-      else if (roll < 0.33) kind = 'heal'
+      const vacOdds = this.plentifulPickups ? 0.06 : 0.015
+      const healOdds = this.plentifulPickups ? 0.33 : 0.12
+      if (roll < vacOdds) kind = 'vacuum'
+      else if (roll < vacOdds + healOdds) kind = 'heal'
       else kind = 'xp'
     }
     let mesh: THREE.Mesh
@@ -1454,8 +1468,9 @@ class Game {
       mesh = new THREE.Mesh(prism, mat)
       mesh.rotation.x = -Math.PI / 2
     } else if (kind === 'vacuum') {
-      // Glowing blue cube
-      mesh = new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
+      // Blue horseshoe magnet
+      const m = this.makeHorseshoeMagnet?.()
+      mesh = (m as unknown as THREE.Mesh) || new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
     } else {
       // XP bundle cube (tiered)
       const wave = Math.max(0, Math.floor(this.gameTime / 60))
