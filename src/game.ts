@@ -657,6 +657,69 @@ class Game {
     title.textContent = 'Jeeves Maze Editor'
     const info = document.createElement('div'); info.className = 'carddesc'; info.textContent = 'Toggle cells to place/remove blocks. Grid snap = 3.'
 
+    // Presets row: built-ins + saved
+    const presetRow = document.createElement('div')
+    presetRow.className = 'cardrow'
+    const presetLab = document.createElement('span'); presetLab.textContent = 'Preset:'
+    presetLab.style.minWidth = '54px'
+    const presetSel = document.createElement('select'); (presetSel as any).style.padding = '2px 6px'; (presetSel as any).style.fontSize = '12px'
+    const saveBtn = document.createElement('button'); saveBtn.className = 'card'; saveBtn.textContent = 'Save…'; saveBtn.style.padding = '2px 6px'; saveBtn.style.fontSize = '12px'
+    presetRow.append(presetLab, presetSel, saveBtn)
+
+    type CellCoord = { x: number, z: number }
+    const builtin: Record<string, CellCoord[]> = (() => {
+      const list: Record<string, CellCoord[]> = {}
+      const toMap = (fn: (x: number, z: number) => boolean) => {
+        const out: CellCoord[] = []
+        for (let z = -24; z <= 24; z += 3) for (let x = -24; x <= 24; x += 3) if (fn(x, z)) out.push({ x, z })
+        return out
+      }
+      list['Empty'] = []
+      list['Cross'] = toMap((x, z) => Math.abs(x) < 1 || Math.abs(z) < 1)
+      list['Ring'] = toMap((x, z) => (Math.abs(x) === 24 || Math.abs(z) === 24))
+      list['Corridors'] = toMap((x, z) => (x % 12 === 0) || (z % 12 === 0))
+      list['Checker'] = toMap((x, z) => ((x + z) / 3) % 2 === 0)
+      return list
+    })()
+
+    const savedKey = 'jeeves.presets'
+    const loadSaved = (): Record<string, CellCoord[]> => {
+      try { return JSON.parse(localStorage.getItem(savedKey) || '{}') } catch { return {} }
+    }
+    const savePreset = (name: string, coords: CellCoord[]) => {
+      const all = loadSaved(); all[name] = coords; localStorage.setItem(savedKey, JSON.stringify(all))
+    }
+    const refreshOptions = () => {
+      presetSel.innerHTML = ''
+      const all = { ...builtin, ...loadSaved() }
+      Object.keys(all).forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; presetSel.appendChild(opt) })
+    }
+    const applyPresetToGrid = (coords: CellCoord[]) => {
+      const set = new Set(coords.map(c => `${c.x},${c.z}`))
+      for (const b of cells) {
+        const key = `${(b as any).__x},${(b as any).__z}`
+        const setState = (active: boolean) => { b.style.background = active ? '#b07d3b' : '#2b2f3a'; (b as any).__active = active }
+        setState(set.has(key))
+      }
+    }
+    saveBtn.onclick = async () => {
+      const name = prompt('Save preset as:')?.trim()
+      if (!name) return
+      const coords: CellCoord[] = []
+      cells.forEach(c => { if ((c as any).__active) coords.push({ x: (c as any).__x, z: (c as any).__z }) })
+      savePreset(name, coords)
+      refreshOptions()
+      presetSel.value = name
+      // Optional: try Netlify Function if present
+      try { await fetch('/.netlify/functions/jeeves-presets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, coords }) }) } catch {}
+    }
+    presetSel.onchange = () => {
+      const all = { ...builtin, ...loadSaved() }
+      const coords = all[presetSel.value] || []
+      applyPresetToGrid(coords)
+    }
+    refreshOptions()
+
     const gridEl = document.createElement('div')
     gridEl.style.display = 'grid'
     ;(gridEl.style as any).gridTemplateColumns = 'repeat(17, 16px)'
@@ -671,7 +734,7 @@ class Game {
         b.className = 'ns-button'
         b.style.width = '16px'; b.style.height = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
         const key = `${x},${z}`
-        const setState = (active: boolean) => { b.style.background = active ? '#5a4a35' : '#2b2f3a'; (b as any).__active = active }
+        const setState = (active: boolean) => { b.style.background = active ? '#b07d3b' : '#2b2f3a'; (b as any).__active = active }
         setState(on.has(key))
         b.onclick = () => setState(!(b as any).__active)
         ;(b as any).__x = x; (b as any).__z = z
@@ -686,7 +749,7 @@ class Game {
     btnRow.appendChild(backBtn); btnRow.appendChild(applyBtn)
 
     this.debugOverlay!.innerHTML = ''
-    wrap.append(title, info, gridEl, btnRow)
+    wrap.append(title, info, presetRow, gridEl, btnRow)
     this.debugOverlay!.appendChild(wrap)
     this.debugOverlay!.style.display = 'flex'
 
