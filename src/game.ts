@@ -1282,6 +1282,8 @@ class Game {
   waveTypes: (EnemyType | undefined)[] = []
   // Share UI preview element reference
   private sharePreviewEl?: HTMLPreElement
+  // Current share text (source of truth for copy/share)
+  private lastShareText: string = ''
   // Last submitted payload snapshot
   private lastSubmittedInfo?: { name: string; timeSurvived: number; score: number }
   ownedUpgrades = new Map<string, number>()
@@ -4876,22 +4878,20 @@ class Game {
     const nameInput = goCard.querySelector('#name-input') as HTMLInputElement
     // Initialize share preview and buttons
     this.sharePreviewEl = goCard.querySelector('#share-preview') as HTMLPreElement
-    if (this.sharePreviewEl) this.sharePreviewEl.textContent = this.buildShareText()
+    this.lastShareText = this.buildShareText()
+    if (this.sharePreviewEl) this.sharePreviewEl.textContent = this.lastShareText
     const copyBtn = goCard.querySelector('#copy-btn') as HTMLButtonElement
     const shareBtn = goCard.querySelector('#share-btn') as HTMLButtonElement
     const doCopy = async () => {
       try {
-        // Use the current preview text (which may include rank if available)
-        const textToCopy = this.sharePreviewEl?.textContent || this.buildShareText()
-        await navigator.clipboard.writeText(textToCopy)
+        await navigator.clipboard.writeText(this.lastShareText || this.buildShareText())
         copyBtn.innerHTML = '<strong>Copied!</strong>'
         setTimeout(() => (copyBtn.innerHTML = '<strong>Copy</strong>'), 900)
       } catch {}
     }
     if (copyBtn) copyBtn.onclick = doCopy
     if (shareBtn) shareBtn.onclick = async () => {
-      // Use the current preview text (which may include rank if available)
-      const text = this.sharePreviewEl?.textContent || this.buildShareText()
+      const text = this.lastShareText || this.buildShareText()
       const nav: any = navigator
       if (nav && typeof nav.share === 'function') {
         try { await nav.share({ text }) } catch {}
@@ -4911,9 +4911,12 @@ class Game {
       await this.submitLeaderboard(name, timeSurvived, score)
       const entries = await this.refreshLeaderboard()
       // If we can find the player's rank in the current slice, update share preview with rank
-      if (entries && this.lastSubmittedInfo && this.sharePreviewEl) {
+      if (entries && this.lastSubmittedInfo) {
         const idx = entries.findIndex((e) => e.name === this.lastSubmittedInfo!.name && e.timeSurvived === this.lastSubmittedInfo!.timeSurvived && e.score === this.lastSubmittedInfo!.score)
-        if (idx >= 0) this.sharePreviewEl.textContent = this.buildShareText(idx + 1)
+        if (idx >= 0) {
+          this.lastShareText = this.buildShareText(idx + 1)
+          if (this.sharePreviewEl) this.sharePreviewEl.textContent = this.lastShareText
+        }
       }
       // Focus restart after submit for quick replay
       restartBtn.focus()
