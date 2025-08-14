@@ -605,6 +605,9 @@ class Game {
   altSelectDance?: { m: THREE.Mesh; t: number; dur: number; startScale: number; startRZ: number; makeInsert: () => void }
   altTapStartTime = 0
   altSwipeDidCycle = false
+  altDragging = false
+  altDragDX = 0
+  altDragStartTime = 0
 
 	private disposeAltBg() {
 		const bg = this.altBgMesh as (THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>) | undefined
