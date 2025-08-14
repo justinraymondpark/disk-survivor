@@ -837,8 +837,8 @@ class Game {
     mazeWrap.style.padding = '4px'
     mazeWrap.style.display = 'flex'
     mazeWrap.style.flexDirection = 'column'
-    const mazeTitle = document.createElement('strong'); mazeTitle.textContent = 'Jeeves Maze Painter'
-    mazeWrap.appendChild(mazeTitle)
+      const mazePainterTitle = document.createElement('strong'); mazePainterTitle.textContent = 'Jeeves Maze Painter'
+  mazeWrap.appendChild(mazePainterTitle)
     const gridW = 21, gridH = 21
     const cell = 12
     const canvas = document.createElement('canvas'); canvas.width = gridW * cell; canvas.height = gridH * cell; canvas.style.imageRendering = 'pixelated'; canvas.style.border = '1px solid #222'
