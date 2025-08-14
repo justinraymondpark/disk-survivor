@@ -4179,7 +4179,7 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 0.1 + 0.2, 0)
+    drive.position.set(0, 0.1 + driveYOffset, 0)
     // Tilt drive up slightly toward camera (~15deg)
     drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
@@ -4199,7 +4199,7 @@ class Game {
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 0.18 + 0.2, 0.31)
+    slot.position.set(0, 0.18 + driveYOffset, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
