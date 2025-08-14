@@ -4126,8 +4126,10 @@ class Game {
     const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]
 		this.altHiddenScene.bills = bills.map((b) => (b ? (b.visible || false) : false))
 		bills.forEach((b) => { if (b) b.visible = false })
-    // Scale up to fill most of the screen (tuned)
-    g.scale.set(4, 4, 4)
+    // Scale based on device; shrink on narrow mobile to ~50%
+    const isNarrowMobile = ((window.innerWidth < 640 && window.innerHeight > window.innerWidth) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
+    const baseScale = isNarrowMobile ? 2 : 4
+    g.scale.set(baseScale, baseScale, baseScale)
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
     this.altPrevIsoPos = this.isoPivot.position.clone()
@@ -4197,6 +4199,9 @@ class Game {
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
+    const floppiesGroup = new THREE.Group()
+    floppiesGroup.position.y = 0.25 // raise floppies instead of lowering drive
+    g.add(floppiesGroup)
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
              const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : 'debugmode.png'
@@ -4238,7 +4243,7 @@ class Game {
       const angle = (i * 0.06)
       // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.50, 0.0, 0.0, 0.0]
+      const offsetsY = [0.70, -0.08, -0.10, -0.12]
       const offsetsZ = [0.30, -0.02, -0.04, -0.06]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
@@ -4249,7 +4254,7 @@ class Game {
       // Slightly smaller so four fit nicely
       m.scale.setScalar(1.9)
       m.rotation.y = angle
-      g.add(m)
+      floppiesGroup.add(m)
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
 		// Input: swipe/left-right cycles
@@ -4358,8 +4363,8 @@ class Game {
 			const f = this.altFloppies[i]
       // Selected disk centered; others fanned left/right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.50, 0.0, 0.0, 0.0]
-      const offsetsZ = [0.30, -0.02, -0.04, -0.06]
+      const offsetsY = [0.70, -0.08, -0.10, -0.12]
+      const offsetsZ = [0.34, -0.08, -0.10, -0.12]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
