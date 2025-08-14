@@ -319,7 +319,7 @@ type Enemy = {
   // Wave index (minute) when this enemy spawned
   spawnWave: number
   // Optional behavior state for AI patterns like run/pause cycles
-  behaviorState?: 'running' | 'paused' | 'windup' | 'dash' | 'recover' | 'orbit'
+  behaviorState?: 'running' | 'paused' | 'windup' | 'dash' | 'recover' | 'orbit' | 'slamWindup' | 'slam'
   behaviorTimer?: number
   behaviorRunDuration?: number
   behaviorPauseDuration?: number
@@ -330,6 +330,9 @@ type Enemy = {
   climbTargetY?: number
   // Shooter-specific: 50% chance to be aggressive (charge player)
   shooterAggressive?: boolean
+  // Bomber flank behavior
+  bomberPhase?: 'flank' | 'dash'
+  bomberTargetAngle?: number
   // Generic AI helpers
   baseSpeed?: number
   behaviorPhase?: 1 | -1
@@ -351,11 +354,15 @@ type Enemy = {
   nextDmgToastTime?: number
   // Special behaviors
   booWave10?: boolean
+  booShy?: boolean
   eliteAggressive?: boolean
   // Giant enrage
   giantEnrageUntil?: number
   recentHits?: number
   lastHitAt?: number
+  // Brute slam
+  nextSlamAt?: number
+  slamWindupUntil?: number
 }
 
 type Pickup = {
@@ -3520,7 +3527,15 @@ class Game {
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
         dir.addScaledVector(perp, Math.sin(e.timeAlive * 6) * 0.6).normalize()
       } else if (e.type === 'tank') {
-        // Slow but more HP; already handled at spawn
+        // Boo-like shy tank: creeps when looked at; chases when not
+        if (e.booShy === undefined) e.booShy = true
+        if (e.booShy) {
+          const toEnemy = e.mesh.position.clone().sub(this.camera.position).setY(0).normalize()
+          const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).setY(0).normalize()
+          const facing = camForward.dot(toEnemy) > 0.85
+          if (facing) e.speed = Math.min(e.speed, 0.4)
+          else e.speed = Math.max(e.speed, 2.2)
+        }
       } else if (e.type === 'shooter') {
         // Blend upstream ring strafing with bravery toggle
         const dist = toPlayer.length()
@@ -3559,9 +3574,23 @@ class Game {
           continue
         }
       } else if (e.type === 'bomber') {
-        // accelerates toward player, small explosive knockback when near
-        const dBP = toPlayer.length()
-        if (dBP < 1.2) {
+        // New: Flanking bomber. Circles to side then dashes toward predicted player pos.
+        const dist = toPlayer.length()
+        if (!e.bomberPhase) { e.bomberPhase = 'flank'; e.baseSpeed = 2.4 }
+        if (e.bomberPhase === 'flank') {
+          // Orbit-ish move with slight inward pull
+          const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+          dir.addScaledVector(perp, 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
+          e.speed = (e.baseSpeed ?? 2.4)
+          // When within range, switch to dash
+          if (dist < 5) { e.bomberPhase = 'dash'; e.dashRemaining = 0.45 }
+        } else if (e.bomberPhase === 'dash') {
+          e.speed = 5.5
+          e.dashRemaining! -= dt
+          if (e.dashRemaining! <= 0) { e.bomberPhase = 'flank' }
+        }
+        // On close proximity, explode
+        if (dist < 1.2) {
           e.alive = false
           this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
           this.spawnExplosion(e.mesh)
@@ -3569,9 +3598,6 @@ class Game {
           this.player.hp = Math.max(0, this.player.hp - 1)
           this.updateHPBar()
           if (this.player.hp <= 0) { this.onPlayerDeath(); return }
-        } else if (dBP < 5) {
-          // Apply brief speed boost when close
-          dir.multiplyScalar(1.3)
         }
       } else if (e.type === 'sniper') {
         // keeps long distance
@@ -3657,19 +3683,48 @@ class Game {
           e.speed = 2.3
         }
       } else if (e.type === 'brute') {
-        // Slow approach with occasional short rush
-        if (e.behaviorState === undefined) {
-          e.behaviorState = 'running'
-          e.behaviorTimer = 0
-          e.baseSpeed = 1.6
-        }
-        e.behaviorTimer! += dt
-        if (e.behaviorTimer! > 2.2) {
-          // brief rush
-          e.speed = 4.2
-          if (e.behaviorTimer! > 2.6) e.behaviorTimer = 0
+        // New: Slammer. Wind up, then ground slam that knocks back player slightly if close
+        if (!e.nextSlamAt) e.nextSlamAt = this.gameTime + 2 + Math.random() * 2
+        if (e.slamWindupUntil && this.gameTime < e.slamWindupUntil) {
+          e.speed = 0.7
+        } else if (this.gameTime >= (e.nextSlamAt ?? 0)) {
+          // Perform slam
+          const radius = 2.6
+          const center = e.mesh.position.clone()
+          // Visual ring
+          const ringGeom = new THREE.RingGeometry(radius * 0.7, radius * 0.72, 24)
+          const ringMat = new THREE.MeshBasicMaterial({ color: 0xdd6666, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+          const ring = new THREE.Mesh(ringGeom, ringMat)
+          ring.rotation.x = -Math.PI / 2
+          ring.position.copy(center).setY(0.03)
+          this.scene.add(ring)
+          const start = performance.now()
+          const dur = 220
+          const anim = () => {
+            const t = (performance.now() - start) / dur
+            if (t >= 1) { this.scene.remove(ring); ringGeom.dispose(); (ring.material as any).dispose?.(); return }
+            ring.geometry.dispose()
+            ring.geometry = new THREE.RingGeometry(radius * (0.65 + 0.25 * t), radius * (0.67 + 0.27 * t), 28)
+            ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t)
+            requestAnimationFrame(anim)
+          }
+          anim()
+          // Apply effect to player
+          const d = this.player.group.position.distanceTo(center)
+          if (d < radius) {
+            this.player.hp = Math.max(0, this.player.hp - 1)
+            this.updateHPBar()
+            const away = this.player.group.position.clone().sub(center).setY(0).normalize()
+            this.player.group.position.add(away.multiplyScalar(Math.max(0.1, (radius - d) * 0.15)))
+            this.audio.playOuch()
+            if (this.player.hp <= 0) { this.onPlayerDeath(); return }
+          }
+          e.nextSlamAt = this.gameTime + 2.2 + Math.random() * 1.6
+          e.slamWindupUntil = this.gameTime + 0.4
+          e.speed = 0.7
         } else {
-          e.speed = e.baseSpeed!
+          // Normal slow approach
+          e.speed = 1.6
         }
       }
       // Apply brief tint if recently hit
