@@ -641,6 +641,116 @@ class Game {
     return shell
   }
 
+  private showWavesSubmenu() {
+    if (!this.debugOverlay) return
+    const wrap = document.createElement('div')
+    wrap.className = 'card'
+    wrap.style.minWidth = '520px'
+    wrap.style.maxWidth = '80vw'
+    wrap.style.maxHeight = '80vh'
+    wrap.style.display = 'flex'
+    ;(wrap.style as any).flexDirection = 'column'
+    wrap.style.overflow = 'hidden'
+
+    const title = document.createElement('strong')
+    title.textContent = 'Waves Order (drag to reorder)'
+
+    const info = document.createElement('div')
+    info.className = 'carddesc'
+    info.textContent = 'Top is wave 1. Applies when "Use Custom Waves" is enabled.'
+
+    const useRow = document.createElement('label')
+    useRow.className = 'carddesc'
+    useRow.style.display = 'flex'
+    useRow.style.alignItems = 'center'
+    useRow.style.gap = '8px'
+    const useChk = document.createElement('input'); useChk.type = 'checkbox'; useChk.checked = this.debugUseWavePlan
+    const useLab = document.createElement('span'); useLab.textContent = 'Use Custom Waves'
+    useRow.appendChild(useChk); useRow.appendChild(useLab)
+
+    const list = document.createElement('div')
+    list.style.marginTop = '8px'
+    list.style.display = 'grid'
+    ;(list.style as any).gap = '6px'
+
+    const enemyTypes: EnemyType[] = ['slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute']
+    const current = this.debugWavePlan.length > 0 ? this.debugWavePlan.slice() : enemyTypes.slice(0, 15)
+    while (current.length < 15) current.push(enemyTypes[0])
+    while (current.length > 15) current.length = 15
+
+    const makeItem = (name: EnemyType, idx: number) => {
+      const row = document.createElement('div')
+      row.className = 'card'
+      row.draggable = true
+      row.style.padding = '6px'
+      row.style.display = 'flex'
+      row.style.alignItems = 'center'
+      row.style.gap = '8px'
+      const handle = document.createElement('span'); handle.textContent = '≡'; handle.style.cursor = 'grab'; handle.style.opacity = '0.7'
+      const lab = document.createElement('span'); lab.textContent = `${idx + 1}. ${name}`
+      row.appendChild(handle); row.appendChild(lab)
+      ;(row as any).__name = name
+      return row
+    }
+
+    const render = () => {
+      list.innerHTML = ''
+      current.forEach((n, i) => list.appendChild(makeItem(n, i)))
+    }
+
+    let dragIndex = -1
+    list.addEventListener('dragstart', (e: any) => {
+      const el = e.target.closest('.card')
+      if (!el) return
+      dragIndex = Array.from(list.children).indexOf(el)
+      e.dataTransfer.setData('text/plain', String(dragIndex))
+    })
+    list.addEventListener('dragover', (e) => { e.preventDefault() })
+    list.addEventListener('drop', (e: any) => {
+      e.preventDefault()
+      const from = dragIndex
+      const el = e.target.closest('.card')
+      const to = el ? Array.from(list.children).indexOf(el) : -1
+      if (from >= 0 && to >= 0 && from !== to) {
+        const item = current.splice(from, 1)[0]
+        current.splice(to, 0, item)
+        render()
+      }
+      dragIndex = -1
+    })
+
+    render()
+
+    const btnRow = document.createElement('div')
+    btnRow.style.display = 'flex'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '10px'
+    const resetBtn = document.createElement('button'); resetBtn.className = 'card'; resetBtn.textContent = 'Reset to Default'
+    const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
+    const saveBtn = document.createElement('button'); saveBtn.className = 'card'; saveBtn.textContent = 'Save'
+    btnRow.appendChild(backBtn); btnRow.appendChild(resetBtn); btnRow.appendChild(saveBtn)
+
+    const scroll = document.createElement('div')
+    scroll.style.flex = '1 1 auto'
+    scroll.style.overflow = 'auto'
+    scroll.appendChild(list)
+
+    const container = document.createElement('div')
+    container.style.display = 'flex'
+    ;(container.style as any).flexDirection = 'column'
+    container.append(title, info, useRow, scroll, btnRow)
+
+    this.debugOverlay!.innerHTML = ''
+    this.debugOverlay!.appendChild(container)
+    this.debugOverlay!.style.display = 'flex'
+
+    backBtn.onclick = () => this.showDebugPanel()
+    resetBtn.onclick = () => { current.splice(0, current.length, 'slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute','slime'); render() }
+    saveBtn.onclick = () => {
+      this.debugUseWavePlan = useChk.checked
+      this.debugWavePlan = current.slice()
+      this.showDebugPanel()
+    }
+  }
+
   private showDebugPanel() {
     if (!this.debugOverlay) {
       this.debugOverlay = document.createElement('div') as HTMLDivElement
@@ -757,6 +867,13 @@ class Game {
     perfLab.style.marginLeft = '6px'
     perfRow.appendChild(perfChk); perfRow.appendChild(perfLab)
     wrap.appendChild(perfRow)
+
+    // Waves submenu button
+    const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = '<strong>Waves…</strong>'
+    wavesBtn.onclick = () => this.showWavesSubmenu()
+    wavesBtn.style.marginTop = '8px'
+    wrap.appendChild(wavesBtn)
+
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     startBtn.onclick = () => {
       // Collect selections
@@ -3443,6 +3560,9 @@ class Game {
   isDaily = false
   dailyId = ''
   dailyWavePlan: EnemyType[] = []
+  // Debug custom wave plan
+  debugUseWavePlan = false
+  debugWavePlan: EnemyType[] = []
 
   private getNewYorkDate() {
     // Compute date in America/New_York without libs by offset approximation
@@ -3893,8 +4013,10 @@ class Game {
   spawnEnemyByWave(minute: number) {
     // Decide type by minute
     let type: EnemyType = 'slime'
-    // Daily plan override
-    if (this.isDaily && this.dailyWavePlan[minute] != null) {
+    // Debug custom plan override
+    if (this.debugUseWavePlan && this.debugWavePlan[minute] != null) {
+      type = this.debugWavePlan[minute]
+    } else if (this.isDaily && this.dailyWavePlan[minute] != null) {
       type = this.dailyWavePlan[minute]
     } else if (minute >= 10) {
       // Post-wave 10: cycle earlier waves with twists so each feels unique
