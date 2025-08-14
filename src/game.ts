@@ -4200,7 +4200,7 @@ class Game {
     this.altDriveMesh = slot
     // Floppy stack
     const floppiesGroup = new THREE.Group()
-    floppiesGroup.position.y = 0.25 // raise floppies instead of lowering drive
+    floppiesGroup.position.y = 0.5 // raise floppies instead of lowering drive
     g.add(floppiesGroup)
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
@@ -4243,8 +4243,8 @@ class Game {
       const angle = (i * 0.06)
       // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.70, -0.08, -0.10, -0.12]
-      const offsetsZ = [0.30, -0.02, -0.04, -0.06]
+      const offsetsY = [0.90, -0.10, -0.12, -0.14]
+      const offsetsZ = [0.45, -0.12, -0.18, -0.22]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
@@ -4363,8 +4363,8 @@ class Game {
 			const f = this.altFloppies[i]
       // Selected disk centered; others fanned left/right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.70, -0.08, -0.10, -0.12]
-      const offsetsZ = [0.34, -0.08, -0.10, -0.12]
+      const offsetsY = [0.90, -0.10, -0.12, -0.14]
+      const offsetsZ = [0.45, -0.12, -0.18, -0.22]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
