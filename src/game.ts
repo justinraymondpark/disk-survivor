@@ -1622,6 +1622,10 @@ class Game {
     startBtn.className = 'card nav-card selected'
     startBtn.style.padding = '8px'
     startBtn.innerHTML = '<strong>Start</strong>'
+    const lbBtn = document.createElement('button') as HTMLButtonElement
+    lbBtn.className = 'card nav-card'
+    lbBtn.style.padding = '8px'
+    lbBtn.innerHTML = '<strong>Leaderboards</strong>'
     const optBtn = document.createElement('button') as HTMLButtonElement
     optBtn.style.display = 'none' // replaced by FAB
     const chgBtn = document.createElement('button') as HTMLButtonElement
@@ -1641,12 +1645,15 @@ class Game {
     // Insert Start last so it appears first on grid
     // NOTE: Top-right small buttons removed; using bottom-right FABs instead
     btnRow.appendChild(startBtn)
+    btnRow.appendChild(lbBtn)
     btnRow.appendChild(dailyBtn)
     btnRow.appendChild(dbgBtn)
     btnRow.appendChild(altBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
+
+    lbBtn.onclick = () => this.showLeaderboards() /* implemented below */
 
     const begin = () => {
       this.titleOverlay.style.display = 'none'
