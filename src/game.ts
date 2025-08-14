@@ -668,8 +668,8 @@ class Game {
     for (let z = minG; z <= maxG; z += stepG) {
       for (let x = minG; x <= maxG; x += stepG) {
         const b = document.createElement('button') as HTMLButtonElement
-        b.className = 'card'
-        b.style.minWidth = '16px'; b.style.minHeight = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
+        b.className = 'ns-button'
+        b.style.width = '16px'; b.style.height = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
         const key = `${x},${z}`
         const setState = (active: boolean) => { b.style.background = active ? '#5a4a35' : '#2b2f3a'; (b as any).__active = active }
         setState(on.has(key))
@@ -696,6 +696,8 @@ class Game {
       cells.forEach(c => { if ((c as any).__active) layout.push({ x: (c as any).__x, z: (c as any).__z }) })
       this.debugJeevesLayout = layout
       if (this.currentTheme !== 'jeeves') this.applyTheme('jeeves')
+      // Ensure game can progress (spawn waves) after applying Jeeves via editor
+      this.themeChosen = true
       for (const o of this.themeObstacles) this.scene.remove(o)
       this.themeObstacles = []
       this.themeObstacleCells.clear()
