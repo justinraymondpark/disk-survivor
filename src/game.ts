@@ -4132,7 +4132,7 @@ class Game {
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
     // Center the whole bundle vertically (raise further)
-    g.position.y = 0.9
+    g.position.y = 1.2
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
     this.altPrevIsoPos = this.isoPivot.position.clone()
@@ -4329,6 +4329,8 @@ class Game {
 				this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
+      // On first touch frame after down, ensure drag is initialized so card moves immediately
+      if (!this.altDragging) this.altDragging = true
       // Record drag for render-loop application
       this.altDragDX = THREE.MathUtils.clamp(dx / 180, -0.6, 0.6)
 		}
