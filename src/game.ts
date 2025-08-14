@@ -5784,6 +5784,8 @@ class Game {
     overlay.className = 'overlay'
     const wrap = document.createElement('div') as HTMLDivElement
     wrap.className = 'card'
+    // Override default card width so our grid can expand
+    wrap.style.width = 'auto'
     wrap.style.minWidth = '720px'
     wrap.style.maxWidth = '86vw'
     wrap.style.maxHeight = '86vh'
