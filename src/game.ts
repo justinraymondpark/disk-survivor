@@ -2634,9 +2634,11 @@ class Game {
             mesh.scale.setScalar(scaleUp)
             // Exaggerated wiggle on selected card
             mesh.rotation.z = (Math.sin(t * 1.2 + ph * 0.7) * 0.08) + THREE.MathUtils.clamp(dragX, -0.35, 0.35)
+            mesh.renderOrder = 1003
           } else {
             mesh.position.x = f.target.x + swayX
             mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
+            mesh.renderOrder = 1001
           }
           mesh.position.z = f.target.z + swayZ
         }
@@ -4234,10 +4236,14 @@ class Game {
       const label = items[i]
       const m = makeFloppy(label)
       const angle = (i * 0.06)
-      // Build in reverse so first logical item ends up visually on top
-      const visualIndex = i
-      // Initial positions use the same centered offsets as cycling (left to right)
-      m.position.set(-0.87 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
+      // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
+      const offsetsX = [0, 0.62, -0.62, 1.24]
+      const offsetsY = [0.26, 0.0, 0.0, 0.0]
+      const offsetsZ = [0.12, 0.00, 0.00, -0.02]
+      const baseX = offsetsX[i] ?? (i * 0.62)
+      const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
+      const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
+      m.position.set(baseX, baseY, baseZ)
       // Idle vertical orientation (thin side)
       m.rotation.set(0, 0, 0)
       // Slightly smaller so four fit nicely
@@ -4350,14 +4356,15 @@ class Game {
     else this.altFloppies.push(this.altFloppies.shift()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
 			const f = this.altFloppies[i]
-      // Visual index equals loop index for left-to-right layout
-      const visualIndex = i
-      // Centered left-to-right row; bump the selected disk higher/closer to camera
-      const baseX = -0.87 + visualIndex * 0.58
-      const baseY = 0.05 + visualIndex * 0.16 + (i === 0 ? 0.22 : 0)
-      const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.06 : 0)
+      // Selected disk centered; others fanned left/right
+      const offsetsX = [0, 0.62, -0.62, 1.24]
+      const offsetsY = [0.26, 0.0, 0.0, 0.0]
+      const offsetsZ = [0.12, 0.00, 0.00, -0.02]
+      const baseX = offsetsX[i] ?? (i * 0.62)
+      const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
+      const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
 			f.target.set(baseX, baseY, baseZ)
-      f.targetRot = (visualIndex * 0.06)
+      f.targetRot = (i * 0.06)
       // Keep disks vertical during idle (thin side)
       f.mesh.rotation.x = 0
 		}

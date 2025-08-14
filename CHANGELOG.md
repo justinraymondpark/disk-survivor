@@ -1,4 +1,7 @@
 ## 0.1.23
+- Alt Title: Tinder-like drag refined — top disk scales up and has stronger wiggle while dragging; decays on release
+- Alt Title: reorder floppies left→right; selected disk centered and raised to avoid clipping; higher renderOrder
+- Alt Title: moved drive and slot down slightly for cleaner alignment during insert
 - Alt Title: ensure background is disposed on selection across both code paths
 - Alt Title: more robust fade logic for non-selected disks
 - Gameplay: wave-scaled XP bundles (higher-value cubes appear in later waves)
