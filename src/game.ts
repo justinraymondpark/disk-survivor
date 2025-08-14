@@ -2570,6 +2570,8 @@ class Game {
       if (!this.altInsertAnim) {
         for (const f of this.altFloppies) {
           f.mesh.rotation.x = 0
+          // Reset non-selected scale to default when not dragging
+          if (this.altFloppies[0] && f.mesh !== this.altFloppies[0].mesh) f.mesh.scale.setScalar(1.9)
         }
       }
       // Intro rotation removed (per request): disks stay face-up until selection triggers insert
@@ -2627,7 +2629,11 @@ class Game {
             if (!this.altDragging) this.altDragDX = this.altDragDX * Math.max(0, 1 - dt * 10)
             const dragX = this.altDragDX
             mesh.position.x = f.target.x + swayX + dragX
-            mesh.rotation.z = (Math.sin(t * 0.8 + ph * 0.5) * 0.04) + THREE.MathUtils.clamp(dragX, -0.3, 0.3)
+            // Scale up slightly while dragging
+            const scaleUp = this.altDragging ? 2.05 : 1.9
+            mesh.scale.setScalar(scaleUp)
+            // Exaggerated wiggle on selected card
+            mesh.rotation.z = (Math.sin(t * 1.2 + ph * 0.7) * 0.08) + THREE.MathUtils.clamp(dragX, -0.35, 0.35)
           } else {
             mesh.position.x = f.target.x + swayX
             mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
@@ -4164,7 +4170,7 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 0.9, 0)
+    drive.position.set(0, 0.7, 0)
     // Tilt drive up slightly toward camera (~15deg)
     drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
@@ -4184,7 +4190,7 @@ class Game {
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 1.0, 0.31)
+    slot.position.set(0, 0.8, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
@@ -4222,16 +4228,16 @@ class Game {
       // No overlay text label (top texture already includes text)
       return body
     }
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['START','DAILY','DEBUG','BOARD']
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['BOARD','DEBUG','DAILY','START']
     this.altFloppies = []
     for (let i = 0; i < items.length; i++) {
       const label = items[i]
       const m = makeFloppy(label)
       const angle = (i * 0.06)
       // Build in reverse so first logical item ends up visually on top
-      const visualIndex = items.length - 1 - i
-      // Initial positions use the same centered offsets as cycling
-      m.position.set(-0.58 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
+      const visualIndex = i
+      // Initial positions use the same centered offsets as cycling (left to right)
+      m.position.set(-0.87 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
       // Idle vertical orientation (thin side)
       m.rotation.set(0, 0, 0)
       // Slightly smaller so four fit nicely
@@ -4339,16 +4345,17 @@ class Game {
 
   private cycleAltFloppies(dir: number) {
     if (this.altFloppies.length === 0) return
-    if (dir > 0) this.altFloppies.push(this.altFloppies.shift()!)
-    else this.altFloppies.unshift(this.altFloppies.pop()!)
+    // Reverse cycling so cards flow left-to-right visually
+    if (dir > 0) this.altFloppies.unshift(this.altFloppies.pop()!)
+    else this.altFloppies.push(this.altFloppies.shift()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
 			const f = this.altFloppies[i]
-      // Ensure selected (index 0) is visually on top by mapping logical order to reversed visual index
-      const visualIndex = this.altFloppies.length - 1 - i
-      // Shift left to better center the stack
-      const baseX = -0.58 + visualIndex * 0.58
-      const baseY = 0.05 + visualIndex * 0.16 + (i === 0 ? 0.16 : 0)
-      const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
+      // Visual index equals loop index for left-to-right layout
+      const visualIndex = i
+      // Centered left-to-right row; bump the selected disk higher/closer to camera
+      const baseX = -0.87 + visualIndex * 0.58
+      const baseY = 0.05 + visualIndex * 0.16 + (i === 0 ? 0.22 : 0)
+      const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.06 : 0)
 			f.target.set(baseX, baseY, baseZ)
       f.targetRot = (visualIndex * 0.06)
       // Keep disks vertical during idle (thin side)
