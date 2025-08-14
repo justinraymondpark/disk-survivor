@@ -1282,8 +1282,6 @@ class Game {
   waveTypes: (EnemyType | undefined)[] = []
   // Share UI preview element reference
   private sharePreviewEl?: HTMLPreElement
-  // Latest fetched leaderboard slice (used to infer rank after submit)
-  private latestBoardEntries?: { name: string; timeSurvived: number; score: number }[]
   // Last submitted payload snapshot
   private lastSubmittedInfo?: { name: string; timeSurvived: number; score: number }
   ownedUpgrades = new Map<string, number>()
@@ -5383,7 +5381,6 @@ class Game {
       const list = this.overlay.querySelector('#lb-list') as HTMLDivElement
       if (!list) {
         const entriesOnly = (data?.entries ?? []) as { name: string; timeSurvived: number; score: number }[]
-        this.latestBoardEntries = entriesOnly
         return entriesOnly
       }
       const entries = (data?.entries ?? []) as { name: string; timeSurvived: number; score: number }[]
@@ -5393,7 +5390,6 @@ class Game {
           <span>${(e.timeSurvived ?? 0)}s • ${e.score ?? 0}</span>
         </div>
       `).join('') || '<div class="carddesc">No entries yet</div>'
-      this.latestBoardEntries = entries
       return entries
     } catch {
       // Fallback: nothing
