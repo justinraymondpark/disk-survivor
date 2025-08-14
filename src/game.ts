@@ -3041,7 +3041,7 @@ class Game {
         const dist = toPlayer.length()
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
         if (dist < 5) {
-          if (Math.random() < 0.02) e.behaviorPhase = (e.behaviorPhase ?? 1) * -1
+          if (Math.random() < 0.02) e.behaviorPhase = (((e.behaviorPhase ?? 1) * -1) as 1 | -1)
           dir.addScaledVector(perp, (e.behaviorPhase ?? 1) * 0.9).addScaledVector(toPlayer.normalize(), 0.6).normalize()
           e.speed = (e.baseSpeed ?? 2.4) * 1.35
         } else {
