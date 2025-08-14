@@ -2065,8 +2065,6 @@ class Game {
   makeChoiceCard(title: string, desc: string, icon: string, apply: () => void) {
     const c = document.createElement('button')
     c.className = 'card'
-    // Only show (Daily) tag for actual daily-specific content, not all weapons/upgrades
-    const dailyTag = this.isDaily ? ' (Daily)' : ''
     c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}</div>`
     c.onclick = () => {
       // Enforce max counts
