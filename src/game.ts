@@ -2917,31 +2917,58 @@ class Game {
     // Optional: enemy→obstacle collision on Jeeves only (simple grid lookup)
     if (this.currentTheme === 'jeeves') {
       const cs = this.obstacleCellSize
-      const resolve = (pos: THREE.Vector3) => {
+      const resolve = (e: Enemy) => {
+        const pos = e.mesh.position
         const key = `${Math.floor(pos.x / cs)},${Math.floor(pos.z / cs)}`
         const neighbors = [key]
         const [cx, cz] = key.split(',').map(Number)
         const around = [[1,0],[-1,0],[0,1],[0,-1]]
         for (const [dx, dz] of around) neighbors.push(`${cx+dx},${cz+dz}`)
+        let handledClimb = false
         for (const k of neighbors) {
           const arr = this.themeObstacleCells.get(k)
           if (!arr) continue
           for (const m of arr) {
+            const par: any = (m.geometry as any)?.parameters || {}
+            const half = (par.width ? par.width / 2 : 2)
             const dx = pos.x - m.position.x
             const dz = pos.z - m.position.z
-            const half = 2.0 // since s≈4
             if (Math.abs(dx) < half + 0.4 && Math.abs(dz) < half + 0.4) {
-              // push out along least penetration
-              const px = half + 0.4 - Math.abs(dx)
-              const pz = half + 0.4 - Math.abs(dz)
-              if (px < pz) pos.x += Math.sign(dx) * px; else pos.z += Math.sign(dz) * pz
+              if (e.canClimb) {
+                // start/continue climbing instead of pushing out
+                e.climbState = e.climbState ?? 'ground'
+                if (e.climbState === 'ground') e.climbState = 'ascending'
+                handledClimb = true
+                break
+              } else {
+                const px = half + 0.4 - Math.abs(dx)
+                const pz = half + 0.4 - Math.abs(dz)
+                if (px < pz) pos.x += Math.sign(dx) * px; else pos.z += Math.sign(dz) * pz
+              }
             }
+          }
+          if (handledClimb) break
+        }
+        // If on top or climbing, manage vertical motion here (groundY=0.5, top=2.5)
+        if (e.canClimb) {
+          const groundY = 0.5, topY = 2.5
+          if (e.climbState === 'ascending') {
+            pos.y = Math.min(topY, pos.y + 3 * dt)
+            if (pos.y >= topY - 1e-3) { e.climbState = 'onTop'; e.climbUntil = this.gameTime + 0.6 }
+          } else if (e.climbState === 'onTop') {
+            if ((e.climbUntil ?? 0) <= this.gameTime) e.climbState = 'descending'
+          } else if (e.climbState === 'descending') {
+            pos.y = Math.max(groundY, pos.y - 3 * dt)
+            if (pos.y <= groundY + 1e-3) e.climbState = 'ground'
+          } else if (!handledClimb) {
+            // Not climbing and not overlapping; keep at ground
+            if (pos.y !== groundY) pos.y = Math.max(groundY, pos.y - 3 * dt)
           }
         }
       }
       for (const e of this.enemies) {
         if (!e.alive) continue
-        resolve(e.mesh.position)
+        resolve(e)
       }
     }
 
@@ -3260,7 +3287,7 @@ class Game {
             }
             if (over) break
           }
-          const yTop = over ? 2.5 : 0 // climb height
+          const yTop = over ? 2.5 : 0.5 // climb height
           if (over) {
             if (e.climbState === 'ground' || e.climbState === undefined) { e.climbState = 'ascending'; e.climbTargetY = yTop }
             if (e.climbState === 'ascending') {
