@@ -2621,9 +2621,18 @@ class Game {
           // XY sway (toward camera plane)
           const swayX = Math.sin(t * 0.9 + ph) * 0.02
           const swayZ = Math.cos(t * 0.7 + ph) * 0.02
-          mesh.position.x = f.target.x + swayX
+          // If this is the selected top disk, let it drag slightly under the finger
+          if (i === 0) {
+            // Decay drag when not actively dragging
+            if (!this.altDragging) this.altDragDX = this.altDragDX * Math.max(0, 1 - dt * 10)
+            const dragX = this.altDragDX
+            mesh.position.x = f.target.x + swayX + dragX
+            mesh.rotation.z = (Math.sin(t * 0.8 + ph * 0.5) * 0.04) + THREE.MathUtils.clamp(dragX, -0.3, 0.3)
+          } else {
+            mesh.position.x = f.target.x + swayX
+            mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
+          }
           mesh.position.z = f.target.z + swayZ
-          mesh.rotation.z = Math.sin(t * 0.8 + ph * 0.5) * 0.04
         }
       }
       // Selection dance animation
@@ -4155,7 +4164,7 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 1.2, 0)
+    drive.position.set(0, 0.9, 0)
     // Tilt drive up slightly toward camera (~15deg)
     drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
@@ -4175,7 +4184,7 @@ class Game {
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 1.3, 0.31)
+    slot.position.set(0, 1.0, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
@@ -4221,7 +4230,8 @@ class Game {
       const angle = (i * 0.06)
       // Build in reverse so first logical item ends up visually on top
       const visualIndex = items.length - 1 - i
-      m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
+      // Initial positions use the same centered offsets as cycling
+      m.position.set(-0.58 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
       // Idle vertical orientation (thin side)
       m.rotation.set(0, 0, 0)
       // Slightly smaller so four fit nicely
@@ -4287,6 +4297,8 @@ class Game {
       this.altSwipeStartX = e.clientX
       this.altSwipeActive = true
       this.altSwipeDidCycle = false
+			this.altDragging = true
+			this.altDragDX = 0
 			// Maximize swipe hit area
 			this.altPrevTouchAction = (document.body.style as any).touchAction
 			;(document.body.style as any).touchAction = 'none'
@@ -4295,13 +4307,8 @@ class Game {
 				this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
-      // Drag the top card a bit with the finger, up to a limit
-      if (this.altFloppies[0]) {
-        const f = this.altFloppies[0]
-        const base = f.target.clone()
-        f.mesh.position.x = base.x + THREE.MathUtils.clamp(dx / 180, -0.5, 0.5)
-        f.mesh.rotation.z = THREE.MathUtils.clamp(dx / 600, -0.25, 0.25)
-      }
+      // Record drag for render-loop application
+      this.altDragDX = THREE.MathUtils.clamp(dx / 180, -0.6, 0.6)
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
@@ -4319,6 +4326,8 @@ class Game {
         setTimeout(() => this.disposeAltBg(), 700)
       }
       // Ease card back to stack alignment
+      this.altDragging = false
+      this.altDragDX = 0
       if (this.altFloppies[0]) { const f = this.altFloppies[0]; f.mesh.rotation.z = 0 }
       this.altSwipeActive = false
       ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
@@ -4336,7 +4345,8 @@ class Game {
 			const f = this.altFloppies[i]
       // Ensure selected (index 0) is visually on top by mapping logical order to reversed visual index
       const visualIndex = this.altFloppies.length - 1 - i
-      const baseX = -0.45 + visualIndex * 0.58
+      // Shift left to better center the stack
+      const baseX = -0.58 + visualIndex * 0.58
       const baseY = 0.05 + visualIndex * 0.16 + (i === 0 ? 0.16 : 0)
       const baseZ = 0.7 - visualIndex * 0.04 + (i === 0 ? 0.04 : 0)
 			f.target.set(baseX, baseY, baseZ)
