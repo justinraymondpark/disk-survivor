@@ -1494,25 +1494,14 @@ class Game {
       const m = this.makeHorseshoeMagnet?.()
       mesh = (m as unknown as THREE.Mesh) || new THREE.Mesh(this.sharedVacuumGeom, this.sharedVacuumMat)
     } else {
-      // XP bundle cube (tiered)
-      const wave = Math.max(0, Math.floor(this.gameTime / 60))
-              let v3 = 0.2
-             if (wave >= 2) { v3 = 0.25 }
-       if (wave >= 4) { v3 = 0.25 }
-       if (wave >= 6) { v3 = 0.3 }
-       if (wave >= 8) { v3 = 0.3 }
-       if (wave >= 10) { v3 = 0.28 }
-       if (wave >= 12) { v3 = 0.25 }
-       if (wave >= 15) { v3 = 0.22 }
-       const r = Math.random()
-       const tier = r < v3 ? 3 : 5
-      const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : this.sharedXPTier20Mat
-      mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
+      // XP drop uses the same replacement odds as enemy death (respects wave gating)
+      this.spawnXP(position)
+      return
     }
     mesh.position.copy(position)
     mesh.position.y = kind === 'heal' ? 0.7 : 0.4
     this.scene.add(mesh)
-    const xpValue = kind === 'xp' ? (typeof (mesh.material) !== 'undefined' ? (mesh.material === this.sharedXPTier3Mat ? 3 : mesh.material === this.sharedXPTier5Mat ? 5 : mesh.material === this.sharedXPTier10Mat ? 10 : 20) : undefined) : undefined
+    const xpValue = undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
 
