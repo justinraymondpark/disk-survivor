@@ -2566,10 +2566,10 @@ class Game {
         f.mesh.position.lerp(f.target, Math.min(1, dt * 8))
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * Math.min(1, dt * 8)
       }
-      // Force idle orientation: vertical/thin-side, unless the disk is currently inserting
+      // Force idle orientation: slight tilt so thickness is visible (unless inserting)
       if (!this.altInsertAnim) {
         for (const f of this.altFloppies) {
-          f.mesh.rotation.x = 0
+          f.mesh.rotation.x += (-0.18 - f.mesh.rotation.x) * Math.min(1, dt * 8)
           // Reset non-selected scale to default when not dragging
           if (this.altFloppies[0] && f.mesh !== this.altFloppies[0].mesh) f.mesh.scale.setScalar(1.9)
         }
@@ -2623,12 +2623,12 @@ class Game {
           // XY sway (toward camera plane)
           const swayX = Math.sin(t * 0.9 + ph) * 0.02
           const swayZ = Math.cos(t * 0.7 + ph) * 0.02
-          // If this is the selected top disk, let it drag slightly under the finger
+      // If this is the selected top disk, let it drag slightly under the finger
           if (i === 0) {
             // Decay drag when not actively dragging
             if (!this.altDragging) this.altDragDX = this.altDragDX * Math.max(0, 1 - dt * 10)
             const dragX = this.altDragDX
-            mesh.position.x = f.target.x + swayX + dragX
+        mesh.position.x = f.target.x + swayX + dragX
             // Scale up slightly while dragging
             const scaleUp = this.altDragging ? 2.05 : 1.9
             mesh.scale.setScalar(scaleUp)
@@ -4132,7 +4132,7 @@ class Game {
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
     // Center the whole bundle vertically (raise further)
-    g.position.y = 1.2
+    g.position.y = (this.camera.top + this.camera.bottom) * 0.25 + 0.2
     // Nudge drive and slot to stay centered with floppies group
     const driveYOffset = 0.2
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
@@ -4318,18 +4318,20 @@ class Game {
     }
 		window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
-		this.altTouchOnDown = (e: PointerEvent) => {
-			if (e.pointerType !== 'touch') return
+    this.altTouchOnDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
       this.altSwipeStartX = e.clientX
       this.altSwipeActive = true
       this.altSwipeDidCycle = false
-			this.altDragging = true
-			this.altDragDX = 0
-			// Maximize swipe hit area
-			this.altPrevTouchAction = (document.body.style as any).touchAction
-			;(document.body.style as any).touchAction = 'none'
+      this.altDragging = true
+      // Initialize drag immediately so first frame moves
+      this.altDragDX = 0
+      if (this.altFloppies[0]) { const f = this.altFloppies[0]; f.mesh.position.x = f.target.x }
+      // Maximize swipe hit area
+      this.altPrevTouchAction = (document.body.style as any).touchAction
+      ;(document.body.style as any).touchAction = 'none'
       this.altTapStartTime = performance.now()
-		}
+    }
 				this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
