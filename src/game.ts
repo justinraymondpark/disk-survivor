@@ -2065,8 +2065,9 @@ class Game {
   makeChoiceCard(title: string, desc: string, icon: string, apply: () => void) {
     const c = document.createElement('button')
     c.className = 'card'
+    // Only show (Daily) tag for actual daily-specific content, not all weapons/upgrades
     const dailyTag = this.isDaily ? ' (Daily)' : ''
-    c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}${dailyTag}</div>`
+    c.innerHTML = `<div class="cardrow"><span class="cardicon">${icon}</span><strong>${title}</strong></div><div class="carddesc">${desc}</div>`
     c.onclick = () => {
       // Enforce max counts
       const isWeaponLevelUp = /(\(\s*Level up\s*\))$/i.test(title)
@@ -4882,14 +4883,17 @@ class Game {
     const shareBtn = goCard.querySelector('#share-btn') as HTMLButtonElement
     const doCopy = async () => {
       try {
-        await navigator.clipboard.writeText(this.buildShareText())
+        // Use the current preview text (which may include rank if available)
+        const textToCopy = this.sharePreviewEl?.textContent || this.buildShareText()
+        await navigator.clipboard.writeText(textToCopy)
         copyBtn.innerHTML = '<strong>Copied!</strong>'
         setTimeout(() => (copyBtn.innerHTML = '<strong>Copy</strong>'), 900)
       } catch {}
     }
     if (copyBtn) copyBtn.onclick = doCopy
     if (shareBtn) shareBtn.onclick = async () => {
-      const text = this.buildShareText()
+      // Use the current preview text (which may include rank if available)
+      const text = this.sharePreviewEl?.textContent || this.buildShareText()
       const nav: any = navigator
       if (nav && typeof nav.share === 'function') {
         try { await nav.share({ text }) } catch {}
