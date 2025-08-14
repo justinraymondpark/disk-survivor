@@ -682,10 +682,10 @@ class Game {
       const row = document.createElement('div')
       row.className = 'card'
       row.draggable = true
-      row.style.padding = '6px'
+      row.style.padding = '2px 6px'
       row.style.display = 'flex'
       row.style.alignItems = 'center'
-      row.style.gap = '8px'
+      row.style.gap = '6px'
       const handle = document.createElement('span'); handle.textContent = '≡'; handle.style.cursor = 'grab'; handle.style.opacity = '0.7'
       const lab = document.createElement('span'); lab.textContent = `${idx + 1}. ${name}`
       row.appendChild(handle); row.appendChild(lab)
@@ -832,8 +832,10 @@ class Game {
     upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
     const btnRow = document.createElement('div')
     btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'space-between'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '12px'
-    const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.innerHTML = '<strong>Back</strong>'
-    const startBtn = document.createElement('button'); startBtn.className = 'card'; startBtn.innerHTML = '<strong>Start with Loadout</strong>'
+    const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
+    backBtn.style.padding = '4px 8px'; backBtn.style.fontSize = '12px'
+    const startBtn = document.createElement('button'); startBtn.className = 'card'; startBtn.textContent = 'Start with Loadout'
+    startBtn.style.padding = '4px 8px'; startBtn.style.fontSize = '12px'
     btnRow.appendChild(backBtn); btnRow.appendChild(startBtn)
     wrap.append(title, info, scroll, btnRow)
     this.debugOverlay!.innerHTML = ''
@@ -845,8 +847,8 @@ class Game {
     // Debug option: show damage toasts
     const dmgRow = document.createElement('div')
     dmgRow.className = 'card'
-    dmgRow.style.padding = '6px'
-    dmgRow.style.marginTop = '8px'
+    dmgRow.style.padding = '2px 6px'
+    dmgRow.style.marginTop = '6px'
     const dmgChk = document.createElement('input'); dmgChk.type = 'checkbox'; dmgChk.checked = this.debugShowDamage
     dmgChk.onchange = () => { this.debugShowDamage = dmgChk.checked }
     const dmgLab = document.createElement('span'); dmgLab.textContent = ' Show damage toasts over enemies'
@@ -856,7 +858,7 @@ class Game {
     // Debug option: performance overlay toggle
     const perfRow = document.createElement('div')
     perfRow.className = 'card'
-    perfRow.style.padding = '6px'
+    perfRow.style.padding = '2px 6px'
     perfRow.style.marginTop = '6px'
     const perfChk = document.createElement('input'); perfChk.type = 'checkbox'; perfChk.checked = this.debugPerfOverlay
     perfChk.onchange = () => {
@@ -869,9 +871,11 @@ class Game {
     wrap.appendChild(perfRow)
 
     // Waves submenu button
-    const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = '<strong>Waves…</strong>'
+    const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = 'Waves…'
     wavesBtn.onclick = () => this.showWavesSubmenu()
-    wavesBtn.style.marginTop = '8px'
+    wavesBtn.style.marginTop = '6px'
+    wavesBtn.style.padding = '4px 8px'
+    wavesBtn.style.fontSize = '12px'
     wrap.appendChild(wavesBtn)
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
