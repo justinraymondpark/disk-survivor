@@ -712,6 +712,19 @@ class Game {
       presetSel.value = name
       // Optional: try Netlify Function if present
       try { await fetch('/.netlify/functions/jeeves-presets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, coords }) }) } catch {}
+      // Re-pull remote list to merge new entry
+      try {
+        const res = await fetch('/.netlify/functions/jeeves-presets')
+        if (res.ok) {
+          const data = await res.json()
+          const remote: Record<string, CellCoord[]> = data?.presets || {}
+          const saved = loadSaved()
+          for (const k of Object.keys(remote)) if (!saved[k]) saved[k] = remote[k]
+          localStorage.setItem(savedKey, JSON.stringify(saved))
+          refreshOptions()
+        }
+      } catch {}
+
     }
     presetSel.onchange = () => {
       const all = { ...builtin, ...loadSaved() }
@@ -719,6 +732,20 @@ class Game {
       applyPresetToGrid(coords)
     }
     refreshOptions()
+    // Attempt to load remote presets on open
+    ;(async () => {
+      try {
+        const res = await fetch('/.netlify/functions/jeeves-presets')
+        if (res.ok) {
+          const data = await res.json()
+          const remote: Record<string, CellCoord[]> = data?.presets || {}
+          const saved = loadSaved()
+          for (const k of Object.keys(remote)) if (!saved[k]) saved[k] = remote[k]
+          localStorage.setItem(savedKey, JSON.stringify(saved))
+          refreshOptions()
+        }
+      } catch {}
+    })()
 
     const gridEl = document.createElement('div')
     gridEl.style.display = 'grid'
