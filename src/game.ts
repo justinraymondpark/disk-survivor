@@ -4131,8 +4131,9 @@ class Game {
     const narrowPortrait = (aspectNow < 0.65) && (window.innerWidth <= 520)
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
-    // Center the whole bundle vertically (raise further)
+    // Center the whole bundle vertically (raise further) and nudge up on-screen
     g.position.y = (this.camera.top + this.camera.bottom) * 0.25 + 0.2
+    g.position.z = -0.5
     // Nudge drive and slot to stay centered with floppies group
     const driveYOffset = 0.2
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
@@ -4226,7 +4227,7 @@ class Game {
       ;[matTop, matSide, matBottom].forEach((m) => { m.depthTest = true; m.depthWrite = true; (m as any).transparent = false })
       const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
       // Default groups are 6 in order: +x, -x, +y, -y, +z, -z
-      // Remap into materials array [top, bottom, side]
+      // Remap into materials array [top, bottom, side] to ensure bottom face uses the solid color
       const groups: { start: number; count: number; materialIndex: number }[] = []
       geom.clearGroups()
       // top (+y): index 2
