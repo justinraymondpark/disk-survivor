@@ -675,6 +675,23 @@ class Game {
     ;(list.style as any).gap = '4px'
 
     const enemyTypes: EnemyType[] = ['slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute']
+    const enemyColorHex: Partial<Record<EnemyType, number>> = {
+      slime: 0xff55aa,
+      runner: 0xffdd55,
+      spinner: 0x66e0ff,
+      splitter: 0xffaa33,
+      bomber: 0xcc4455,
+      sniper: 0x44ffaa,
+      weaver: 0xaa66ff,
+      zigzag: 0x55ffaa,
+      tank: 0xff6699,
+      shooter: 0x66aaff,
+      charger: 0xffaa33,
+      orbiter: 0x33ddff,
+      teleport: 0xcc66ff,
+      brute: 0xdd3333,
+      giant: 0xff44aa,
+    }
     const current = this.debugWavePlan.length > 0 ? this.debugWavePlan.slice() : enemyTypes.slice(0, 15)
     while (current.length < 15) current.push(enemyTypes[0])
     while (current.length > 15) current.length = 15
@@ -690,8 +707,9 @@ class Game {
       row.style.gap = '6px'
       row.type = 'button'
       const handle = document.createElement('span'); handle.textContent = '≡'; handle.style.cursor = 'grab'; handle.style.opacity = '0.7'
+      const swatch = document.createElement('span'); swatch.style.display = 'inline-block'; swatch.style.width = '10px'; swatch.style.height = '10px'; swatch.style.border = '1px solid rgba(0,0,0,0.5)'; swatch.style.background = `#${(enemyColorHex[name] ?? 0x888888).toString(16).padStart(6,'0')}`
       const lab = document.createElement('span'); lab.textContent = `${idx + 1}. ${name}`
-      row.appendChild(handle); row.appendChild(lab)
+      row.appendChild(handle); row.appendChild(swatch); row.appendChild(lab)
       ;(row as any).__name = name
       return row
     }
