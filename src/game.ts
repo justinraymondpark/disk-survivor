@@ -3740,7 +3740,8 @@ class Game {
 		} else {
 			this.showDebugPanel()
 		}
-	} }
+    };
+  }
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
     // Visual flash ring similar to shockwave
     const ringGeom = new THREE.RingGeometry(radius * 0.6, radius * 0.62, 32)
