@@ -1646,6 +1646,10 @@ class Game {
     lbBtn.className = 'card nav-card'
     lbBtn.style.padding = '8px'
     lbBtn.innerHTML = '<strong>Leaderboards</strong>'
+    const bugBtn = document.createElement('button') as HTMLButtonElement
+    bugBtn.className = 'card nav-card'
+    bugBtn.style.padding = '8px'
+    bugBtn.innerHTML = '<strong>Bug Report</strong>'
     const optBtn = document.createElement('button') as HTMLButtonElement
     optBtn.style.display = 'none' // replaced by FAB
     const chgBtn = document.createElement('button') as HTMLButtonElement
@@ -1668,12 +1672,14 @@ class Game {
     btnRow.appendChild(lbBtn)
     btnRow.appendChild(dailyBtn)
     btnRow.appendChild(dbgBtn)
+    btnRow.appendChild(bugBtn)
     btnRow.appendChild(altBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
 
     lbBtn.onclick = () => this.showLeaderboards() /* implemented below */
+    bugBtn.onclick = () => this.showBestiary()
 
     const begin = () => {
       this.titleOverlay.style.display = 'none'
@@ -5708,6 +5714,134 @@ class Game {
     await fetchMain()
     await fetchDaily(dateInput.value)
     dateInput.onchange = () => { fetchDaily(dateInput.value) }
+  }
+
+  private showBestiary() {
+    const overlay = document.createElement('div') as HTMLDivElement
+    overlay.className = 'overlay'
+    const wrap = document.createElement('div') as HTMLDivElement
+    wrap.className = 'card'
+    wrap.style.minWidth = '720px'
+    wrap.style.maxWidth = '86vw'
+    wrap.style.maxHeight = '86vh'
+    wrap.style.display = 'grid'
+    ;(wrap.style as any).gridTemplateColumns = '240px 1fr'
+    wrap.style.gap = '10px'
+
+    const left = document.createElement('div') as HTMLDivElement
+    left.style.display = 'flex'
+    ;(left.style as any).flexDirection = 'column'
+    left.style.gap = '6px'
+    const title = document.createElement('strong'); title.textContent = 'Bug Report'
+    const desc = document.createElement('div'); desc.className = 'carddesc'; desc.textContent = 'Known specimens in the wild'
+    const list = document.createElement('div') as HTMLDivElement
+    list.style.overflow = 'auto'; list.style.maxHeight = '60vh'; list.style.display = 'grid'; list.style.gap = '4px'
+    left.append(title, desc, list)
+
+    const right = document.createElement('div') as HTMLDivElement
+    right.style.display = 'grid'; (right.style as any).gridTemplateRows = '1fr auto'
+    right.style.minHeight = '420px'
+    const view = document.createElement('div') as HTMLDivElement
+    view.style.background = 'rgba(0,0,0,0.15)'; view.style.border = '1px solid #1f2a44'; view.style.borderRadius = '6px'
+    view.style.position = 'relative'
+    const blurb = document.createElement('div') as HTMLDivElement
+    blurb.className = 'carddesc'
+    blurb.style.marginTop = '8px'
+    blurb.style.minHeight = '44px'
+    const btnRow = document.createElement('div') as HTMLDivElement
+    btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'flex-end'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '8px'
+    const backBtn = document.createElement('button') as HTMLButtonElement
+    backBtn.className = 'card'; backBtn.innerHTML = '<strong>Back</strong>'
+    backBtn.onclick = () => overlay.remove()
+    btnRow.appendChild(backBtn)
+    right.append(view, blurb, btnRow)
+
+    wrap.append(left, right)
+    overlay.appendChild(wrap)
+    this.root.appendChild(overlay)
+    overlay.style.display = 'flex'
+
+    const enemies: EnemyType[] = ['runner','zigzag','tank','shooter','spinner','splitter','bomber','sniper','weaver','charger','orbiter','teleport','brute','slime','giant']
+    const bios: Record<EnemyType, string> = {
+      runner: 'Worm.exe — fast propagation via unsecured ports. Limited armor.',
+      zigzag: 'Glitch Sprite — jittery movement that confuses aim assist modules.',
+      tank: 'Ransom.BIT — slow encryption engine with intimidating presence. Shy when observed.',
+      shooter: 'AdBot — spams popups from a distance; sometimes gets brave.',
+      spinner: 'CPU Miner — spins cycles relentlessly while closing distance.',
+      splitter: 'ForkBomb — divides under pressure; each child continues the attack.',
+      bomber: 'Trojan Courier — flanks to deliver a damaging payload up close.',
+      sniper: 'Keylogger — prefers long range; retreats when approached.',
+      weaver: 'Rootkit — weaves around defenses with slippery patterns.',
+      charger: 'DDoS Burst — brief windup before overwhelming surge.',
+      orbiter: 'Phishing Ring — circles target; draws closer before the sting.',
+      teleport: 'Backdoor — relocates near target, then lunges.',
+      brute: 'Boot Sector Ogre — heavy slam that corrupts nearby sectors.',
+      slime: 'Adware Goo — basic nuisance with low integrity.',
+      giant: 'MegaVirus — hulking threat; enrages under sustained fire.'
+    } as any
+
+    // Basic preview renderer
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'absolute'; canvas.style.inset = '0'; canvas.style.width = '100%'; canvas.style.height = '100%'
+    view.appendChild(canvas)
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    const rsz = () => { renderer.setSize(view.clientWidth, view.clientHeight, false) }
+    rsz(); new ResizeObserver(rsz).observe(view)
+    const scene = new THREE.Scene()
+    const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+    const pivot = new THREE.Group(); scene.add(pivot)
+    cam.position.set(0, 2.1, 3.6); cam.lookAt(0, 0.6, 0); pivot.add(cam)
+    const light = new THREE.AmbientLight(0xffffff, 0.9); scene.add(light)
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x111522 }))
+    ground.rotation.x = -Math.PI / 2; ground.position.y = 0; scene.add(ground)
+
+    let currentMesh: THREE.Mesh | undefined
+    const buildEnemyMesh = (t: EnemyType) => {
+      // Reuse geometry/color mapping from spawner
+      let geom: THREE.BufferGeometry; let color = 0xaa55ff
+      switch (t) {
+        case 'runner': geom = new THREE.SphereGeometry(0.6, 16, 16); color = 0xffdd55; break
+        case 'spinner': geom = new THREE.TetrahedronGeometry(0.75); color = 0x66e0ff; break
+        case 'splitter': geom = new THREE.OctahedronGeometry(0.8); color = 0xffaa33; break
+        case 'bomber': geom = new THREE.DodecahedronGeometry(0.8); color = 0xcc4455; break
+        case 'sniper': geom = new THREE.ConeGeometry(0.6, 1.2, 14); color = 0x44ffaa; break
+        case 'weaver': geom = new THREE.TorusKnotGeometry(0.5, 0.12, 80, 10); color = 0xaa66ff; break
+        case 'zigzag': geom = new THREE.IcosahedronGeometry(0.65, 0); color = 0x55ffaa; break
+        case 'tank': geom = new THREE.BoxGeometry(0.9, 0.9, 0.9); color = 0xff6699; break
+        case 'shooter': geom = new THREE.ConeGeometry(0.5, 1.0, 12); color = 0x66aaff; break
+        case 'charger': geom = new THREE.CapsuleGeometry(0.5, 0.8, 8, 12) as any; color = 0xffaa33; break
+        case 'orbiter': geom = new THREE.TorusGeometry(0.6, 0.2, 14, 28); color = 0x33ddff; break
+        case 'teleport': geom = new THREE.OctahedronGeometry(0.7, 0); color = 0xcc66ff; break
+        case 'brute': geom = new THREE.BoxGeometry(1.2, 1.2, 1.2); color = 0xdd3333; break
+        case 'giant': geom = new THREE.SphereGeometry(1.3, 16, 16); color = 0xff44aa; break
+        default: geom = new THREE.SphereGeometry(0.6, 16, 16); color = 0xaa55ff
+      }
+      return new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+    }
+
+    const select = (t: EnemyType) => {
+      blurb.textContent = bios[t] || ''
+      if (currentMesh) { scene.remove(currentMesh); this.disposeObjectDeep(currentMesh) }
+      currentMesh = buildEnemyMesh(t)
+      if (currentMesh) { currentMesh.position.set(0, 0.6, 0); scene.add(currentMesh) }
+    }
+
+    // Populate list
+    enemies.forEach((t, i) => {
+      const b = document.createElement('button') as HTMLButtonElement
+      b.className = 'card'; b.style.width = '100%'; b.innerHTML = `<strong>${t.toUpperCase()}</strong>`
+      b.onclick = () => select(t)
+      list.appendChild(b)
+      if (i === 0) select(t)
+    })
+
+    const tick = () => {
+      if (currentMesh) currentMesh.rotation.y += 0.01
+      renderer.render(scene, cam)
+      if (overlay.parentElement) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
   }
 
   private updateHitCounter() {
