@@ -1,3 +1,9 @@
+## 0.1.25
+- Game Over: added shareable summary preview with Copy and Share buttons
+  - Format: `Disk Survivor|Daily Disk 🌊<wave> 🕚<seconds> [🎯#rank if available]` + weapon emojis + wave color blocks
+  - Weapons show only owned weapons' emojis in acquisition order; upgrades are not shown
+  - Wave line shows a block emoji per wave using closest color match for the dominant enemy type
+
 ## 0.1.24
 - Alt Title: known issues still unresolved in latest builds (to be addressed next):
   - Disks not vertically centered on screen

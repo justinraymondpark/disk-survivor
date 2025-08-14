@@ -1276,6 +1276,16 @@ class Game {
   billboardYahoo!: THREE.Object3D
   billboardDialup!: THREE.Object3D
   ownedWeapons = new Set<string>()
+  // Order that weapons were acquired (for shareable summary)
+  weaponOrder: string[] = []
+  // Representative enemy type per wave minute (for shareable summary)
+  waveTypes: (EnemyType | undefined)[] = []
+  // Share UI preview element reference
+  private sharePreviewEl?: HTMLPreElement
+  // Latest fetched leaderboard slice (used to infer rank after submit)
+  private latestBoardEntries?: { name: string; timeSurvived: number; score: number }[]
+  // Last submitted payload snapshot
+  private lastSubmittedInfo?: { name: string; timeSurvived: number; score: number }
   ownedUpgrades = new Map<string, number>()
   maxWeapons = 5
   maxUpgrades = 5
@@ -2085,6 +2095,8 @@ class Game {
   addWeapon(name: string) {
     if (this.ownedWeapons.has(name)) return
     this.ownedWeapons.add(name)
+    // Track acquisition order once
+    if (!this.weaponOrder.includes(name)) this.weaponOrder.push(name)
     if (name === 'CRT Beam' && !this.crtBeam) {
       const geom = new THREE.PlaneGeometry(this.crtBeamLength, 0.35)
       const mat = new THREE.MeshBasicMaterial({ color: 0x99e0ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })
@@ -4587,6 +4599,8 @@ class Game {
       type = 'runner'
     }
 
+    // Record representative type for this wave minute the first time we choose it
+    if (!this.waveTypes[minute]) this.waveTypes[minute] = type
     let spawnPos = this.pickOffscreenSpawn(3, 8)
 
     let geom: THREE.BufferGeometry
@@ -4841,6 +4855,14 @@ class Game {
         <button id="submit-btn" class="card" style="flex:1; text-align:center;"><strong>Submit</strong></button>
         <button id="restart-btn" class="card" style="flex:1; text-align:center;"><strong>Restart</strong></button>
       </div>
+      <div id="share-wrap" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
+        <div class="carddesc">Share your run</div>
+        <pre id="share-preview" style="margin:0; padding:8px; background:rgba(255,255,255,0.04); border:1px solid #1f2a44; border-radius:6px; font-family: ui-monospace, monospace; font-size:12px; white-space:pre-wrap;"></pre>
+        <div style="display:flex; gap:8px;">
+          <button id="copy-btn" class="card" style="flex:1; text-align:center;"><strong>Copy</strong></button>
+          <button id="share-btn" class="card" style="flex:1; text-align:center;"><strong>Share</strong></button>
+        </div>
+      </div>
     `
     // Right: Leaderboard
     const lbCard = document.createElement('div')
@@ -4855,14 +4877,44 @@ class Game {
     restartBtn.onclick = () => location.reload()
     const submitBtn = goCard.querySelector('#submit-btn') as HTMLButtonElement
     const nameInput = goCard.querySelector('#name-input') as HTMLInputElement
+    // Initialize share preview and buttons
+    this.sharePreviewEl = goCard.querySelector('#share-preview') as HTMLPreElement
+    if (this.sharePreviewEl) this.sharePreviewEl.textContent = this.buildShareText()
+    const copyBtn = goCard.querySelector('#copy-btn') as HTMLButtonElement
+    const shareBtn = goCard.querySelector('#share-btn') as HTMLButtonElement
+    const doCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(this.buildShareText())
+        copyBtn.innerHTML = '<strong>Copied!</strong>'
+        setTimeout(() => (copyBtn.innerHTML = '<strong>Copy</strong>'), 900)
+      } catch {}
+    }
+    if (copyBtn) copyBtn.onclick = doCopy
+    if (shareBtn) shareBtn.onclick = async () => {
+      const text = this.buildShareText()
+      const nav: any = navigator
+      if (nav && typeof nav.share === 'function') {
+        try { await nav.share({ text }) } catch {}
+      } else {
+        await doCopy()
+      }
+    }
     submitBtn.onclick = async () => {
       if (this.submitLocked) return
       this.submitLocked = true
       submitBtn.disabled = true
       const name = (nameInput.value || '').slice(0, 20)
       try { localStorage.setItem('player.name', name) } catch {}
-      await this.submitLeaderboard(name, Math.floor(this.gameTime), this.score)
-      await this.refreshLeaderboard()
+      const timeSurvived = Math.floor(this.gameTime)
+      const score = this.score
+      this.lastSubmittedInfo = { name, timeSurvived, score }
+      await this.submitLeaderboard(name, timeSurvived, score)
+      const entries = await this.refreshLeaderboard()
+      // If we can find the player's rank in the current slice, update share preview with rank
+      if (entries && this.lastSubmittedInfo && this.sharePreviewEl) {
+        const idx = entries.findIndex((e) => e.name === this.lastSubmittedInfo!.name && e.timeSurvived === this.lastSubmittedInfo!.timeSurvived && e.score === this.lastSubmittedInfo!.score)
+        if (idx >= 0) this.sharePreviewEl.textContent = this.buildShareText(idx + 1)
+      }
       // Focus restart after submit for quick replay
       restartBtn.focus()
     }
@@ -5329,7 +5381,11 @@ class Game {
       const res = await fetch('/.netlify/functions/leaderboard-top' + qs)
       const data = await res.json()
       const list = this.overlay.querySelector('#lb-list') as HTMLDivElement
-      if (!list) return
+      if (!list) {
+        const entriesOnly = (data?.entries ?? []) as { name: string; timeSurvived: number; score: number }[]
+        this.latestBoardEntries = entriesOnly
+        return entriesOnly
+      }
       const entries = (data?.entries ?? []) as { name: string; timeSurvived: number; score: number }[]
       list.innerHTML = entries.map((e: any, i: number) => `
         <div style="display:flex; justify-content:space-between; gap:8px;">
@@ -5337,9 +5393,94 @@ class Game {
           <span>${(e.timeSurvived ?? 0)}s • ${e.score ?? 0}</span>
         </div>
       `).join('') || '<div class="carddesc">No entries yet</div>'
+      this.latestBoardEntries = entries
+      return entries
     } catch {
       // Fallback: nothing
     }
+  }
+
+  private buildShareText(rank?: number): string {
+    const modeLabel = this.isDaily ? 'Daily Disk' : 'Disk Survivor'
+    const waveNum = Math.max(1, Math.floor(this.gameTime / 60) + 1)
+    const secs = Math.max(0, Math.floor(this.gameTime))
+    const rankText = typeof rank === 'number' && rank > 0 ? ` 🎯#${rank}` : ''
+    const header = `${modeLabel} 🌊${waveNum} 🕚${secs}${rankText}`
+    const weaponsLine = this.weaponOrder.filter((w) => this.ownedWeapons.has(w)).map((w) => this.weaponToEmoji(w)).join('')
+    const wavesLine = this.getWaveEmojiLine(waveNum)
+    return [header, weaponsLine, wavesLine].join('\n')
+  }
+
+  private getWaveEmojiLine(waveCount: number): string {
+    const parts: string[] = []
+    for (let m = 0; m < waveCount; m++) {
+      let t = this.waveTypes[m]
+      if (!t) t = this.predictTypeForMinute(m)
+      parts.push(this.enemyTypeToBlockEmoji(t))
+    }
+    return parts.join('')
+  }
+
+  private enemyTypeToBlockEmoji(t: EnemyType): string {
+    switch (t) {
+      case 'runner': return '🟨'
+      case 'spinner': return '🟦'
+      case 'splitter': return '🟧'
+      case 'bomber': return '🟥'
+      case 'sniper': return '🟩'
+      case 'weaver': return '🟪'
+      case 'zigzag': return '🟩'
+      case 'tank': return '🟥'
+      case 'shooter': return '🟦'
+      case 'charger': return '🟧'
+      case 'orbiter': return '🟦'
+      case 'teleport': return '🟪'
+      case 'brute': return '🟥'
+      case 'slime': return '🟪'
+      case 'giant': return '🟥'
+      default: return '⬜️'
+    }
+  }
+
+  private weaponToEmoji(name: string): string {
+    switch (name) {
+      case 'CRT Beam': return '📺'
+      case 'Dot Matrix': return '🖨️'
+      case 'Dial-up Burst': return '📞'
+      case 'SCSI Rocket': return '🚀'
+      case 'Tape Whirl': return '📼'
+      case 'Sata Cable Tail': return '🔌'
+      case 'Magic Lasso': return '🪢'
+      case 'Shield Wall': return '🛡️'
+      case 'Paint.exe': return '🎨'
+      default: return ''
+    }
+  }
+
+  private predictTypeForMinute(minute: number): EnemyType {
+    if (this.debugUseWavePlan && this.debugWavePlan[minute] != null) return this.debugWavePlan[minute]
+    if (this.isDaily && this.dailyWavePlan[minute] != null) return this.dailyWavePlan[minute]
+    if (minute >= 10) {
+      const cycle = (minute - 10) % 6
+      switch (cycle) {
+        case 0: return 'spinner'
+        case 1: return 'charger'
+        case 2: return 'orbiter'
+        case 3: return 'teleport'
+        case 4: return 'weaver'
+        case 5: return 'brute'
+      }
+    }
+    if (minute >= 9) return 'brute'
+    if (minute >= 8) return 'weaver'
+    if (minute >= 7) return 'teleport'
+    if (minute >= 6) return 'orbiter'
+    if (minute >= 5) return 'charger'
+    if (minute >= 4) return 'spinner'
+    if (minute >= 3) return 'tank'
+    if (minute >= 2) return 'zigzag'
+    if (minute >= 1) return 'runner'
+    return 'slime'
   }
 
   private async showChangelog() {
