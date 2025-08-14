@@ -641,6 +641,79 @@ class Game {
     return shell
   }
 
+  private showJeevesEditor() {
+    if (!this.debugOverlay) return
+    const wrap = document.createElement('div')
+    wrap.className = 'card'
+    wrap.classList.add('debug-panel')
+    wrap.style.minWidth = '520px'
+    wrap.style.maxWidth = '80vw'
+    wrap.style.maxHeight = '80vh'
+    wrap.style.display = 'flex'
+    ;(wrap.style as any).flexDirection = 'column'
+    wrap.style.overflow = 'hidden'
+
+    const title = document.createElement('strong')
+    title.textContent = 'Jeeves Maze Editor'
+    const info = document.createElement('div'); info.className = 'carddesc'; info.textContent = 'Toggle cells to place/remove blocks. Grid snap = 3.'
+
+    const gridEl = document.createElement('div')
+    gridEl.style.display = 'grid'
+    ;(gridEl.style as any).gridTemplateColumns = 'repeat(17, 16px)'
+    gridEl.style.gap = '2px'
+    gridEl.style.marginTop = '6px'
+    const cells: HTMLButtonElement[] = []
+    const minG = -24, maxG = 24, stepG = 3
+    const on = new Set(this.debugJeevesLayout.map(c => `${c.x},${c.z}`))
+    for (let z = minG; z <= maxG; z += stepG) {
+      for (let x = minG; x <= maxG; x += stepG) {
+        const b = document.createElement('button') as HTMLButtonElement
+        b.className = 'card'
+        b.style.minWidth = '16px'; b.style.minHeight = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
+        const key = `${x},${z}`
+        const setState = (active: boolean) => { b.style.background = active ? '#5a4a35' : '#2b2f3a'; (b as any).__active = active }
+        setState(on.has(key))
+        b.onclick = () => setState(!(b as any).__active)
+        ;(b as any).__x = x; (b as any).__z = z
+        cells.push(b); gridEl.appendChild(b)
+      }
+    }
+
+    const btnRow = document.createElement('div')
+    btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'space-between'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '8px'
+    const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
+    const applyBtn = document.createElement('button'); applyBtn.className = 'card'; applyBtn.textContent = 'Apply to Jeeves'
+    btnRow.appendChild(backBtn); btnRow.appendChild(applyBtn)
+
+    this.debugOverlay!.innerHTML = ''
+    wrap.append(title, info, gridEl, btnRow)
+    this.debugOverlay!.appendChild(wrap)
+    this.debugOverlay!.style.display = 'flex'
+
+    backBtn.onclick = () => this.showDebugPanel()
+    applyBtn.onclick = () => {
+      const layout: { x: number; z: number }[] = []
+      cells.forEach(c => { if ((c as any).__active) layout.push({ x: (c as any).__x, z: (c as any).__z }) })
+      this.debugJeevesLayout = layout
+      if (this.currentTheme !== 'jeeves') this.applyTheme('jeeves')
+      for (const o of this.themeObstacles) this.scene.remove(o)
+      this.themeObstacles = []
+      this.themeObstacleCells.clear()
+      const addBox = (x: number, z: number, c: number, s = 2) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(s, 1, s), new THREE.MeshBasicMaterial({ color: c }))
+        m.position.set(x, 0.5, z)
+        this.themeObstacles.push(m)
+        this.scene.add(m)
+        const cs = this.obstacleCellSize
+        const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+        const list = this.themeObstacleCells.get(key) || []
+        list.push(m)
+        this.themeObstacleCells.set(key, list)
+      }
+      for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 2)
+    }
+  }
+
   private showWavesSubmenu() {
     if (!this.debugOverlay) return
     const wrap = document.createElement('div')
@@ -801,36 +874,11 @@ class Game {
     const form = document.createElement('div')
     form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '6px'
     scroll.appendChild(form)
-    // Jeeves Maze Editor
-    const mazeCard = document.createElement('div')
-    mazeCard.className = 'card'
-    mazeCard.style.padding = '8px'
-    mazeCard.style.marginTop = '6px'
-    const mazeTitle = document.createElement('div'); mazeTitle.innerHTML = '<strong>Jeeves Maze Editor</strong>'
-    const mazeInfo = document.createElement('div'); mazeInfo.className = 'carddesc'; mazeInfo.textContent = 'Toggle cells to place/remove blocks. Click Start to apply. Grid snap = 3.'
-    const gridEl = document.createElement('div')
-    gridEl.style.display = 'grid'
-    ;(gridEl.style as any).gridTemplateColumns = 'repeat(17, 16px)'
-    gridEl.style.gap = '2px'
-    gridEl.style.marginTop = '6px'
-    const cells: HTMLButtonElement[] = []
-    const minG = -24, maxG = 24, stepG = 3
-    const on = new Set(this.debugJeevesLayout.map(c => `${c.x},${c.z}`))
-    for (let z = minG; z <= maxG; z += stepG) {
-      for (let x = minG; x <= maxG; x += stepG) {
-        const b = document.createElement('button') as HTMLButtonElement
-        b.className = 'card'
-        b.style.minWidth = '16px'; b.style.minHeight = '16px'; b.style.padding = '0'; b.style.borderRadius = '2px'
-        const key = `${x},${z}`
-        const setState = (active: boolean) => { b.style.background = active ? '#5a4a35' : '#2b2f3a'; (b as any).__active = active }
-        setState(on.has(key))
-        b.onclick = () => setState(!(b as any).__active)
-        ;(b as any).__x = x; (b as any).__z = z
-        cells.push(b); gridEl.appendChild(b)
-      }
-    }
-    mazeCard.append(mazeTitle, mazeInfo, gridEl)
-    scroll.appendChild(mazeCard)
+    // Jeeves Maze Editor moved to its own screen
+    const jeevesBtn = document.createElement('button'); jeevesBtn.className = 'card'; jeevesBtn.textContent = 'Jeeves Maze Editor…'
+    jeevesBtn.style.padding = '4px 8px'; jeevesBtn.style.fontSize = '12px'; jeevesBtn.style.marginTop = '6px'
+    jeevesBtn.onclick = () => this.showJeevesEditor()
+    scroll.appendChild(jeevesBtn)
     // Jeeves Maze Painter
     const mazeWrap = document.createElement('div')
     mazeWrap.className = 'card dbg-row'
@@ -997,10 +1045,6 @@ class Game {
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     startBtn.onclick = () => {
-      // Save Jeeves layout prior to starting
-      const layout: { x: number; z: number }[] = []
-      cells.forEach(c => { if ((c as any).__active) layout.push({ x: (c as any).__x, z: (c as any).__z }) })
-      this.debugJeevesLayout = layout
       // Collect selections
       const rows = Array.from(form.children) as any[]
       const selectedWeapons = rows.filter(r => r.__kind === 'weapon' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
