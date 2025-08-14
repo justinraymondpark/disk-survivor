@@ -4131,8 +4131,8 @@ class Game {
     const narrowPortrait = (aspectNow < 0.65) && (window.innerWidth <= 520)
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
-    // Center the whole bundle vertically a bit higher
-    g.position.y = 0.3
+    // Center the whole bundle vertically
+    g.position.y = 0.6
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
     this.altPrevIsoPos = this.isoPivot.position.clone()
@@ -4247,7 +4247,7 @@ class Game {
       // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
       const offsetsX = [0, 0.62, -0.62, 1.24]
       const offsetsY = [0.90, -0.10, -0.12, -0.14]
-      const offsetsZ = [0.52, -0.15, -0.22, -0.28]
+      const offsetsZ = [0.60, -0.20, -0.28, -0.36]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
@@ -4367,7 +4367,7 @@ class Game {
       // Selected disk centered; others fanned left/right
       const offsetsX = [0, 0.62, -0.62, 1.24]
       const offsetsY = [0.90, -0.10, -0.12, -0.14]
-      const offsetsZ = [0.52, -0.15, -0.22, -0.28]
+      const offsetsZ = [0.60, -0.20, -0.28, -0.36]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
