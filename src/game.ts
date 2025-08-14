@@ -364,6 +364,7 @@ type XPOrb = {
   value: number
   alive: boolean
 }
+
 type Theme = 'default' | 'geocities' | 'yahoo' | 'dialup'
 
 class Game {
@@ -400,7 +401,7 @@ class Game {
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   // XP tier materials
-  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0xff66ff })
+  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0x33e6c6 })
   sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   sharedXPTier10Mat = new THREE.MeshBasicMaterial({ color: 0x6699ff })
   sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
@@ -1466,8 +1467,8 @@ class Game {
        if (wave >= 10) { v3 = 0.28 }
        if (wave >= 12) { v3 = 0.25 }
        if (wave >= 15) { v3 = 0.22 }
-      const r = Math.random()
-      const tier = r < v3 ? 3 : 5
+       const r = Math.random()
+       const tier = r < v3 ? 3 : 5
       const mat = tier === 3 ? this.sharedXPTier3Mat : tier === 5 ? this.sharedXPTier5Mat : tier === 10 ? this.sharedXPTier10Mat : this.sharedXPTier20Mat
       mesh = new THREE.Mesh(this.sharedXPCubeGeom, mat)
     }
@@ -1525,6 +1526,7 @@ class Game {
     const lab = document.querySelector('#hpbar #hplabel') as HTMLDivElement
     if (lab) lab.textContent = `${this.player.hp}/${this.player.maxHp}`
   }
+
   updateInventoryUI() {
     const wslots = document.querySelector<HTMLDivElement>('#wslots')!
     const uslots = document.querySelector<HTMLDivElement>('#uslots')!
@@ -1831,6 +1833,14 @@ class Game {
     this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue: value })
   }
 
+  // getCurrentWave unused after replacement odds; keep if later needed
+  // private getCurrentWave(): number {
+  //   return Math.max(0, Math.floor(this.gameTime / 60))
+  // }
+
+     // Deprecated: computeXpBundleValue and dropXpBundleAt removed (replaced by replacement odds in spawnXP)
+
+
   private dropXpOnDeath(e: Enemy): void {
     const pos = e.mesh.position.clone()
     if (e.type === 'giant') {
@@ -2068,6 +2078,7 @@ class Game {
   allowGameProgress() {
     return this.themeChosen && !this.isPausedForLevelUp && !this.isPaused
   }
+
   loop() {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
@@ -2181,9 +2192,6 @@ class Game {
       requestAnimationFrame(() => this.loop())
       return
     }
-
-    // Safety: if Alt Title is no longer active, ensure the opaque background is removed
-    if (!this.altTitleActive && this.altBgMesh) this.disposeAltBg()
 
     // Overlay controller navigation
     this.updateOverlaySelection(dt)
@@ -2650,6 +2658,7 @@ class Game {
         }
       }
     }
+
     // Paint.exe update
     if (this.ownedWeapons.has('Paint.exe') && this.paintLevel > 0) {
       this.paintTimer += dt
@@ -3298,6 +3307,7 @@ class Game {
 
     // Theme triggers
     this.checkThemeTiles()
+
     this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
 
     // Magic Lasso update
@@ -3707,7 +3717,7 @@ class Game {
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
     const end = new THREE.Vector3(0, 2.5, 0.3)
-    this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
+	this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
 		this.disposeAltBg()
 		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
 		this.altTitleGroup = undefined
@@ -3740,8 +3750,644 @@ class Game {
 		} else {
 			this.showDebugPanel()
 		}
-    } }
+	} }
   }
+
+  fireSideBullet(dir: THREE.Vector3) {
+    const start = new THREE.Vector3()
+    this.player.weaponAnchor.getWorldPosition(start)
+    const mesh = new THREE.Mesh(this.sharedSideBulletGeom, this.sharedSideBulletMat)
+    mesh.position.copy(start)
+    mesh.position.y = 0.5
+    this.scene.add(mesh)
+    this.projectiles.push({ mesh, velocity: dir.clone().multiplyScalar(12), alive: true, ttl: 1.6, damage: this.projectileDamage * this.sideBulletDamageMultiplier, pierce: this.projectilePierce, last: mesh.position.clone(), kind: 'side' })
+  }
+
+  emitShockwave() {
+    // Damage nearby enemies in ring (supports multi-pulse)
+    // Visual ring (animate scale/opacity; avoid geometry rebuild)
+    let ring = this.poolRings.pop()
+    if (!ring) {
+      const ringGeom = new THREE.RingGeometry(1, 1.2, 64)
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+      ring = new THREE.Mesh(ringGeom, ringMat)
+    }
+    ring.rotation.x = -Math.PI / 2
+    ring.position.copy(this.player.group.position).setY(0.02)
+    ring.scale.set(this.modemWaveRadius * 0.2, this.modemWaveRadius * 0.2, 1)
+    this.scene.add(ring)
+    const start = performance.now()
+    const duration = 420
+    const anim = () => {
+      const t = (performance.now() - start) / duration
+      if (t >= 1) { this.scene.remove(ring); this.poolRings.push(ring!); return }
+      const s = this.modemWaveRadius * (0.2 + 0.8 * t)
+      ring.scale.set(s, s, 1)
+      ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t)
+      requestAnimationFrame(anim)
+    }
+    anim()
+    // Play thump
+    this.audio.playShockwave()
+    const applyPulse = () => {
+      for (const e of this.enemies) {
+        if (!e.alive) continue
+        const d = e.mesh.position.distanceTo(this.player.group.position)
+        if (d < this.modemWaveRadius) {
+          const dmg = this.modemWaveDamage + Math.floor(this.gameTime / 60)
+          e.hp -= dmg
+          this.onEnemyDamaged(e, dmg)
+          const nowT = this.gameTime
+          if ((e.nextDmgToastTime ?? 0) <= nowT) {
+            this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+            e.nextDmgToastTime = nowT + 0.15
+          }
+          // Knockback away from player, stronger near center
+          const dir = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize()
+          const strength = Math.max(0.12, (this.modemWaveRadius - d) * 0.08)
+          e.mesh.position.add(dir.multiplyScalar(strength))
+          // Hop effect
+          const startY = e.mesh.position.y
+          const hopPeak = 0.35
+          const hopStart = performance.now()
+          const hopDur = 180
+          const hop = () => {
+            const ht = (performance.now() - hopStart) / hopDur
+            if (ht >= 1) { e.mesh.position.y = startY; return }
+            const y = Math.sin(Math.PI * Math.min(1, ht)) * hopPeak
+            e.mesh.position.y = startY + y
+            requestAnimationFrame(hop)
+          }
+          hop()
+          // Brief slow
+          e.burstSlowUntil = this.gameTime + 0.6
+          e.burstSlowFactor = 0.6
+          if (e.hp <= 0) {
+            e.alive = false
+            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
+            this.spawnExplosion(e.mesh)
+            if (e.face) this.scene.remove(e.face)
+            this.onEnemyDown()
+            this.score += 1
+            this.dropXpOnDeath(e)
+          } else {
+            this.audio.playImpact()
+          }
+        }
+      }
+    }
+    applyPulse()
+  }
+
+  launchRocket() {
+    // Rocket; homing handled in main projectile loop to avoid timers
+    const start = new THREE.Vector3()
+    this.player.weaponAnchor.getWorldPosition(start)
+    const mesh = new THREE.Mesh(this.sharedRocketGeom, this.sharedRocketMat)
+    mesh.position.copy(start)
+    mesh.position.y = 0.6
+    this.scene.add(mesh)
+    const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 5.0, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
+    this.projectiles.push(rocket)
+  }
+
+  spawnEnemyByWave(minute: number) {
+    // Decide type by minute
+    let type: EnemyType = 'slime'
+    // Daily plan override
+    if (this.isDaily && this.dailyWavePlan[minute] != null) {
+      type = this.dailyWavePlan[minute]
+    } else if (minute >= 10) {
+      // Post-wave 10: cycle earlier waves with twists so each feels unique
+      const cycle = (minute - 10) % 6 // cycles through 0..5 mapping to waves 4..9 flavors
+      switch (cycle) {
+        case 0: {
+          const pool: EnemyType[] = ['spinner', 'shooter']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          // Twist applied later: slight speed buff
+          break
+        }
+        case 1: {
+          const pool: EnemyType[] = ['charger', 'splitter']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 2: {
+          const pool: EnemyType[] = ['orbiter', 'bomber']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 3: {
+          const pool: EnemyType[] = ['teleport', 'sniper']
+          type = pool[Math.floor(Math.random() * pool.length)]
+          break
+        }
+        case 4: type = 'weaver'; break
+        case 5: type = 'brute'; break
+      }
+    } else if (minute >= 9) {
+      type = 'brute'       // wave 10
+    } else if (minute >= 8) {
+      type = 'weaver'      // wave 9
+    } else if (minute >= 7) {
+      const pool: EnemyType[] = ['teleport', 'sniper'] // wave 8 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 6) {
+      const pool: EnemyType[] = ['orbiter', 'bomber'] // wave 7 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 5) {
+      const pool: EnemyType[] = ['charger', 'splitter'] // wave 6 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 4) {
+      const pool: EnemyType[] = ['spinner', 'shooter'] // wave 5 flavors
+      type = pool[Math.floor(Math.random() * pool.length)]
+    } else if (minute >= 3) {
+      type = 'tank'
+    } else if (minute >= 2) {
+      type = 'zigzag'
+    } else if (minute >= 1) {
+      type = 'runner'
+    }
+
+    let spawnPos = this.pickOffscreenSpawn(3, 8)
+
+    let geom: THREE.BufferGeometry
+    let color: number
+    let hp: number
+    let speed: number
+    switch (type) {
+      case 'runner':
+        geom = new THREE.SphereGeometry(0.45, 12, 12)
+        color = 0xffdd55
+        hp = 2 + Math.floor(this.gameTime / 35)
+        speed = 2.4
+        break
+      case 'spinner':
+        geom = new THREE.TetrahedronGeometry(0.55)
+        color = 0x66e0ff
+        hp = 3 + Math.floor(this.gameTime / 30)
+        speed = 3.2
+        break
+      case 'splitter':
+        geom = new THREE.OctahedronGeometry(0.6)
+        color = 0xffaa33
+        hp = 5 + Math.floor(this.gameTime / 28)
+        speed = 2.6
+        break
+      case 'bomber':
+        geom = new THREE.DodecahedronGeometry(0.58)
+        color = 0xcc4455
+        hp = 4 + Math.floor(this.gameTime / 30)
+        speed = 2.9
+        break
+      case 'sniper':
+        geom = new THREE.ConeGeometry(0.45, 0.9, 12)
+        color = 0x44ffaa
+        hp = 4 + Math.floor(this.gameTime / 28)
+        speed = 2.7
+        break
+      case 'weaver':
+        geom = new THREE.TorusKnotGeometry(0.35, 0.09, 64, 8)
+        color = 0xaa66ff
+        hp = 5 + Math.floor(this.gameTime / 26)
+        speed = 3.1
+        break
+      case 'zigzag':
+        geom = new THREE.IcosahedronGeometry(0.5, 0)
+        color = 0x55ffaa
+        hp = 2 + Math.floor(this.gameTime / 35)
+        speed = 2.6
+        break
+      case 'tank':
+        geom = new THREE.BoxGeometry(0.7, 0.7, 0.7)
+        color = 0xff6699
+        hp = 6 + Math.floor(this.gameTime / 24)
+        speed = 1.5
+        break
+      case 'shooter':
+        geom = new THREE.ConeGeometry(0.4, 0.7, 10)
+        color = 0x66aaff
+        hp = 4 + Math.floor(this.gameTime / 25)
+        speed = 2.0
+        break
+      case 'charger':
+        geom = new THREE.CapsuleGeometry(0.35, 0.6, 6, 10)
+        color = 0xffaa33
+        hp = 6 + Math.floor(this.gameTime / 22)
+        speed = 2.3
+        break
+      case 'orbiter':
+        geom = new THREE.TorusGeometry(0.42, 0.15, 12, 24)
+        color = 0x33ddff
+        hp = 5 + Math.floor(this.gameTime / 25)
+        speed = 2.4
+        break
+      case 'teleport':
+        geom = new THREE.OctahedronGeometry(0.5, 0)
+        color = 0xcc66ff
+        hp = 5 + Math.floor(this.gameTime / 24)
+        speed = 2.3
+        break
+      case 'brute':
+        geom = new THREE.BoxGeometry(0.9, 0.9, 0.9)
+        color = 0xdd3333
+        hp = 10 + Math.floor(this.gameTime / 18)
+        speed = 1.6
+        break
+      default:
+        geom = new THREE.SphereGeometry(0.5, 12, 12)
+        color = 0xaa55ff
+        hp = 2 + Math.floor(this.gameTime / 40)
+        speed = 2.2
+    }
+    const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+    mesh.position.copy(spawnPos)
+    this.scene.add(mesh)
+
+    // Create larger face billboard that tracks the player
+    const faceTex = this.makeFaceTexture(type)
+    const faceSize = type === 'brute' ? 1.2 : 0.9
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(faceSize, faceSize),
+      new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+    )
+    face.position.set(spawnPos.x, 0.95, spawnPos.z)
+    this.scene.add(face)
+
+    const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
+    // Unique spawn burst for teleport type: initial speed boost with quick decay
+    if (type === 'teleport') {
+      // Nudge spawn position a bit farther than baseline to reinforce offscreen entry
+      const toPlayer = this.player.group.position.clone().sub(spawnPos).setY(0)
+      const farther = toPlayer.length() > 0 ? spawnPos.clone().add(toPlayer.normalize().multiplyScalar(-1.5)) : spawnPos
+      spawnPos = farther
+    }
+    const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
+    const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor }
+    // Wave 10 special: Boo behavior
+    if (minute === 9) enemy.booWave10 = true
+    // Rare elite: ~1 in 500
+    if (Math.random() < 1 / 500) { enemy.eliteAggressive = true; hp += 2; enemy.hp = hp }
+    // Post-10 twists: modest buffs per cycle so waves feel unique
+    if (minute >= 10) {
+      const cycle = (minute - 10) % 6
+      if (cycle === 0) enemy.speed *= 1.1 // spinner/shooter faster
+      if (cycle === 1) enemy.hp += 1       // charger/splitter tankier
+      if (cycle === 2) enemy.baseSpeed = (enemy.baseSpeed ?? enemy.speed) * 1.15 // orbiter/bomber faster orbit/approach
+      if (cycle === 3) enemy.speed *= 1.15 // teleport/sniper faster between actions
+      if (cycle === 4) enemy.hp += 2       // weaver tougher
+      if (cycle === 5) enemy.hp += 3       // brute much tougher
+    }
+    if (type === 'teleport') {
+      // Mark a brief high-speed phase on spawn
+      ;(enemy as any).dashRemaining = 0.35
+    }
+    this.enemies.push(enemy)
+    this.aliveEnemies++
+  }
+
+  makeFaceTexture(type: EnemyType) {
+    const c = document.createElement('canvas')
+    c.width = 128; c.height = 128
+    const g = c.getContext('2d')!
+    g.clearRect(0, 0, 128, 128)
+    g.fillStyle = 'rgba(0,0,0,0)'
+    g.fillRect(0, 0, 128, 128)
+    // Eyes (bigger)
+    g.fillStyle = '#fff'
+    g.beginPath(); g.arc(40, 58, 20, 0, Math.PI * 2); g.fill()
+    g.beginPath(); g.arc(88, 58, 20, 0, Math.PI * 2); g.fill()
+    g.fillStyle = '#111'
+    const angry = type === 'runner' || type === 'tank' || type === 'shooter' || type === 'charger' || type === 'brute'
+    g.beginPath(); g.arc(40 + (angry ? 6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
+    g.beginPath(); g.arc(88 + (angry ? -6 : 0), 62, 10, 0, Math.PI * 2); g.fill()
+    // Brows
+    g.strokeStyle = '#fff'; g.lineWidth = 6
+    if (angry) {
+      g.beginPath(); g.moveTo(18, 36); g.lineTo(58, 48); g.stroke()
+      g.beginPath(); g.moveTo(108, 36); g.lineTo(68, 48); g.stroke()
+    } else {
+      g.beginPath(); g.moveTo(24, 44); g.lineTo(58, 44); g.stroke()
+      g.beginPath(); g.moveTo(70, 44); g.lineTo(104, 44); g.stroke()
+    }
+    // Mouth
+    g.strokeStyle = '#f66'; g.lineWidth = 7
+    if (type === 'tank') {
+      g.beginPath(); g.moveTo(36, 94); g.lineTo(92, 94); g.stroke()
+    } else {
+      g.beginPath(); g.arc(64, 90, 18, Math.PI * 0.05, Math.PI - Math.PI * 0.05); g.stroke()
+    }
+    const tex = new THREE.CanvasTexture(c)
+    return tex
+  }
+
+  spawnGiant() {
+    const angle = Math.random() * Math.PI * 2
+    const dist = 16 + Math.random() * 6
+    const x = this.player.group.position.x + Math.cos(angle) * dist
+    const z = this.player.group.position.z + Math.sin(angle) * dist
+    const geom = new THREE.SphereGeometry(1.2, 12, 12)
+    const color = 0xff44aa
+    const hp = 60 + Math.floor(this.gameTime / 6) // very tanky
+    const speed = 1.2
+    const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+    mesh.position.set(x, 1.2, z)
+    this.scene.add(mesh)
+
+    // Animated face canvas
+    const canvas = document.createElement('canvas')
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    canvas.width = isMobile ? 64 : 128; canvas.height = isMobile ? 64 : 128
+    const tex = new THREE.CanvasTexture(canvas)
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: tex, transparent: true }))
+    face.position.set(x, 2.1, z)
+    this.scene.add(face)
+    this.drawAnimatedFace(canvas, 0)
+
+    const minute = Math.floor(this.gameTime / 60)
+    const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
+    this.enemies.push({ mesh, alive: true, speed, hp, type: 'giant', timeAlive: 0, face, faceTex: tex, faceCanvas: canvas, nextFaceUpdate: performance.now(), spawnWave: minute, baseColorHex: baseColor })
+  }
+
+  drawAnimatedFace(c: HTMLCanvasElement, frame: number) {
+    const g = c.getContext('2d')!
+    g.clearRect(0, 0, c.width, c.height)
+    // background sparkle
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle = `hsla(${(frame * 10 + i * 9) % 360}, 90%, 60%, 0.2)`
+      g.fillRect((i * 13 + frame * 3) % 128, (i * 7) % 128, 3, 3)
+    }
+    // big eyes
+    g.fillStyle = '#fff'
+    g.beginPath(); g.arc(42, 60, 22, 0, Math.PI * 2); g.fill()
+    g.beginPath(); g.arc(86, 60, 22, 0, Math.PI * 2); g.fill()
+    g.fillStyle = '#111'
+    g.beginPath(); g.arc(42 + Math.sin(frame * 0.3) * 6, 64, 11, 0, Math.PI * 2); g.fill()
+    g.beginPath(); g.arc(86 + Math.cos(frame * 0.3) * -6, 64, 11, 0, Math.PI * 2); g.fill()
+    // animated mouth
+    g.strokeStyle = '#f66'; g.lineWidth = 8
+    g.beginPath(); g.arc(64, 94, 18 + Math.sin(frame * 0.2) * 4, Math.PI * 0.05, Math.PI - Math.PI * 0.05); g.stroke()
+  }
+
+  // Death handling: controller to restart
+  onPlayerDeath() {
+    this.isPausedForLevelUp = true
+    // Flash + sound
+    const df = document.createElement('div')
+    df.className = 'death-flash'
+    document.body.appendChild(df)
+    ;(df.style as any).animation = 'deathPulse 700ms ease-out 1'
+    setTimeout(() => df.remove(), 720)
+    this.audio.playDeathMoan()
+    this.overlay.innerHTML = ''
+    this.overlay.style.display = 'flex'
+    this.submitLocked = false
+    const wrap = document.createElement('div')
+    wrap.className = 'go-wrap'
+    wrap.style.animation = 'popFade 360ms ease-out'
+    wrap.style.display = 'flex'
+    wrap.style.gap = '16px'
+    // Left: Game Over + submit
+    const goCard = document.createElement('div')
+    goCard.className = 'card'
+    const lastName = (localStorage.getItem('player.name') || '').slice(0, 20)
+    goCard.innerHTML = `
+      <div style="font-size:28px;color:#ff6699;margin-bottom:8px;">GAME OVER</div>
+      <div class="carddesc" style="margin-bottom:8px;">Time: ${this.gameTime.toFixed(1)}s • Score: ${this.score}</div>
+      <label class="carddesc" style="display:block;margin-bottom:6px;">Name (max 20):</label>
+      <input id="name-input" maxlength="20" value="${lastName.replace(/"/g, '&quot;')}" style="width:100%; padding:6px; background:rgba(255,255,255,0.06); border:1px solid #1f2a44; color:#eaf6ff; border-radius:6px;" />
+      <div id="go-buttons" style="display:flex; gap:8px; margin-top:10px;">
+        <button id="submit-btn" class="card" style="flex:1; text-align:center;"><strong>Submit</strong></button>
+        <button id="restart-btn" class="card" style="flex:1; text-align:center;"><strong>Restart</strong></button>
+      </div>
+    `
+    // Right: Leaderboard
+    const lbCard = document.createElement('div')
+    lbCard.className = 'card'
+    lbCard.style.minWidth = '280px'
+    lbCard.innerHTML = '<strong>Leaderboard</strong><div class="carddesc">Top 13 by time survived</div><div id="lb-list" style="margin-top:8px; display:grid; gap:4px; font-family: ui-monospace, monospace;"></div>'
+    wrap.appendChild(goCard)
+    wrap.appendChild(lbCard)
+    this.overlay.appendChild(wrap)
+
+    const restartBtn = goCard.querySelector('#restart-btn') as HTMLButtonElement
+    restartBtn.onclick = () => location.reload()
+    const submitBtn = goCard.querySelector('#submit-btn') as HTMLButtonElement
+    const nameInput = goCard.querySelector('#name-input') as HTMLInputElement
+    submitBtn.onclick = async () => {
+      if (this.submitLocked) return
+      this.submitLocked = true
+      submitBtn.disabled = true
+      const name = (nameInput.value || '').slice(0, 20)
+      try { localStorage.setItem('player.name', name) } catch {}
+      await this.submitLeaderboard(name, Math.floor(this.gameTime), this.score)
+      await this.refreshLeaderboard()
+      // Focus restart after submit for quick replay
+      restartBtn.focus()
+    }
+    // Fetch initial board
+    this.refreshLeaderboard()
+    // Enter submits if name field focused, else restart
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (document.activeElement === nameInput) submitBtn.click()
+        else restartBtn.click()
+      }
+    }
+    window.addEventListener('keydown', handler, { once: true })
+    // Initialize controller selection on Game Over buttons and add own nav loop
+    const goBtns = Array.from(goCard.querySelectorAll('#go-buttons .card')) as HTMLButtonElement[]
+    if (goBtns.length > 0) {
+      this.uiSelectIndex = 0
+      goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+      let prevLeft = false, prevRight = false, prevA = false
+      const navLoop = () => {
+        if (this.overlay.style.display !== 'flex') return
+        const pad = this.input.getActiveGamepad()
+        const left = !!pad && (pad.axes?.[0] ?? 0) < -0.5 || !!pad && !!pad.buttons?.[14]?.pressed
+        const right = !!pad && (pad.axes?.[0] ?? 0) > 0.5 || !!pad && !!pad.buttons?.[15]?.pressed
+        const a = !!pad && !!pad.buttons?.[0]?.pressed
+        if (left && !prevLeft) {
+          this.uiSelectIndex = (this.uiSelectIndex - 1 + goBtns.length) % goBtns.length
+          goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+        }
+        if (right && !prevRight) {
+          this.uiSelectIndex = (this.uiSelectIndex + 1) % goBtns.length
+          goBtns.forEach((b, i) => b.classList.toggle('selected', i === this.uiSelectIndex))
+        }
+        if (a && !prevA) {
+          const chosen = goBtns[this.uiSelectIndex]
+          if (chosen) chosen.click()
+          return
+        }
+        prevLeft = left; prevRight = right; prevA = a
+        requestAnimationFrame(navLoop)
+      }
+      requestAnimationFrame(navLoop)
+    }
+  }
+
+  onEnemyDown() {
+    this.audio.playEnemyDown()
+    this.hitCount += 1
+    this.updateHitCounter()
+  }
+  private async toggleFullscreen() {
+    try {
+      const doc: any = document
+      const el: any = document.documentElement
+      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
+      if (!isFull) {
+        if (el.requestFullscreen) await el.requestFullscreen()
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+        else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+      } else {
+        if (doc.exitFullscreen) await doc.exitFullscreen()
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+        else if (doc.msExitFullscreen) await doc.msExitFullscreen()
+      }
+      setTimeout(() => {
+        this.onResize()
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+      }, 150)
+    } catch {}
+  }
+
+  private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
+    if (!this.debugShowDamage) return
+    const screen = this.worldToScreen(pos)
+    const el = document.createElement('div')
+    const shown = Math.max(1, Math.round(amount))
+    el.textContent = `-${shown}`
+    const style = el.style as CSSStyleDeclaration
+    style.position = 'fixed'
+    style.left = `${screen.x}px`
+    style.top = `${screen.y}px`
+    style.transform = 'translate(-50%, -50%)'
+    style.color = color
+    style.fontFamily = 'ui-monospace, monospace'
+    style.fontSize = '13px'
+    style.textShadow = '0 0 6px rgba(0,0,0,0.6)'
+    style.pointerEvents = 'none'
+    style.zIndex = '30'
+    style.opacity = '1'
+    style.transition = 'opacity 500ms, transform 500ms'
+    document.body.appendChild(el)
+    requestAnimationFrame(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%, -90%)' })
+    setTimeout(() => el.remove(), 520)
+  }
+
+  private worldToScreen(p: THREE.Vector3) {
+    const v = p.clone()
+    this._tmpProj.copy(v)
+    this._tmpProj.project(this.camera)
+    const x = (this._tmpProj.x * 0.5 + 0.5) * window.innerWidth
+    const y = (-this._tmpProj.y * 0.5 + 0.5) * window.innerHeight
+    return { x, y }
+  }
+
+  private spawnExplosion(source: THREE.Mesh) {
+    const pos = source.position.clone()
+    const color = ((source.material as any)?.color?.getHex?.() ?? 0xffffff) as number
+    this.scene.remove(source)
+    const shardCount = 10
+    const shards: { m: THREE.Mesh; v: THREE.Vector3; life: number }[] = []
+    for (let i = 0; i < shardCount; i++) {
+      let m = this.shardPool.pop()
+      if (!m) m = new THREE.Mesh(this.sharedShardGeom, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 }))
+      else (m.material as THREE.MeshBasicMaterial).color.setHex(color)
+      m.position.copy(pos)
+      m.position.y = 0.6
+      this.scene.add(m)
+      const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).normalize()
+      const speed = 3 + Math.random() * 2
+      shards.push({ m, v: dir.multiplyScalar(speed), life: 0.3 })
+    }
+    const tick = () => {
+      const dt = 1 / 60
+      let alive = false
+      for (const s of shards) {
+        if (s.life <= 0) continue
+        s.m.position.addScaledVector(s.v, dt)
+        s.v.multiplyScalar(0.9)
+        ;(s.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, s.life / 0.3)
+        s.life -= dt
+        alive = alive || s.life > 0
+      }
+      if (alive) requestAnimationFrame(tick)
+      else for (const s of shards) { this.scene.remove(s.m); this.shardPool.push(s.m) }
+    }
+    tick()
+  }
+
+  private spawnZapEffect(a: THREE.Vector3, b: THREE.Vector3, intensity = 1) {
+    // Brighter, thicker lightning bolt with branching
+    const drawBolt = (from: THREE.Vector3, to: THREE.Vector3, width: number, color: number, lifeMs: number) => {
+      const segs = 8
+      const pts: THREE.Vector3[] = []
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs
+        const p = new THREE.Vector3().lerpVectors(from, to, t)
+        if (i > 0 && i < segs) {
+          const jitter = new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3)
+          p.addScaledVector(jitter, intensity)
+        }
+        pts.push(p)
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts)
+      const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: Math.min(1, 0.95 * intensity), linewidth: width as any, blending: THREE.AdditiveBlending })
+      const line = new THREE.Line(geo, mat)
+      this.scene.add(line)
+      const start = performance.now()
+      const fade = () => {
+        const t = (performance.now() - start) / lifeMs
+        ;(line.material as THREE.LineBasicMaterial).opacity = Math.max(0, 1 - t)
+        if (t < 1) requestAnimationFrame(fade)
+        else { this.scene.remove(line); geo.dispose(); (line.material as THREE.Material).dispose?.() }
+      }
+      fade()
+    }
+    drawBolt(a, b, 3, 0xccffff, 180)
+    // Small branch
+    const mid = new THREE.Vector3().lerpVectors(a, b, 0.6)
+    const branch = mid.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6))
+    drawBolt(mid, branch, 2, 0x88eeff, 140)
+  }
+
+  private spawnWhirlDust(center: THREE.Vector3) {
+    // Small magnetic/dusty poofs using pooled quads
+    const count = 8
+    const lifeMs = 220
+    const particles: { m: THREE.Mesh; v: THREE.Vector3; born: number }[] = []
+    for (let i = 0; i < count; i++) {
+      let quad = this.poolQuads.pop()
+      if (!quad) {
+        const g = new THREE.PlaneGeometry(0.15, 0.15)
+        const m = new THREE.MeshBasicMaterial({ color: 0x66ffcc, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+        quad = new THREE.Mesh(g, m)
+        quad.rotation.x = -Math.PI / 2
+      }
+      quad.position.copy(center).setY(0.12)
+      this.scene.add(quad)
+      const dir = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize()
+      const speed = 0.6 + Math.random() * 0.6
+      particles.push({ m: quad, v: dir.multiplyScalar(speed), born: performance.now() })
+    }
+    const tick = () => {
+      let any = false
+      const now = performance.now()
+      for (const p of particles) {
+        const t = (now - p.born) / lifeMs
+        if (t >= 1) { this.scene.remove(p.m); this.poolQuads.push(p.m); continue }
+        any = true
+        p.m.position.addScaledVector(p.v, 1 / 60)
+        ;(p.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 * (1 - t))
+      }
+      if (any) requestAnimationFrame(tick)
+    }
+    tick()
+  }
+
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
     // Visual flash ring similar to shockwave
     const ringGeom = new THREE.RingGeometry(radius * 0.6, radius * 0.62, 32)
@@ -3962,6 +4608,7 @@ class Game {
 
   private levelUpSataTail() {
     this.sataTailLevel += 1
+    // Prioritize damage scaling, then modest length increase
     this.sataTailDps += 6
     this.sataTailLength = Math.min(4.0, this.sataTailLength + 0.25)
     // Reposition segments along new length
