@@ -366,7 +366,7 @@ type XPOrb = {
   alive: boolean
 }
 
-type Theme = 'default' | 'geocities' | 'yahoo' | 'dialup'
+type Theme = 'default' | 'geocities' | 'yahoo' | 'dialup' | 'jeeves'
 
 class Game {
   renderer: THREE.WebGLRenderer
@@ -2093,7 +2093,7 @@ class Game {
     // Remove other billboards once chosen
     if (!this.themeLocked) {
       this.themeLocked = true
-      for (const bb of [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]) {
+      for (const bb of [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]) {
         if (bb) this.scene.remove(bb)
       }
     }
@@ -2150,6 +2150,15 @@ class Game {
         ctx.stroke()
         ctx.globalAlpha = 1
       }
+    } else if (theme === 'jeeves') {
+      // Warm parchment base with faint grid (maze-like feel)
+      ctx.fillStyle = '#2b2418'
+      ctx.fillRect(0, 0, 512, 512)
+      ctx.strokeStyle = '#3a3122'; ctx.lineWidth = 1
+      for (let i = 0; i <= 512; i += 16) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke()
+      }
     }
 
     const tex = new THREE.CanvasTexture(texCanvas)
@@ -2178,6 +2187,16 @@ class Game {
     } else if (theme === 'dialup') {
       addBox(-8, 0, 0x88aa99, 3)
       addBox(4, 8, 0x557788, 3)
+    } else if (theme === 'jeeves') {
+      // Many small blockers to create a dense maze
+      for (let z = -10; z <= 10; z += 2) {
+        for (let x = -10; x <= 10; x += 2) {
+          if ((x + z) % 4 === 0 && Math.random() < 0.7) addBox(x, z, 0x5a4a35, 2)
+        }
+      }
+      // Carve a few corridors
+      for (let x = -10; x <= 10; x += 2) addBox(x, -6, 0x2f261b, 1)
+      for (let z = -10; z <= 10; z += 2) addBox(2, z, 0x2f261b, 1)
     }
     this.themeObstacles = obstacles
 
@@ -2200,6 +2219,8 @@ class Game {
     if (Math.abs(p.x + 6) < 2.5 && Math.abs(p.z + 6) < 2.5) { this.applyTheme('geocities'); this.themeChosen = true }
     if (Math.abs(p.x - 8) < 2.5 && Math.abs(p.z - 4) < 2.5) { this.applyTheme('yahoo'); this.themeChosen = true }
     if (Math.abs(p.x + 10) < 2.5 && Math.abs(p.z - 10) < 2.5) { this.applyTheme('dialup'); this.themeChosen = true }
+    // Jeeves tile (new)
+    if (Math.abs(p.x - 12) < 2.5 && Math.abs(p.z + 12) < 2.5) { this.applyTheme('jeeves'); this.themeChosen = true }
   }
 
   // Controller overlay navigation
