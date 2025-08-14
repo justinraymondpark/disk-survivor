@@ -5373,18 +5373,24 @@ class Game {
 
     const mainBox = document.createElement('div') as HTMLDivElement
     mainBox.className = 'card'
-    mainBox.style.padding = '6px'
+    mainBox.style.padding = '10px'
     const mainTitle = document.createElement('div')
     mainTitle.innerHTML = '<strong>Main</strong>'
+    const mainSub = document.createElement('div') as HTMLDivElement
+    mainSub.className = 'carddesc'
+    mainSub.textContent = 'Top 13 by time survived'
     const mainList = document.createElement('div') as HTMLDivElement
     mainList.className = 'carddesc'
-    mainList.style.whiteSpace = 'pre'
+    mainList.style.display = 'grid'
+    mainList.style.gap = '4px'
+    mainList.style.marginTop = '8px'
+    mainList.style.fontFamily = 'ui-monospace, monospace'
     mainList.textContent = 'Loading…'
-    mainBox.append(mainTitle, mainList)
+    mainBox.append(mainTitle, mainSub, mainList)
 
     const dailyBox = document.createElement('div') as HTMLDivElement
     dailyBox.className = 'card'
-    dailyBox.style.padding = '6px'
+    dailyBox.style.padding = '10px'
     const dailyHead = document.createElement('div') as HTMLDivElement
     dailyHead.style.display = 'flex'
     dailyHead.style.alignItems = 'center'
@@ -5395,11 +5401,17 @@ class Game {
     dateInput.type = 'date'
     dateInput.value = this.getNewYorkDate()
     dailyHead.append(dailyLabel, dateInput)
+    const dailySub = document.createElement('div') as HTMLDivElement
+    dailySub.className = 'carddesc'
+    dailySub.textContent = 'Choose a date to view the daily board'
     const dailyList = document.createElement('div') as HTMLDivElement
     dailyList.className = 'carddesc'
-    dailyList.style.whiteSpace = 'pre'
+    dailyList.style.display = 'grid'
+    dailyList.style.gap = '4px'
+    dailyList.style.marginTop = '8px'
+    dailyList.style.fontFamily = 'ui-monospace, monospace'
     dailyList.textContent = 'Loading…'
-    dailyBox.append(dailyHead, dailyList)
+    dailyBox.append(dailyHead, dailySub, dailyList)
 
     const btnRow = document.createElement('div') as HTMLDivElement
     btnRow.style.display = 'flex'
@@ -5421,13 +5433,13 @@ class Game {
     overlay.style.display = 'flex'
 
     const pad = (n: number) => String(n).padStart(2, '0')
-    const render = (entries: any[]) => entries.map((e: any, i: number) => `${pad(i + 1)}. ${(e.name ?? '').slice(0, 14).padEnd(14)}  ${(e.timeSurvived ?? 0)}s  ${e.score ?? 0}`).join('\n')
+    const render = (entries: any[]) => entries.map((e: any, i: number) => `<div style=\"display:flex; justify-content:space-between; gap:8px;\"><span>${pad(i + 1)}. ${escapeHtml((e.name ?? '').slice(0, 18))}</span><span>${(e.timeSurvived ?? 0)}s • ${e.score ?? 0}</span></div>`).join('')
 
     const fetchMain = async () => {
       try {
         const r = await fetch('/.netlify/functions/leaderboard-top')
         const j = await r.json()
-        mainList.textContent = render(j.entries || []) || 'No entries yet.'
+        mainList.innerHTML = render(j.entries || []) || '<div class="carddesc">No entries yet.</div>'
       } catch {
         mainList.textContent = 'Failed to load.'
       }
@@ -5436,7 +5448,7 @@ class Game {
       try {
         const r = await fetch(`/.netlify/functions/leaderboard-top?mode=daily&dailyId=${encodeURIComponent(d)}`)
         const j = await r.json()
-        dailyList.textContent = render(j.entries || []) || 'No entries yet.'
+        dailyList.innerHTML = render(j.entries || []) || '<div class="carddesc">No entries yet.</div>'
       } catch {
         dailyList.textContent = 'Failed to load.'
       }
