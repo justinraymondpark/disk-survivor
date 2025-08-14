@@ -4172,7 +4172,7 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 0.4, 0)
+    drive.position.set(0, 0.1, 0)
     // Tilt drive up slightly toward camera (~15deg)
     drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
@@ -4192,7 +4192,7 @@ class Game {
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 0.48, 0.31)
+    slot.position.set(0, 0.18, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
@@ -4238,7 +4238,7 @@ class Game {
       const angle = (i * 0.06)
       // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.26, 0.0, 0.0, 0.0]
+      const offsetsY = [0.50, 0.0, 0.0, 0.0]
       const offsetsZ = [0.30, -0.02, -0.04, -0.06]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
@@ -4358,7 +4358,7 @@ class Game {
 			const f = this.altFloppies[i]
       // Selected disk centered; others fanned left/right
       const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.26, 0.0, 0.0, 0.0]
+      const offsetsY = [0.50, 0.0, 0.0, 0.0]
       const offsetsZ = [0.30, -0.02, -0.04, -0.06]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
