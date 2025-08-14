@@ -712,7 +712,7 @@ class Game {
         list.push(m)
         this.themeObstacleCells.set(key, list)
       }
-      for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 3)
+      for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 4)
     }
   }
 
@@ -2177,7 +2177,7 @@ class Game {
     this.themeObstacles.length = 0
     this.themeObstacleCells.clear()
     // Set obstacle grid cell size per theme (bigger cells for Jeeves)
-    this.obstacleCellSize = theme === 'jeeves' ? 3 : 2
+    this.obstacleCellSize = theme === 'jeeves' ? 8 : 2
 
     // Remove other billboards once chosen
     if (!this.themeLocked) {
@@ -2284,11 +2284,11 @@ class Game {
       addBox(4, 8, 0x557788, 3)
     } else if (theme === 'jeeves') {
       // Many small blockers to create a dense maze
-      const min = -21, max = 21, step = 6
+      const min = -24, max = 24, step = 8
       // Fill grid with walls
       for (let z = min; z <= max; z += step) {
         for (let x = min; x <= max; x += step) {
-          addBox(x, z, 0x5a4a35, 3)
+          addBox(x, z, 0x5a4a35, 4)
         }
       }
       // Apply debug custom layout if provided (drawn grid wins)
@@ -2297,7 +2297,7 @@ class Game {
         for (const m of obstacles) this.scene.remove(m)
         obstacles.length = 0
         this.themeObstacleCells.clear()
-        for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 3)
+        for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 4)
       } else {
       // Carve corridors using simple walkers (wider steps reduce tiny gaps)
       const carve = (sx: number, sz: number, len: number) => {
@@ -2781,8 +2781,8 @@ class Game {
         for (const m of arr) {
           // Half extents from geometry parameters (fallback to 1)
           const p = (m.geometry as any)?.parameters || {}
-          const halfX = (p.width ? p.width / 2 : 1)
-          const halfZ = (p.depth ? p.depth / 2 : 1)
+                     const halfX = (p.width ? p.width / 2 : 2)
+           const halfZ = (p.depth ? p.depth / 2 : 2)
           const dx = pos.x - m.position.x
           const dz = pos.z - m.position.z
           if (Math.abs(dx) < halfX + pr && Math.abs(dz) < halfZ + pr) {
@@ -2816,7 +2816,7 @@ class Game {
           for (const m of arr) {
             const dx = pos.x - m.position.x
             const dz = pos.z - m.position.z
-            const half = 1.0 // since s=2
+            const half = 2.0 // since s≈4
             if (Math.abs(dx) < half + 0.4 && Math.abs(dz) < half + 0.4) {
               // push out along least penetration
               const px = half + 0.4 - Math.abs(dx)
