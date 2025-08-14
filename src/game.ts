@@ -670,9 +670,9 @@ class Game {
     useRow.appendChild(useChk); useRow.appendChild(useLab)
 
     const list = document.createElement('div')
-    list.style.marginTop = '8px'
+    list.style.marginTop = '6px'
     list.style.display = 'grid'
-    ;(list.style as any).gap = '6px'
+    ;(list.style as any).gap = '4px'
 
     const enemyTypes: EnemyType[] = ['slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute']
     const current = this.debugWavePlan.length > 0 ? this.debugWavePlan.slice() : enemyTypes.slice(0, 15)
@@ -723,10 +723,13 @@ class Game {
     render()
 
     const btnRow = document.createElement('div')
-    btnRow.style.display = 'flex'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '10px'
-    const resetBtn = document.createElement('button'); resetBtn.className = 'card'; resetBtn.textContent = 'Reset to Default'
+    btnRow.style.display = 'flex'; btnRow.style.gap = '6px'; btnRow.style.marginTop = '6px'
+    const resetBtn = document.createElement('button'); resetBtn.className = 'card'; resetBtn.textContent = 'Reset'
+    resetBtn.style.padding = '4px 8px'; resetBtn.style.fontSize = '12px'
     const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
+    backBtn.style.padding = '4px 8px'; backBtn.style.fontSize = '12px'
     const saveBtn = document.createElement('button'); saveBtn.className = 'card'; saveBtn.textContent = 'Save'
+    saveBtn.style.padding = '4px 8px'; saveBtn.style.fontSize = '12px'
     btnRow.appendChild(backBtn); btnRow.appendChild(resetBtn); btnRow.appendChild(saveBtn)
 
     const scroll = document.createElement('div')
@@ -781,8 +784,8 @@ class Game {
     // Plentiful Pickups toggle
     const pickRow = document.createElement('div')
     pickRow.className = 'card'
-    pickRow.style.padding = '6px'
-    pickRow.style.marginTop = '8px'
+    pickRow.style.padding = '2px 6px'
+    pickRow.style.marginTop = '6px'
     const pickChk = document.createElement('input'); pickChk.type = 'checkbox'; pickChk.checked = this.plentifulPickups
     pickChk.onchange = () => { this.plentifulPickups = pickChk.checked }
     const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
@@ -838,7 +841,6 @@ class Game {
     const startBtn = document.createElement('button'); startBtn.className = 'card'; startBtn.textContent = 'Start with Loadout'
     startBtn.style.padding = '4px 8px'; startBtn.style.fontSize = '12px'
     btnRow.appendChild(backBtn); btnRow.appendChild(startBtn)
-    wrap.append(title, info, scroll, btnRow)
     this.debugOverlay!.innerHTML = ''
     this.debugOverlay!.appendChild(wrap)
     this.debugOverlay!.style.display = 'flex'
@@ -855,7 +857,6 @@ class Game {
     const dmgLab = document.createElement('span'); dmgLab.textContent = ' Show damage toasts over enemies'
     dmgLab.style.marginLeft = '6px'
     dmgRow.appendChild(dmgChk); dmgRow.appendChild(dmgLab)
-    wrap.appendChild(dmgRow)
     // Debug option: performance overlay toggle
     const perfRow = document.createElement('div')
     perfRow.className = 'card'
@@ -869,7 +870,18 @@ class Game {
     const perfLab = document.createElement('span'); perfLab.textContent = ' Show lightweight performance overlay'
     perfLab.style.marginLeft = '6px'
     perfRow.appendChild(perfChk); perfRow.appendChild(perfLab)
-    wrap.appendChild(perfRow)
+
+    // Group checkboxes together and place above buttons
+    const toggles = document.createElement('div')
+    toggles.className = 'card'
+    toggles.style.display = 'grid'
+    toggles.style.gap = '4px'
+    toggles.style.padding = '4px 6px'
+    toggles.appendChild(pickRow)
+    toggles.appendChild(dmgRow)
+    toggles.appendChild(perfRow)
+
+    wrap.append(title, info, scroll, toggles, btnRow)
 
     // Waves submenu button
     const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = 'Waves…'
