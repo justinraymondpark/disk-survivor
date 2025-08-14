@@ -712,7 +712,7 @@ class Game {
         list.push(m)
         this.themeObstacleCells.set(key, list)
       }
-      for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 2)
+      for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 3)
     }
   }
 
@@ -2176,6 +2176,8 @@ class Game {
     for (const o of this.themeObstacles) this.scene.remove(o)
     this.themeObstacles.length = 0
     this.themeObstacleCells.clear()
+    // Set obstacle grid cell size per theme (bigger cells for Jeeves)
+    this.obstacleCellSize = theme === 'jeeves' ? 3 : 2
 
     // Remove other billboards once chosen
     if (!this.themeLocked) {
@@ -2282,11 +2284,11 @@ class Game {
       addBox(4, 8, 0x557788, 3)
     } else if (theme === 'jeeves') {
       // Many small blockers to create a dense maze
-      const min = -16, max = 16, step = 3
+      const min = -21, max = 21, step = 6
       // Fill grid with walls
       for (let z = min; z <= max; z += step) {
         for (let x = min; x <= max; x += step) {
-          addBox(x, z, 0x5a4a35, 2)
+          addBox(x, z, 0x5a4a35, 3)
         }
       }
       // Apply debug custom layout if provided (drawn grid wins)
@@ -2295,7 +2297,7 @@ class Game {
         for (const m of obstacles) this.scene.remove(m)
         obstacles.length = 0
         this.themeObstacleCells.clear()
-        for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 2)
+        for (const cell of this.debugJeevesLayout) addBox(cell.x, cell.z, 0x5a4a35, 3)
       } else {
       // Carve corridors using simple walkers (wider steps reduce tiny gaps)
       const carve = (sx: number, sz: number, len: number) => {
