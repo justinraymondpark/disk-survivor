@@ -4131,8 +4131,8 @@ class Game {
     const narrowPortrait = (aspectNow < 0.65) && (window.innerWidth <= 520)
     const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
-    // Center the whole bundle vertically
-    g.position.y = 0.6
+    // Center the whole bundle vertically (raise further)
+    g.position.y = 0.9
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
     this.altPrevIsoPos = this.isoPivot.position.clone()
@@ -4218,6 +4218,8 @@ class Game {
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
+      // Ensure materials render with depth so side faces show
+      ;[matTop, matSide, matBottom].forEach((m) => { m.depthTest = true; m.depthWrite = true; (m as any).transparent = false })
       const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
       // Default groups are 6 in order: +x, -x, +y, -y, +z, -z
       // Remap into materials array [top, bottom, side]
