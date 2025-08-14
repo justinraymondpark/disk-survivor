@@ -203,7 +203,7 @@ html, body {
 }
 /* Compact cards inside debug panel globally */
 .overlay .debug-panel.card { min-height: 34px; padding: 4px; }
-.overlay .debug-panel .card { min-height: 20px; padding: 1px 6px; font-size: 12px; line-height: 1.2; }
+.overlay .debug-panel .card { min-height: 20px; padding: 1px 6px; font-size: 12px; line-height: 1.2; pointer-events: auto; }
 .overlay .card:hover {
   filter: brightness(1.05);
 }

@@ -932,6 +932,7 @@ class Game {
     this.debugOverlay!.innerHTML = ''
     this.debugOverlay!.appendChild(container)
     this.debugOverlay!.style.display = 'flex'
+    this.debugOverlay!.style.pointerEvents = 'auto'
 
     backBtn.onclick = () => this.showDebugPanel()
     resetBtn.onclick = () => { current.splice(0, current.length, 'slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute','slime'); render() }
@@ -1033,7 +1034,7 @@ class Game {
     btnRow.appendChild(backBtn); btnRow.appendChild(startBtn)
     this.debugOverlay!.innerHTML = ''
     this.debugOverlay!.appendChild(wrap)
-    this.debugOverlay!.style.display = 'flex'
+    this.debugOverlay!.style.display = 'flex'; this.debugOverlay!.style.pointerEvents = 'auto'
     // B closes
     const onKey = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'b') backBtn.click() }
     window.addEventListener('keydown', onKey, { once: true })
@@ -1082,7 +1083,7 @@ class Game {
     kpBtn.style.fontSize = '12px'
     kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
     wrap.appendChild(wavesBtn)
-    wrap.appendChild(kpBtn)
+    btnRow.appendChild(kpBtn)
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     // move focus to bottom buttons
