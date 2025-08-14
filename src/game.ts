@@ -1048,9 +1048,9 @@ class Game {
   xpBar: HTMLDivElement
   pauseTouchBtn!: HTMLButtonElement
   currentTheme: Theme = 'default'
-  themeObstacles: THREE.Object3D[] = []
+  themeObstacles: THREE.Mesh[] = []
   // Spatial index for theme obstacles (used in Jeeves maze)
-  themeObstacleCells: Map<string, THREE.Object3D[]> = new Map()
+  themeObstacleCells: Map<string, THREE.Mesh[]> = new Map()
   obstacleCellSize = 2
   themeLocked = false
   themeChosen = false
@@ -2175,7 +2175,7 @@ class Game {
     ;(this.groundMesh.material as THREE.MeshBasicMaterial).needsUpdate = true
 
     // Obstacles per theme
-    const obstacles: THREE.Object3D[] = []
+    const obstacles: THREE.Mesh[] = []
     const addBox = (x: number, z: number, c: number, s = 2) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(s, 1, s), new THREE.MeshBasicMaterial({ color: c }))
       m.position.set(x, 0.5, z)
@@ -2680,7 +2680,7 @@ class Game {
         if (!arr) continue
         for (const m of arr) {
           // Half extents from geometry parameters (fallback to 1)
-          const p = (m.geometry as any).parameters || {}
+          const p = (m.geometry as any)?.parameters || {}
           const halfX = (p.width ? p.width / 2 : 1)
           const halfZ = (p.depth ? p.depth / 2 : 1)
           const dx = pos.x - m.position.x
