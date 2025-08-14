@@ -2811,7 +2811,8 @@ class Game {
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
       if (this.optionsFab) this.optionsFab.style.display = 'none'
       if (this.changelogFab) this.changelogFab.style.display = 'none'
-      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none'
+      // Keep fullscreen button visible during gameplay
+      if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
       this.renderer.render(this.scene, this.camera)
       requestAnimationFrame(() => this.loop())
       return
@@ -4214,7 +4215,7 @@ class Game {
 		hide(this.hud)
 		hide(this.optionsFab)
 		hide(this.changelogFab)
-		hide(this.fullscreenBtn)
+		// Keep fullscreen visible even on Alt Title
 		hide(this.hpBar)
 		hide(this.inventory)
 		hide(this.xpBar)
