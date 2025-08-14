@@ -2200,14 +2200,14 @@ class Game {
       addBox(4, 8, 0x557788, 3)
     } else if (theme === 'jeeves') {
       // Many small blockers to create a dense maze
-      const min = -12, max = 12, step = 2
+      const min = -16, max = 16, step = 3
       // Fill grid with walls
       for (let z = min; z <= max; z += step) {
         for (let x = min; x <= max; x += step) {
           addBox(x, z, 0x5a4a35, 2)
         }
       }
-      // Carve corridors using simple walkers
+      // Carve corridors using simple walkers (wider steps reduce tiny gaps)
       const carve = (sx: number, sz: number, len: number) => {
         let x = sx, z = sz
         for (let i = 0; i < len; i++) {
@@ -2220,15 +2220,22 @@ class Game {
             this.themeObstacleCells.delete(key)
           }
           const dir = Math.floor(Math.random() * 4)
-          if (dir === 0) x += step; else if (dir === 1) x -= step; else if (dir === 2) z += step; else z -= step
+          if (dir === 0) x += step * 2; else if (dir === 1) x -= step * 2; else if (dir === 2) z += step * 2; else z -= step * 2
           x = Math.max(min, Math.min(max, x)); z = Math.max(min, Math.min(max, z))
         }
       }
-      carve(0, 0, 80)
-      carve(-10, -6, 60)
-      carve(8, 6, 60)
-      // Add a few clear strips near center spawn
-      for (let x = -2; x <= 2; x += 2) { const cs = this.obstacleCellSize; const key = `${Math.floor(x / cs)},${Math.floor(0 / cs)}`; this.themeObstacleCells.delete(key) }
+      carve(0, 0, 120)
+      carve(-12, -6, 90)
+      carve(12, 6, 90)
+      // Clear generous spawn area around player start
+      const clearRadius = 4
+      for (let z = -clearRadius; z <= clearRadius; z += step) {
+        for (let x = -clearRadius; x <= clearRadius; x += step) {
+          const cs = this.obstacleCellSize
+          const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+          this.themeObstacleCells.delete(key)
+        }
+      }
     }
     this.themeObstacles = obstacles
 
