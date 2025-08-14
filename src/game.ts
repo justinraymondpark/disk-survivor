@@ -584,7 +584,7 @@ class Game {
   // Alt Title state
   altTitleActive = false
   altTitleGroup?: THREE.Group
-  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
+  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
@@ -4177,9 +4177,9 @@ class Game {
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
-    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG') => {
+    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
-      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : 'debugmode.png'
+             const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
       ;(texTop as any).colorSpace = THREE.SRGBColorSpace
@@ -4210,7 +4210,7 @@ class Game {
       // No overlay text label (top texture already includes text)
       return body
     }
-    const items: ('START'|'DAILY'|'DEBUG')[] = ['START','DAILY','DEBUG']
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['START','DAILY','DEBUG','BOARD']
     this.altFloppies = []
     for (let i = 0; i < items.length; i++) {
       const label = items[i]
@@ -4221,14 +4221,14 @@ class Game {
       m.position.set(-0.45 + visualIndex * 0.58, 0.05 + visualIndex * 0.16, 0.7 - visualIndex * 0.04)
       // Idle vertical orientation (thin side)
       m.rotation.set(0, 0, 0)
-      // 2x size
-      m.scale.setScalar(2)
+      // Slightly smaller so four fit nicely
+      m.scale.setScalar(1.9)
       m.rotation.y = angle
       g.add(m)
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
 		// Input: swipe/left-right cycles
-		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG') => {
+		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
       const sel = this.altFloppies[0].mesh
 		// Insert animation into drive
 		const start = sel.position.clone()
@@ -4256,6 +4256,9 @@ class Game {
         } else if (lbl === 'DAILY') {
           this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+        } else if (lbl === 'BOARD') {
+          // Open leaderboards overlay
+          this.showLeaderboards()
         } else {
           this.showDebugPanel()
         }
@@ -4272,7 +4275,7 @@ class Game {
       if (!this.altTitleActive) { window.removeEventListener('keydown', onKey); return }
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
-      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label)
+      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label as 'START'|'DAILY'|'DEBUG'|'BOARD')
     }
 		window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
@@ -4286,29 +4289,34 @@ class Game {
 			;(document.body.style as any).touchAction = 'none'
       this.altTapStartTime = performance.now()
 		}
-		this.altTouchOnMove = (e: PointerEvent) => {
+				this.altTouchOnMove = (e: PointerEvent) => {
 			if (!this.altSwipeActive || e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
-      // While moving, step one slot and lock until finger lifts (prevents jitter)
-      if (!this.altSwipeDidCycle && Math.abs(dx) > 40) {
-        this.cycleAltFloppies(dx > 0 ? -1 : 1)
-        this.altSwipeDidCycle = true
+      // Drag the top card a bit with the finger, up to a limit
+      if (this.altFloppies[0]) {
+        const f = this.altFloppies[0]
+        const base = f.target.clone()
+        f.mesh.position.x = base.x + THREE.MathUtils.clamp(dx / 180, -0.5, 0.5)
+        f.mesh.rotation.z = THREE.MathUtils.clamp(dx / 600, -0.25, 0.25)
       }
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
       const dtap = performance.now() - this.altTapStartTime
-      if (!this.altSwipeDidCycle && Math.abs(dx) > 40) {
+      const threshold = 40
+      if (Math.abs(dx) > threshold) {
+        // Decide direction by drag
         this.cycleAltFloppies(dx > 0 ? -1 : 1)
-      } else if (!this.altSwipeDidCycle && dtap < 250) {
+      } else if (dtap < 250) {
         // Treat as tap: run selection dance then insert
         const selF = this.altFloppies[0]
-        const makeInsert = () => onChoose(selF.label)
-      this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
-      // Ensure background will be removed even if dance completes while other code paths are skipped
-      setTimeout(() => this.disposeAltBg(), 700)
+        const makeInsert = () => onChoose(selF.label as any)
+		  this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
+        setTimeout(() => this.disposeAltBg(), 700)
       }
+      // Ease card back to stack alignment
+      if (this.altFloppies[0]) { const f = this.altFloppies[0]; f.mesh.rotation.z = 0 }
       this.altSwipeActive = false
       ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
     }
@@ -4335,7 +4343,7 @@ class Game {
 		}
   }
 
-  private chooseAltFloppy(lbl: 'START'|'DAILY'|'DEBUG') {
+  private chooseAltFloppy(lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') {
     if (!this.altFloppies[0]) return
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
