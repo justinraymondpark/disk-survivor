@@ -4133,6 +4133,8 @@ class Game {
     g.scale.set(baseScale, baseScale, baseScale)
     // Center the whole bundle vertically (raise further)
     g.position.y = 1.2
+    // Nudge drive and slot to stay centered with floppies group
+    const driveYOffset = 0.2
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
     this.altPrevIsoPos = this.isoPivot.position.clone()
@@ -4177,7 +4179,7 @@ class Game {
     driveMat.depthTest = false
     driveMat.depthWrite = false
     const drive = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-    drive.position.set(0, 0.1, 0)
+    drive.position.set(0, 0.1 + 0.2, 0)
     // Tilt drive up slightly toward camera (~15deg)
     drive.rotation.x = THREE.MathUtils.degToRad(15)
     drive.renderOrder = 1001
@@ -4197,13 +4199,13 @@ class Game {
     slotMat.depthTest = false
     slotMat.depthWrite = false
     const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
-    slot.position.set(0, 0.18, 0.31)
+    slot.position.set(0, 0.18 + 0.2, 0.31)
     slot.renderOrder = 1001
     g.add(drive, slot)
     this.altDriveMesh = slot
     // Floppy stack
     const floppiesGroup = new THREE.Group()
-    floppiesGroup.position.y = 0.5 // raise floppies instead of lowering drive
+    floppiesGroup.position.y = 0 // align vertically with drive so bundle centers together
     g.add(floppiesGroup)
     const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
@@ -4218,6 +4220,8 @@ class Game {
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
+      // Slight shading on sides to emphasize thickness
+      matSide.color.offsetHSL(0, 0, -0.1)
       // Ensure materials render with depth so side faces show
       ;[matTop, matSide, matBottom].forEach((m) => { m.depthTest = true; m.depthWrite = true; (m as any).transparent = false })
       const geom = new THREE.BoxGeometry(1.8, 0.06, 1.8)
@@ -4332,7 +4336,7 @@ class Game {
       // On first touch frame after down, ensure drag is initialized so card moves immediately
       if (!this.altDragging) this.altDragging = true
       // Record drag for render-loop application
-      this.altDragDX = THREE.MathUtils.clamp(dx / 180, -0.6, 0.6)
+      this.altDragDX = THREE.MathUtils.clamp(dx / 140, -0.8, 0.8)
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
