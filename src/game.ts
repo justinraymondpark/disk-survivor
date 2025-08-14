@@ -1049,6 +1049,9 @@ class Game {
   pauseTouchBtn!: HTMLButtonElement
   currentTheme: Theme = 'default'
   themeObstacles: THREE.Object3D[] = []
+  // Spatial index for theme obstacles (used in Jeeves maze)
+  themeObstacleCells: Map<string, THREE.Object3D[]> = new Map()
+  obstacleCellSize = 2
   themeLocked = false
   themeChosen = false
   // Controller UI state
@@ -2090,6 +2093,7 @@ class Game {
     // Clear previous obstacles
     for (const o of this.themeObstacles) this.scene.remove(o)
     this.themeObstacles.length = 0
+    this.themeObstacleCells.clear()
 
     // Remove other billboards once chosen
     if (!this.themeLocked) {
@@ -2177,6 +2181,12 @@ class Game {
       m.position.set(x, 0.5, z)
       obstacles.push(m)
       this.scene.add(m)
+      // Index into spatial grid
+      const cs = this.obstacleCellSize
+      const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+      const list = this.themeObstacleCells.get(key) || []
+      list.push(m)
+      this.themeObstacleCells.set(key, list)
     }
     if (theme === 'geocities') {
       addBox(-4, -2, 0xff77ff, 3)
@@ -2190,14 +2200,35 @@ class Game {
       addBox(4, 8, 0x557788, 3)
     } else if (theme === 'jeeves') {
       // Many small blockers to create a dense maze
-      for (let z = -10; z <= 10; z += 2) {
-        for (let x = -10; x <= 10; x += 2) {
-          if ((x + z) % 4 === 0 && Math.random() < 0.7) addBox(x, z, 0x5a4a35, 2)
+      const min = -12, max = 12, step = 2
+      // Fill grid with walls
+      for (let z = min; z <= max; z += step) {
+        for (let x = min; x <= max; x += step) {
+          addBox(x, z, 0x5a4a35, 2)
         }
       }
-      // Carve a few corridors
-      for (let x = -10; x <= 10; x += 2) addBox(x, -6, 0x2f261b, 1)
-      for (let z = -10; z <= 10; z += 2) addBox(2, z, 0x2f261b, 1)
+      // Carve corridors using simple walkers
+      const carve = (sx: number, sz: number, len: number) => {
+        let x = sx, z = sz
+        for (let i = 0; i < len; i++) {
+          // Remove block by moving it underfloor (cheap carving)
+          const cs = this.obstacleCellSize
+          const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+          const list = this.themeObstacleCells.get(key)
+          if (list) {
+            for (const m of list) { if (Math.abs(m.position.x - x) < 0.1 && Math.abs(m.position.z - z) < 0.1) { this.scene.remove(m) } }
+            this.themeObstacleCells.delete(key)
+          }
+          const dir = Math.floor(Math.random() * 4)
+          if (dir === 0) x += step; else if (dir === 1) x -= step; else if (dir === 2) z += step; else z -= step
+          x = Math.max(min, Math.min(max, x)); z = Math.max(min, Math.min(max, z))
+        }
+      }
+      carve(0, 0, 80)
+      carve(-10, -6, 60)
+      carve(8, 6, 60)
+      // Add a few clear strips near center spawn
+      for (let x = -2; x <= 2; x += 2) { const cs = this.obstacleCellSize; const key = `${Math.floor(x / cs)},${Math.floor(0 / cs)}`; this.themeObstacleCells.delete(key) }
     }
     this.themeObstacles = obstacles
 
@@ -2642,6 +2673,36 @@ class Game {
       if (d2 < 1.6 ** 2) {
         const push = this.player.group.position.clone().sub(o.position).setY(0).normalize().multiplyScalar(0.08)
         this.player.group.position.add(push)
+      }
+    }
+    // Optional: enemy→obstacle collision on Jeeves only (simple grid lookup)
+    if (this.currentTheme === 'jeeves') {
+      const cs = this.obstacleCellSize
+      const resolve = (pos: THREE.Vector3) => {
+        const key = `${Math.floor(pos.x / cs)},${Math.floor(pos.z / cs)}`
+        const neighbors = [key]
+        const [cx, cz] = key.split(',').map(Number)
+        const around = [[1,0],[-1,0],[0,1],[0,-1]]
+        for (const [dx, dz] of around) neighbors.push(`${cx+dx},${cz+dz}`)
+        for (const k of neighbors) {
+          const arr = this.themeObstacleCells.get(k)
+          if (!arr) continue
+          for (const m of arr) {
+            const dx = pos.x - m.position.x
+            const dz = pos.z - m.position.z
+            const half = 1.0 // since s=2
+            if (Math.abs(dx) < half + 0.4 && Math.abs(dz) < half + 0.4) {
+              // push out along least penetration
+              const px = half + 0.4 - Math.abs(dx)
+              const pz = half + 0.4 - Math.abs(dz)
+              if (px < pz) pos.x += Math.sign(dx) * px; else pos.z += Math.sign(dz) * pz
+            }
+          }
+        }
+      }
+      for (const e of this.enemies) {
+        if (!e.alive) continue
+        resolve(e.mesh.position)
       }
     }
 
