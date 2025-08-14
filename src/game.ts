@@ -402,10 +402,10 @@ class Game {
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
   sharedXPCubeMat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
   // XP tier materials
-  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0xff66cc })
-  sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
+  sharedXPTier3Mat = new THREE.MeshBasicMaterial({ color: 0xb388ff })
+  sharedXPTier5Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
   sharedXPTier10Mat = new THREE.MeshBasicMaterial({ color: 0x6699ff })
-  sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xffaa66 })
+  sharedXPTier20Mat = new THREE.MeshBasicMaterial({ color: 0xff66cc })
   sharedXPTier50Mat = new THREE.MeshBasicMaterial({ color: 0xffdd55 })
   sharedVacuumGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5)
   sharedVacuumMat = new THREE.MeshBasicMaterial({ color: 0x2266ff })
