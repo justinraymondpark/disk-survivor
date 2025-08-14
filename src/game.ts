@@ -3684,6 +3684,35 @@ class Game {
       }
       p.mesh.position.addScaledVector(p.velocity, dt)
 
+      // Bullet vs Jeeves obstacles (AABB test, stop bullet)
+      if (this.currentTheme === 'jeeves') {
+        const csj = this.obstacleCellSize
+        const pk = `${Math.floor(p.mesh.position.x / csj)},${Math.floor(p.mesh.position.z / csj)}`
+        const neighbors = [pk]
+        const [pcx, pcz] = pk.split(',').map(Number)
+        const around = [[1,0],[-1,0],[0,1],[0,-1]]
+        for (const [dx, dz] of around) neighbors.push(`${pcx+dx},${pcz+dz}`)
+        let blocked = false
+        for (const nk of neighbors) {
+          const obs = this.themeObstacleCells.get(nk)
+          if (!obs) continue
+          for (const m of obs) {
+            const par: any = (m.geometry as any)?.parameters || {}
+            const hx = (par.width ? par.width / 2 : 2)
+            const hz = (par.depth ? par.depth / 2 : 2)
+            const dx = p.mesh.position.x - m.position.x
+            const dz = p.mesh.position.z - m.position.z
+            if (Math.abs(dx) < hx && Math.abs(dz) < hz) { blocked = true; break }
+          }
+          if (blocked) break
+        }
+        if (blocked) {
+          p.alive = false
+          this.scene.remove(p.mesh)
+          continue
+        }
+      }
+
       // Swept collision against enemies via spatial hash
       const a = prev.clone(); const b = p.mesh.position.clone()
       const minx = Math.min(a.x, b.x), maxx = Math.max(a.x, b.x)
