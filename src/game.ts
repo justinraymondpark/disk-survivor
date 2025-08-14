@@ -5352,6 +5352,100 @@ class Game {
     requestAnimationFrame(onAnim)
   }
 
+  private async showLeaderboards() {
+    const overlay = document.createElement('div') as HTMLDivElement
+    overlay.className = 'overlay'
+    const wrap = document.createElement('div') as HTMLDivElement
+    wrap.className = 'card'
+    wrap.style.minWidth = '520px'
+    wrap.style.maxWidth = '80vw'
+    wrap.style.maxHeight = '80vh'
+    wrap.style.display = 'flex'
+    ;(wrap.style as any).flexDirection = 'column'
+    wrap.style.overflow = 'hidden'
+
+    const title = document.createElement('strong')
+    title.textContent = 'Leaderboards'
+    const desc = document.createElement('div')
+    desc.className = 'carddesc'
+    desc.style.margin = '6px 0 10px'
+    desc.textContent = 'Main leaderboard and Daily Disk by date'
+
+    const mainBox = document.createElement('div') as HTMLDivElement
+    mainBox.className = 'card'
+    mainBox.style.padding = '6px'
+    const mainTitle = document.createElement('div')
+    mainTitle.innerHTML = '<strong>Main</strong>'
+    const mainList = document.createElement('div') as HTMLDivElement
+    mainList.className = 'carddesc'
+    mainList.style.whiteSpace = 'pre'
+    mainList.textContent = 'Loading…'
+    mainBox.append(mainTitle, mainList)
+
+    const dailyBox = document.createElement('div') as HTMLDivElement
+    dailyBox.className = 'card'
+    dailyBox.style.padding = '6px'
+    const dailyHead = document.createElement('div') as HTMLDivElement
+    dailyHead.style.display = 'flex'
+    dailyHead.style.alignItems = 'center'
+    dailyHead.style.gap = '8px'
+    const dailyLabel = document.createElement('strong')
+    dailyLabel.textContent = 'Daily Disk'
+    const dateInput = document.createElement('input') as HTMLInputElement
+    dateInput.type = 'date'
+    dateInput.value = this.getNewYorkDate()
+    dailyHead.append(dailyLabel, dateInput)
+    const dailyList = document.createElement('div') as HTMLDivElement
+    dailyList.className = 'carddesc'
+    dailyList.style.whiteSpace = 'pre'
+    dailyList.textContent = 'Loading…'
+    dailyBox.append(dailyHead, dailyList)
+
+    const btnRow = document.createElement('div') as HTMLDivElement
+    btnRow.style.display = 'flex'
+    btnRow.style.justifyContent = 'flex-end'
+    btnRow.style.gap = '8px'
+    btnRow.style.marginTop = '10px'
+    const backBtn = document.createElement('button') as HTMLButtonElement
+    backBtn.className = 'card'
+    backBtn.style.width = 'auto'
+    backBtn.style.minHeight = 'unset'
+    backBtn.style.padding = '6px 10px'
+    backBtn.innerHTML = '<strong>Back</strong>'
+    backBtn.onclick = () => overlay.remove()
+    btnRow.appendChild(backBtn)
+
+    wrap.append(title, desc, mainBox, dailyBox, btnRow)
+    overlay.appendChild(wrap)
+    this.root.appendChild(overlay)
+
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const render = (entries: any[]) => entries.map((e: any, i: number) => `${pad(i + 1)}. ${(e.name ?? '').slice(0, 14).padEnd(14)}  ${(e.timeSurvived ?? 0)}s  ${e.score ?? 0}`).join('\n')
+
+    const fetchMain = async () => {
+      try {
+        const r = await fetch('/.netlify/functions/leaderboard-top')
+        const j = await r.json()
+        mainList.textContent = render(j.entries || []) || 'No entries yet.'
+      } catch {
+        mainList.textContent = 'Failed to load.'
+      }
+    }
+    const fetchDaily = async (d: string) => {
+      try {
+        const r = await fetch(`/.netlify/functions/leaderboard-top?mode=daily&dailyId=${encodeURIComponent(d)}`)
+        const j = await r.json()
+        dailyList.textContent = render(j.entries || []) || 'No entries yet.'
+      } catch {
+        dailyList.textContent = 'Failed to load.'
+      }
+    }
+
+    await fetchMain()
+    await fetchDaily(dateInput.value)
+    dateInput.onchange = () => { fetchDaily(dateInput.value) }
+  }
+
   private updateHitCounter() {
     if (!this.hitCounterEl) return
     const digits = String(this.hitCount).padStart(6, '0')
