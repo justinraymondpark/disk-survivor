@@ -1,3 +1,9 @@
+## 0.1.24
+- Alt Title: known issues still unresolved in latest builds (to be addressed next):
+  - Disks not vertically centered on screen
+  - First-touch drag does not engage; drag works on subsequent touches only
+  - During insert tilt, bottom face still appears as flat texture (3D depth not visible)
+
 ## 0.1.23
 - Alt Title: Tinder-like drag refined — top disk scales up and has stronger wiggle while dragging; decays on release
 - Alt Title: reorder floppies left→right; selected disk centered and raised to avoid clipping; higher renderOrder
