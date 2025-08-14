@@ -676,7 +676,7 @@ class Game {
 
     const enemyTypes: EnemyType[] = ['slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute']
     const enemyColorHex: Partial<Record<EnemyType, number>> = {
-      slime: 0xff55aa,
+      slime: 0xaa55ff,
       runner: 0xffdd55,
       spinner: 0x66e0ff,
       splitter: 0xffaa33,
