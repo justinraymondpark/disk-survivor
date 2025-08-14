@@ -1077,13 +1077,18 @@ class Game {
     wavesBtn.style.padding = '4px 8px'
     wavesBtn.style.fontSize = '12px'
     // Move Waves and Kernel Panic into bottom actions
-    const kpBtn = document.createElement('button'); kpBtn.className = 'card'; kpBtn.innerHTML = 'Kernel Panic'
-    kpBtn.style.padding = '4px 8px'
-    kpBtn.style.fontSize = '12px'
-    kpBtn.onclick = () => { this.kernelPanic = true; this.plentifulPickups = false; this.audio.playShockwave?.() }
-    wavesBtn.tabIndex = 0; kpBtn.tabIndex = 0
+    const kpRow = document.createElement('label') as HTMLLabelElement
+    kpRow.style.display = 'inline-flex'; kpRow.style.alignItems = 'center'; kpRow.style.gap = '6px'
+    kpRow.className = 'card'
+    kpRow.style.padding = '4px 8px'
+    kpRow.style.fontSize = '12px'
+    const kpChk = document.createElement('input'); kpChk.type = 'checkbox'; kpChk.checked = this.kernelPanic
+    const kpLab = document.createElement('span'); kpLab.textContent = 'Kernel Panic'
+    kpRow.appendChild(kpChk); kpRow.appendChild(kpLab)
+    kpChk.onchange = () => { this.kernelPanic = kpChk.checked; if (this.kernelPanic) this.plentifulPickups = false }
+    wavesBtn.tabIndex = 0; kpRow.tabIndex = 0
     btnRow.insertBefore(wavesBtn, startBtn)
-    btnRow.appendChild(kpBtn)
+    btnRow.appendChild(kpRow)
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     // move focus to bottom buttons
