@@ -327,6 +327,7 @@ type Enemy = {
   shooterAggressive?: boolean
   // Generic AI helpers
   baseSpeed?: number
+  behaviorPhase?: 1 | -1
   dashRemaining?: number
   orbitDir?: 1 | -1
   nextTeleportTime?: number
