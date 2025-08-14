@@ -209,8 +209,8 @@ html, body {
 .overlay .card .cardrow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin: 2px 0;
 }
 .overlay .card .cardicon { font-size: 18px; }
 .overlay .card .carddesc { opacity: 0.85; font-size: 13px; }

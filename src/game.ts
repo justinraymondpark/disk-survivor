@@ -680,13 +680,15 @@ class Game {
     while (current.length > 15) current.length = 15
 
     const makeItem = (name: EnemyType, idx: number) => {
-      const row = document.createElement('div')
-      row.className = 'card'
+      const row = document.createElement('button')
+      row.className = 'card ns-button'
       row.draggable = true
+      row.style.minHeight = '24px'
       row.style.padding = '2px 6px'
       row.style.display = 'flex'
       row.style.alignItems = 'center'
       row.style.gap = '6px'
+      row.type = 'button'
       const handle = document.createElement('span'); handle.textContent = '≡'; handle.style.cursor = 'grab'; handle.style.opacity = '0.7'
       const lab = document.createElement('span'); lab.textContent = `${idx + 1}. ${name}`
       row.appendChild(handle); row.appendChild(lab)
@@ -783,9 +785,7 @@ class Game {
     scroll.appendChild(form)
     // Plentiful Pickups toggle
     const pickRow = document.createElement('div')
-    pickRow.className = 'card'
-    pickRow.style.padding = '2px 6px'
-    pickRow.style.marginTop = '6px'
+    pickRow.className = 'cardrow'
     const pickChk = document.createElement('input'); pickChk.type = 'checkbox'; pickChk.checked = this.plentifulPickups
     pickChk.onchange = () => { this.plentifulPickups = pickChk.checked }
     const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
@@ -849,9 +849,7 @@ class Game {
     window.addEventListener('keydown', onKey, { once: true })
     // Debug option: show damage toasts
     const dmgRow = document.createElement('div')
-    dmgRow.className = 'card'
-    dmgRow.style.padding = '2px 6px'
-    dmgRow.style.marginTop = '6px'
+    dmgRow.className = 'cardrow'
     const dmgChk = document.createElement('input'); dmgChk.type = 'checkbox'; dmgChk.checked = this.debugShowDamage
     dmgChk.onchange = () => { this.debugShowDamage = dmgChk.checked }
     const dmgLab = document.createElement('span'); dmgLab.textContent = ' Show damage toasts over enemies'
@@ -859,9 +857,7 @@ class Game {
     dmgRow.appendChild(dmgChk); dmgRow.appendChild(dmgLab)
     // Debug option: performance overlay toggle
     const perfRow = document.createElement('div')
-    perfRow.className = 'card'
-    perfRow.style.padding = '2px 6px'
-    perfRow.style.marginTop = '6px'
+    perfRow.className = 'cardrow'
     const perfChk = document.createElement('input'); perfChk.type = 'checkbox'; perfChk.checked = this.debugPerfOverlay
     perfChk.onchange = () => {
       this.debugPerfOverlay = perfChk.checked
