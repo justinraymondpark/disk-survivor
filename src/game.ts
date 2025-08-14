@@ -2785,11 +2785,12 @@ class Game {
            const halfZ = (p.depth ? p.depth / 2 : 2)
           const dx = pos.x - m.position.x
           const dz = pos.z - m.position.z
-          if (Math.abs(dx) < halfX + pr && Math.abs(dz) < halfZ + pr) {
-            const px = halfX + pr - Math.abs(dx)
-            const pz = halfZ + pr - Math.abs(dz)
-            if (px < pz) pos.x += Math.sign(dx || 1) * px; else pos.z += Math.sign(dz || 1) * pz
-          }
+                      if (Math.abs(dx) < halfX + pr && Math.abs(dz) < halfZ + pr) {
+              const px = halfX + pr - Math.abs(dx)
+              const pz = halfZ + pr - Math.abs(dz)
+              if (px < pz) pos.x += (dx === 0 ? (pos.x < m.position.x ? -1 : 1) : Math.sign(dx)) * px
+              else pos.z += (dz === 0 ? (pos.z < m.position.z ? -1 : 1) : Math.sign(dz)) * pz
+            }
         }
       }
     } else {
