@@ -323,6 +323,11 @@ type Enemy = {
   behaviorTimer?: number
   behaviorRunDuration?: number
   behaviorPauseDuration?: number
+  // Jeeves wall-climb behavior
+  canClimb?: boolean
+  climbState?: 'ground' | 'ascending' | 'onTop' | 'descending'
+  climbUntil?: number
+  climbTargetY?: number
   // Shooter-specific: 50% chance to be aggressive (charge player)
   shooterAggressive?: boolean
   // Generic AI helpers
@@ -3226,12 +3231,55 @@ class Game {
       }
     }
 
-    // Special weapons passive timers
-    // Speed boost in Kernel Panic
-    const speedMul = this.kernelPanic ? 1.4 : 1.0
-    for (const e of this.enemies) if (e.alive) e.speed = (e.baseSpeed ?? e.speed) * speedMul
+          // Special weapons passive timers
+      // Speed boost in Kernel Panic
+      const speedMul = this.kernelPanic ? 1.4 : 1.0
+      for (const e of this.enemies) if (e.alive) e.speed = (e.baseSpeed ?? e.speed) * speedMul
 
-    if (this.ownedWeapons.has('Dial-up Burst')) {
+      // Jeeves climbing behavior (lightweight)
+      if (this.currentTheme === 'jeeves') {
+        const cs = this.obstacleCellSize
+        for (const e of this.enemies) {
+          if (!e.alive || !e.canClimb) continue
+          const pos = e.mesh.position
+          // Determine obstacle under/near
+          const key = `${Math.floor(pos.x / cs)},${Math.floor(pos.z / cs)}`
+          const neighbors = [key]
+          const [cx, cz] = key.split(',').map(Number)
+          const around = [[0,0],[1,0],[-1,0],[0,1],[0,-1]]
+          neighbors.length = 0; for (const d of around) neighbors.push(`${cx+d[0]},${cz+d[1]}`)
+          let over = false
+          for (const nk of neighbors) {
+            const arr = this.themeObstacleCells.get(nk)
+            if (!arr) continue
+            for (const m of arr) {
+              const par: any = (m.geometry as any)?.parameters || {}
+              const hx = (par.width ? par.width / 2 : 2), hz = (par.depth ? par.depth / 2 : 2)
+              const dx = pos.x - m.position.x, dz = pos.z - m.position.z
+              if (Math.abs(dx) < hx && Math.abs(dz) < hz) { over = true; break }
+            }
+            if (over) break
+          }
+          const yTop = over ? 2.5 : 0 // climb height
+          if (over) {
+            if (e.climbState === 'ground' || e.climbState === undefined) { e.climbState = 'ascending'; e.climbTargetY = yTop }
+            if (e.climbState === 'ascending') {
+              pos.y = Math.min(yTop, pos.y + dt * 3)
+              if (pos.y >= yTop - 1e-3) { e.climbState = 'onTop'; e.climbUntil = this.gameTime + 0.6 }
+            } else if (e.climbState === 'onTop') {
+              if ((e.climbUntil ?? 0) <= this.gameTime) e.climbState = 'descending'
+            } else if (e.climbState === 'descending') {
+              pos.y = Math.max(0, pos.y - dt * 3)
+              if (pos.y <= 0.01) e.climbState = 'ground'
+            }
+          } else {
+            // Not over obstacle; ensure on ground
+            if (pos.y > 0) { pos.y = Math.max(0, pos.y - dt * 3); if (pos.y <= 0.01) e.climbState = 'ground' }
+          }
+        }
+      }
+
+      if (this.ownedWeapons.has('Dial-up Burst')) {
       this.modemWaveTimer += dt
       if (this.modemWaveTimer >= this.modemWaveInterval) {
         this.modemWaveTimer = 0
@@ -4543,11 +4591,14 @@ class Game {
         hp = 2 + Math.floor(this.gameTime / 40)
         speed = 2.2
     }
-    const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
-    mesh.position.copy(spawnPos)
-    this.scene.add(mesh)
+          const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+      mesh.position.copy(spawnPos)
+      this.scene.add(mesh)
 
-    // Create larger face billboard that tracks the player
+      // Some enemies can climb walls in Jeeves
+      const canClimb = (type === 'runner' || type === 'charger' || type === 'shooter')
+ 
+      // Create larger face billboard that tracks the player
     const faceTex = this.makeFaceTexture(type)
     const faceSize = type === 'brute' ? 1.2 : 0.9
     const face = new THREE.Mesh(
@@ -4566,7 +4617,7 @@ class Game {
       spawnPos = farther
     }
     const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
-    const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor }
+         const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor, canClimb, climbState: 'ground' }
     // Boo behavior: wave 10 (minute 9) and wave 4 (minute 3)
     if (minute === 9 || minute === 3) enemy.booWave10 = true
     // Rare elite: ~1 in 500
