@@ -4126,9 +4126,10 @@ class Game {
     const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]
 		this.altHiddenScene.bills = bills.map((b) => (b ? (b.visible || false) : false))
 		bills.forEach((b) => { if (b) b.visible = false })
-    // Scale based on device; shrink on narrow mobile to ~50%
-    const isNarrowMobile = ((window.innerWidth < 640 && window.innerHeight > window.innerWidth) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent))
-    const baseScale = isNarrowMobile ? 2 : 4
+    // Scale based on aspect/width only (avoid UA checks so Z Fold/large phones don't shrink)
+    const aspectNow = window.innerWidth / window.innerHeight
+    const narrowPortrait = (aspectNow < 0.65) && (window.innerWidth <= 520)
+    const baseScale = narrowPortrait ? 2 : 4
     g.scale.set(baseScale, baseScale, baseScale)
     // Temporarily switch to a pure top-down view by rotating isoPivot to identity
     this.altPrevIsoRot = this.isoPivot.rotation.clone()
