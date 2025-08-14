@@ -801,6 +801,66 @@ class Game {
     const form = document.createElement('div')
     form.style.display = 'grid'; form.style.gridTemplateColumns = '1fr 1fr'; form.style.gap = '6px'
     scroll.appendChild(form)
+    // Jeeves Maze Painter
+    const mazeWrap = document.createElement('div')
+    mazeWrap.className = 'card dbg-row'
+    mazeWrap.style.padding = '4px'
+    mazeWrap.style.display = 'flex'
+    mazeWrap.style.flexDirection = 'column'
+    const mazeTitle = document.createElement('strong'); mazeTitle.textContent = 'Jeeves Maze Painter'
+    mazeWrap.appendChild(mazeTitle)
+    const gridW = 21, gridH = 21
+    const cell = 12
+    const canvas = document.createElement('canvas'); canvas.width = gridW * cell; canvas.height = gridH * cell; canvas.style.imageRendering = 'pixelated'; canvas.style.border = '1px solid #222'
+    const g2d = canvas.getContext('2d')!
+    const grid: number[][] = Array.from({ length: gridH }, () => Array.from({ length: gridW }, () => 1))
+    const draw = () => {
+      g2d.fillStyle = '#2b2418'; g2d.fillRect(0, 0, canvas.width, canvas.height)
+      for (let y = 0; y < gridH; y++) for (let x = 0; x < gridW; x++) {
+        g2d.fillStyle = grid[y][x] ? '#5a4a35' : '#2b2418'
+        g2d.fillRect(x * cell, y * cell, cell-1, cell-1)
+      }
+    }
+    let painting = false
+    const toggleAt = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect()
+      const x = Math.floor((clientX - rect.left) / cell)
+      const y = Math.floor((clientY - rect.top) / cell)
+      if (x >= 0 && y >= 0 && x < gridW && y < gridH) { grid[y][x] = grid[y][x] ? 0 : 1; draw() }
+    }
+    canvas.onmousedown = (e) => { painting = true; toggleAt(e.clientX, e.clientY) }
+    canvas.onmousemove = (e) => { if (painting) toggleAt(e.clientX, e.clientY) }
+    window.addEventListener('mouseup', () => painting = false, { once: true })
+    draw()
+    const applyBtn = document.createElement('button'); applyBtn.className = 'card'; applyBtn.textContent = 'Apply to Jeeves'
+    applyBtn.style.padding = '4px 8px'; applyBtn.style.fontSize = '12px'; applyBtn.style.marginTop = '6px'
+    applyBtn.onclick = () => {
+      // Rebuild Jeeves obstacles from painter grid
+      if (this.currentTheme !== 'jeeves') this.applyTheme('jeeves')
+      // Clear current
+      for (const o of this.themeObstacles) this.scene.remove(o)
+      this.themeObstacles = []
+      this.themeObstacleCells.clear()
+      const addBox = (x: number, z: number, c: number, s = 2) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(s, 1, s), new THREE.MeshBasicMaterial({ color: c }))
+        m.position.set(x, 0.5, z)
+        this.themeObstacles.push(m)
+        this.scene.add(m)
+        const cs = this.obstacleCellSize
+        const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+        const list = this.themeObstacleCells.get(key) || []
+        list.push(m)
+        this.themeObstacleCells.set(key, list)
+      }
+      const originX = -Math.floor(gridW / 2) * 2
+      const originZ = -Math.floor(gridH / 2) * 2
+      for (let y = 0; y < gridH; y++) for (let x = 0; x < gridW; x++) {
+        if (grid[y][x]) addBox(originX + x * 2, originZ + y * 2, 0x5a4a35, 2)
+      }
+    }
+    mazeWrap.appendChild(canvas)
+    mazeWrap.appendChild(applyBtn)
+    wrap.appendChild(mazeWrap)
     // Plentiful Pickups toggle
     const pickRow = document.createElement('div')
     pickRow.className = 'cardrow'
