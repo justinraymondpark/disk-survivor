@@ -2976,7 +2976,8 @@ class Game {
         }
       } else if (e.type === 'bomber') {
         // accelerates toward player, small explosive knockback when near
-        if (toPlayer.length() < 1.2) {
+        const dBP = toPlayer.length()
+        if (dBP < 1.2) {
           e.alive = false
           this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
           this.spawnExplosion(e.mesh)
@@ -2984,6 +2985,9 @@ class Game {
           this.player.hp = Math.max(0, this.player.hp - 1)
           this.updateHPBar()
           if (this.player.hp <= 0) { this.onPlayerDeath(); return }
+        } else if (dBP < 5) {
+          // Apply brief speed boost when close
+          dir.multiplyScalar(1.3)
         }
       } else if (e.type === 'sniper') {
         // keeps long distance
@@ -3026,15 +3030,23 @@ class Game {
           }
         }
       } else if (e.type === 'orbiter') {
-        // Stronger circular strafe with slight inward bias
+        // Arcing swoop near player; otherwise orbit with slight inward pull
         if (e.behaviorState === undefined) {
           e.behaviorState = 'orbit'
           e.orbitDir = Math.random() < 0.5 ? 1 : -1
           e.baseSpeed = 2.4
+          e.behaviorPhase = Math.random() < 0.5 ? 1 : -1
         }
+        const dist = toPlayer.length()
         const perp = new THREE.Vector3(-dir.z, 0, dir.x)
-        dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
-        e.speed = e.baseSpeed!
+        if (dist < 5) {
+          if (Math.random() < 0.02) e.behaviorPhase = (e.behaviorPhase ?? 1) * -1
+          dir.addScaledVector(perp, (e.behaviorPhase ?? 1) * 0.9).addScaledVector(toPlayer.normalize(), 0.6).normalize()
+          e.speed = (e.baseSpeed ?? 2.4) * 1.35
+        } else {
+          dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
+          e.speed = e.baseSpeed!
+        }
       } else if (e.type === 'teleport') {
         // Periodically teleports to a ring near the player, then lunges briefly
         if (e.nextTeleportTime === undefined) e.nextTeleportTime = this.gameTime + 2 + Math.random() * 2
@@ -3082,7 +3094,7 @@ class Game {
       } else if (e.baseColorHex != null) {
         ;(e.mesh.material as THREE.MeshBasicMaterial).color.setHex(e.baseColorHex!)
       }
-      // Wave 10 Boo behavior: when looked at, creep slowly; when not, chase fast
+      // Boo behavior: when looked at, creep slowly; when not, chase fast
       if (e.booWave10) {
         const toEnemy = e.mesh.position.clone().sub(this.camera.position).setY(0).normalize()
         const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).setY(0).normalize()
@@ -4042,7 +4054,7 @@ class Game {
 
     const shooterAggressive = type === 'shooter' ? Math.random() < 0.5 : undefined
     // Unique spawn burst for teleport type: initial speed boost with quick decay
-    if (type === 'teleport') {
+    if (type === 'teleport' || type === 'weaver') {
       // Nudge spawn position a bit farther than baseline to reinforce offscreen entry
       const toPlayer = this.player.group.position.clone().sub(spawnPos).setY(0)
       const farther = toPlayer.length() > 0 ? spawnPos.clone().add(toPlayer.normalize().multiplyScalar(-1.5)) : spawnPos
@@ -4050,8 +4062,8 @@ class Game {
     }
     const baseColor = ((mesh.material as THREE.MeshBasicMaterial).color.getHex?.() ?? 0xffffff) as number
     const enemy: Enemy = { mesh, alive: true, speed, hp, type, timeAlive: 0, face, spawnWave: minute, shooterAggressive, baseSpeed: speed, baseColorHex: baseColor }
-    // Wave 10 special: Boo behavior
-    if (minute === 9) enemy.booWave10 = true
+    // Boo behavior: wave 10 (minute 9) and wave 4 (minute 3)
+    if (minute === 9 || minute === 3) enemy.booWave10 = true
     // Rare elite: ~1 in 500
     if (Math.random() < 1 / 500) { enemy.eliteAggressive = true; hp += 2; enemy.hp = hp }
     // Post-10 twists: modest buffs per cycle so waves feel unique
