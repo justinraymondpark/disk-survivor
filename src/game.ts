@@ -5418,6 +5418,7 @@ class Game {
     wrap.append(title, desc, mainBox, dailyBox, btnRow)
     overlay.appendChild(wrap)
     this.root.appendChild(overlay)
+    overlay.style.display = 'flex'
 
     const pad = (n: number) => String(n).padStart(2, '0')
     const render = (entries: any[]) => entries.map((e: any, i: number) => `${pad(i + 1)}. ${(e.name ?? '').slice(0, 14).padEnd(14)}  ${(e.timeSurvived ?? 0)}s  ${e.score ?? 0}`).join('\n')
