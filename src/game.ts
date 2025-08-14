@@ -1152,7 +1152,8 @@ class Game {
     this.billboardGeocities = this.makeBillboard('GEOCITIES', new THREE.Vector3(-6, 0.01, -6))
     this.billboardYahoo = this.makeBillboard('YAHOO DIR', new THREE.Vector3(8, 0.01, 4))
     this.billboardDialup = this.makeBillboard('DIAL-UP 56K', new THREE.Vector3(-10, 0.01, 10))
-    this.scene.add(this.billboardGeocities, this.billboardYahoo, this.billboardDialup)
+    ;(this as any).billboardJeeves = this.makeBillboard('JEEVES', new THREE.Vector3(12, 0.01, -12))
+    this.scene.add(this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves)
 
     this.player.group.position.set(0, 0.6, 0)
     this.scene.add(this.player.group)
@@ -3691,7 +3692,7 @@ class Game {
     if (this.groundMesh) { this.altHiddenScene.ground = this.groundMesh.visible; this.groundMesh.visible = false }
     if (this.grid) { (this.grid as any)._prevVisible = this.grid.visible; this.grid.visible = false }
 		if (this.player?.group) { this.altHiddenScene.player = this.player.group.visible; this.player.group.visible = false }
-		const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
+    const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]
 		this.altHiddenScene.bills = bills.map((b) => (b ? (b.visible || false) : false))
 		bills.forEach((b) => { if (b) b.visible = false })
     // Scale up to fill most of the screen (tuned)
@@ -3941,7 +3942,7 @@ class Game {
         if (this.altHiddenScene) {
 				if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
 				if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
-				const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup]
+        const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]
 				bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
           if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
 				this.altHiddenScene = undefined
