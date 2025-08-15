@@ -655,7 +655,7 @@ class Game {
   // Alt Title state
   altTitleActive = false
   altTitleGroup?: THREE.Group
-  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD' | 'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
+  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DAILY2' | 'DEBUG' | 'BOARD' | 'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
@@ -5033,7 +5033,7 @@ class Game {
 		}
   }
 
-  private chooseAltFloppy(lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') {
+  private chooseAltFloppy(lbl: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS') {
     if (!this.altFloppies[0]) return
     const sel = this.altFloppies[0].mesh
     const start = sel.position.clone()
@@ -5068,8 +5068,11 @@ class Game {
       } else if (lbl === 'DAILY') {
         this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
 			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-      } else if ((lbl as any) === 'BUGS') {
-			this.exitAltTitleCleanup(); if ((this as any).showBugReport) (this as any).showBugReport(); else this.showLeaderboards()
+      } else if (lbl === 'DAILY2') {
+        this.isDaily = false; this.isDailyV2 = true; this.dailyIdV2 = this.getDailyV2Id(); this.buildDailyV2Config(this.dailyIdV2)
+			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+      } else if (lbl === 'BUGS') {
+			this.exitAltTitleCleanup(); if ((this as any).showBugReport) (this as any).showBugReport(); else this.showBestiary()
       } else {
 			this.exitAltTitleCleanup(); this.showDebugPanel()
       }
