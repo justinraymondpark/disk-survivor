@@ -2537,9 +2537,9 @@ class Game {
     this.uiNavCooldown -= delta
     // Deadzone and edge-trigger
     const axis = this.input.axesLeft.x
-    const moveAxis = Math.abs(axis) > 0.5 ? Math.sign(axis) : 0
+    const moveAxis = Math.abs(axis) > 0.3 ? Math.sign(axis) : 0
     const gp = this.input.getActiveGamepad()
-    const aPressed = !!gp && (gp.buttons[0]?.pressed || gp.buttons[1]?.pressed || gp.buttons[7]?.pressed || gp.buttons[9]?.pressed)
+    const aPressed = !!gp && (gp.buttons[0]?.pressed || gp.buttons[1]?.pressed || gp.buttons[7]?.pressed || gp.buttons[9]?.pressed || gp.buttons[2]?.pressed || gp.buttons[3]?.pressed)
     const dpadLeft = !!gp && (gp.buttons[14]?.pressed)
     const dpadRight = !!gp && (gp.buttons[15]?.pressed)
     const enterPressed = !!this.input.keys['enter']
