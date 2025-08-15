@@ -6309,6 +6309,7 @@ class Game {
       if (!overlay.parentElement) { window.removeEventListener('keydown', onKey); return }
       if (e.key.toLowerCase() === 'c' && e.shiftKey) { ctrl.style.display = ctrl.style.display === 'none' ? 'block' : 'none'; return }
       if (e.key.toLowerCase() === 'f' && e.shiftKey) { drv.style.display = drv.style.display === 'none' ? 'block' : 'none'; return }
+      if (selectTimeline) return
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
       else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
@@ -6343,12 +6344,22 @@ class Game {
       if (hit) {
         const idx = meshes.findIndex(m => (hit.object as any) === m || m.children.includes(hit.object as any))
         if (idx >= 0) selectIndex = idx
-        doSelect(floppies[selectIndex].label)
+        if (!selectTimeline) {
+          doSelect(floppies[selectIndex].label)
+          // Debounce accidental double taps/clicks for 350ms
+          const until = performance.now() + 350
+          const prev = onPointerDown
+          const guard = (e: PointerEvent) => { if (performance.now() < until) return; overlay.removeEventListener('pointerdown', guard as any); overlay.addEventListener('pointerdown', prev as any, { passive: true } as any) }
+          overlay.removeEventListener('pointerdown', prev as any)
+          overlay.addEventListener('pointerdown', guard as any, { passive: true } as any)
+        }
       }
     }
-    canvas.addEventListener('click', onClick)
+    // Do not register click; pointer tap handling below avoids double-trigger
 
     // Touch/Mouse drag with subtle wiggle and scale on selected disk
+    overlay.style.touchAction = 'none'
+    canvas.style.touchAction = 'none'
     let swipeActive = false
     let swipeStartX = 0
     let tapStartTime = 0
@@ -6357,6 +6368,7 @@ class Game {
     let dragDX = 0
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
+      if (selectTimeline) return
       swipeActive = true
       dragging = true
       swipeStartX = e.clientX
@@ -6376,6 +6388,7 @@ class Game {
     }
     const onPointerUp = (ev: PointerEvent) => {
       if (ev.pointerType !== 'touch' && ev.pointerType !== 'mouse') return
+      if (selectTimeline) return
       const rect = overlay.getBoundingClientRect()
       const dx = ev.clientX - swipeStartX
       const dxNorm = rect.width > 0 ? (dx / rect.width) : 0
@@ -6384,15 +6397,15 @@ class Game {
       if (Math.abs(dxNorm) > 0.2) {
         cycle(dxNorm > 0 ? -1 : 1)
       } else if (dt < 250) {
-        doSelect(floppies[selectIndex].label)
+        if (!selectTimeline) doSelect(floppies[selectIndex].label)
       }
       swipeActive = false
       dragging = false
       ;(overlay.style as any).touchAction = prevTouchAction || ''
     }
-    window.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
-    window.addEventListener('pointermove', onPointerMove, { passive: true } as any)
-    window.addEventListener('pointerup', onPointerUp, { passive: true } as any)
+    overlay.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
+    overlay.addEventListener('pointermove', onPointerMove, { passive: true } as any)
+    overlay.addEventListener('pointerup', onPointerUp, { passive: true } as any)
 
     // Camera tweak sliders (temporary)
     const ctrl = document.createElement('div') as HTMLDivElement
@@ -6470,12 +6483,12 @@ class Game {
       const dpadLeft = !!gp && !!gp.buttons?.[14]?.pressed
       const dpadRight = !!gp && !!gp.buttons?.[15]?.pressed
       const a = !!gp && !!gp.buttons?.[0]?.pressed
-      if (navCooldown <= 0 && (moveAxis !== 0 || dpadLeft || dpadRight)) {
+      if (!selectTimeline && navCooldown <= 0 && (moveAxis !== 0 || dpadLeft || dpadRight)) {
         navCooldown = 0.22
         if (moveAxis > 0 || dpadRight) cycle(1)
         if (moveAxis < 0 || dpadLeft) cycle(-1)
       }
-      if (a && !prevA) doSelect(floppies[selectIndex].label)
+      if (!selectTimeline && a && !prevA) doSelect(floppies[selectIndex].label)
       prevA = a
       for (let i = 0; i < floppies.length; i++) {
         const f = floppies[i]
@@ -6567,9 +6580,9 @@ class Game {
     const cleanup = () => {
       try { window.removeEventListener('keydown', onKey) } catch {}
       try { canvas.removeEventListener('click', onClick) } catch {}
-      try { window.removeEventListener('pointerdown', onPointerDown as any) } catch {}
-      try { window.removeEventListener('pointermove', onPointerMove as any) } catch {}
-      try { window.removeEventListener('pointerup', onPointerUp as any) } catch {}
+      try { overlay.removeEventListener('pointerdown', onPointerDown as any) } catch {}
+      try { overlay.removeEventListener('pointermove', onPointerMove as any) } catch {}
+      try { overlay.removeEventListener('pointerup', onPointerUp as any) } catch {}
       try { cancelAnimationFrame(raf) } catch {}
       try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
       try { renderer.dispose() } catch {}
