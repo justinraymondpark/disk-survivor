@@ -6159,11 +6159,13 @@ class Game {
     overlay.className = 'overlay'
     overlay.style.display = 'flex'
     overlay.style.background = 'rgba(0,0,0,0.6)'
+    ;(overlay.style as any).pointerEvents = 'none'
     const canvas = document.createElement('canvas')
     canvas.style.position = 'absolute'
     canvas.style.inset = '0'
     canvas.style.width = '100%'
     canvas.style.height = '100%'
+    ;(canvas.style as any).pointerEvents = 'auto'
     overlay.appendChild(canvas)
     // Top-right back button
     const back = document.createElement('button') as HTMLButtonElement
@@ -6175,6 +6177,7 @@ class Game {
     back.style.minHeight = 'unset'
     back.style.padding = '6px 10px'
     back.innerHTML = '<strong>Back</strong>'
+    ;(back.style as any).pointerEvents = 'auto'
     back.onclick = () => { cleanup(); overlay.remove(); this.altTitleActive = false }
     overlay.appendChild(back)
     this.root.appendChild(overlay)
@@ -6456,7 +6459,7 @@ class Game {
     ;(titlePlane.material as THREE.MeshBasicMaterial).map!.colorSpace = THREE.SRGBColorSpace
     titlePlane.position.set(0, 1.56, -4.5)
     titlePlane.scale.set(0.68, 0.68, 0.68)
-    titlePlane.visible = false
+    titlePlane.visible = true
     scene.add(titlePlane)
     let titleX = 0
     let titleY = 1.56
@@ -6603,6 +6606,7 @@ class Game {
           if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'BOARD') this.showLeaderboards()
+          else if (lbl === 'BUGS') { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showLeaderboards() }
           else this.showDebugPanel()
           return
         }
