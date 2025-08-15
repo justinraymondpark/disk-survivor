@@ -6243,6 +6243,35 @@ class Game {
     }
     const floppiesGroup = new THREE.Group()
     scene.add(floppiesGroup)
+    // Simple floppy drive group (body + front label + slot)
+    const buildDriveGroup = (): THREE.Group => {
+      const g = new THREE.Group()
+      const driveMat = new THREE.MeshBasicMaterial({ color: 0xd8d2c5 })
+      const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
+      body.rotation.x = THREE.MathUtils.degToRad(15)
+      g.add(body)
+      // Front label texture: "DISK SURVIVOR"
+      const frontCanvas = document.createElement('canvas'); frontCanvas.width = 512; frontCanvas.height = 128
+      const fctx = frontCanvas.getContext('2d')!
+      fctx.fillStyle = '#0a0a0a'; fctx.fillRect(0, 0, frontCanvas.width, frontCanvas.height)
+      fctx.fillStyle = '#e7efe4'; fctx.font = 'bold 60px monospace'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'
+      fctx.fillText('DISK SURVIVOR', frontCanvas.width / 2, frontCanvas.height / 2)
+      const frontTex = new THREE.CanvasTexture(frontCanvas)
+      const frontMat = new THREE.MeshBasicMaterial({ map: frontTex })
+      const frontGeom = new THREE.PlaneGeometry(4.2, 0.6)
+      const frontLabel = new THREE.Mesh(frontGeom, frontMat)
+      frontLabel.position.set(0, 0.65, 0.31)
+      body.add(frontLabel)
+      const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
+      slot.position.set(0, 0.18, 0.31)
+      g.add(slot)
+      return g
+    }
+    const driveGroup = buildDriveGroup()
+    scene.add(driveGroup)
+    // Initial placement; tuned via Shift+F panel below
+    driveGroup.position.set(0, 0.3, 0)
     items.forEach((label, i) => {
       const m = makeFloppy(label)
       const offsetsX = [0, 0.62, -0.62, 1.24]
@@ -6277,6 +6306,7 @@ class Game {
     const onKey = (e: KeyboardEvent) => {
       if (!overlay.parentElement) { window.removeEventListener('keydown', onKey); return }
       if (e.key.toLowerCase() === 'c' && e.shiftKey) { ctrl.style.display = ctrl.style.display === 'none' ? 'block' : 'none'; return }
+      if (e.key.toLowerCase() === 'f' && e.shiftKey) { drv.style.display = drv.style.display === 'none' ? 'block' : 'none'; return }
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
       else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
@@ -6394,6 +6424,31 @@ class Game {
       mkRow('LookY', 0.1, 1.5, 0.02, lookTargetY, (v) => { lookTargetY = v })
     )
     overlay.appendChild(ctrl)
+    // Drive tweak panel (Shift+F)
+    const drv = document.createElement('div') as HTMLDivElement
+    drv.className = 'card'
+    drv.style.position = 'absolute'
+    drv.style.left = '12px'
+    drv.style.top = '160px'
+    drv.style.minWidth = '240px'
+    drv.style.padding = '10px'
+    drv.style.display = 'none'
+    let driveX = driveGroup.position.x
+    let driveY = driveGroup.position.y
+    let driveZ = driveGroup.position.z
+    let driveTilt = THREE.MathUtils.radToDeg((driveGroup.children[0] as THREE.Mesh)?.rotation.x || 15)
+    const applyDrive = () => {
+      driveGroup.position.set(driveX, driveY, driveZ)
+      const body = driveGroup.children[0] as THREE.Mesh
+      if (body) body.rotation.x = THREE.MathUtils.degToRad(driveTilt)
+    }
+    drv.append(
+      mkRow('DriveX', -3.0, 3.0, 0.02, driveX, (v) => { driveX = v; applyDrive() }),
+      mkRow('DriveY', -0.2, 2.0, 0.02, driveY, (v) => { driveY = v; applyDrive() }),
+      mkRow('DriveZ', -1.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
+      mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() })
+    )
+    overlay.appendChild(drv)
     // Controller navigation
     let navCooldown = 0
     let prevA = false

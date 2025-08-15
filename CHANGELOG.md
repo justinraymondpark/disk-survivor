@@ -7,6 +7,7 @@
   - Temporary sliders: FOV (35–100), CamX, CamY, CamZ, LookY; FOV auto-boost on narrow aspect
   - Defaults by aspect: desktop/tablet/Z Fold → FOV 70, CamY 6, CamZ 3.35, CamX 0, LookY 0.2; narrow/phone → FOV 100, CamY 6, CamZ 2.0, CamX 0, LookY 0.2
   - Toggle camera panel with Shift+C (hidden by default)
+  - Reintroduced floppy drive with Shift+F panel to position and tilt
 
 ## 0.1.26
 - Build: silence TS unused error by making `showAltTitle` public (noUnusedLocals flags only private members)
