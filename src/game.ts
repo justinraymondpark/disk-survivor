@@ -1770,6 +1770,8 @@ class Game {
     // Use safe DOM-only Alt Title to avoid GL/context/viewport interactions
     altBtn.onclick = () => this.showAltTitleSafe()
     this.uiSelectIndex = 0
+    // Default to new 3D Alt Title overlay instead of classic title
+    setTimeout(() => { try { this.showAltTitle3DOverlay() } catch {} }, 0)
 
     // Changelog overlay (hidden by default)
     this.changelogOverlay = document.createElement('div') as HTMLDivElement
@@ -6174,19 +6176,7 @@ class Game {
       if (this.changelogFab) { this.changelogFab.style.display = 'inline-flex'; (this.changelogFab.style as any).zIndex = '5000' }
       if (this.fullscreenBtn) { this.fullscreenBtn.style.display = 'inline-flex'; (this.fullscreenBtn.style as any).zIndex = '5000' }
     } catch {}
-    // Top-right back button
-    const back = document.createElement('button') as HTMLButtonElement
-    back.className = 'card'
-    back.style.position = 'absolute'
-    back.style.top = '12px'
-    back.style.right = '12px'
-    back.style.width = 'auto'
-    back.style.minHeight = 'unset'
-    back.style.padding = '6px 10px'
-    back.innerHTML = '<strong>Back</strong>'
-    ;(back.style as any).pointerEvents = 'auto'
-    back.onclick = () => { cleanup(); overlay.remove(); this.altTitleActive = false }
-    overlay.appendChild(back)
+    // Back button removed per request
     this.root.appendChild(overlay)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
@@ -6230,7 +6220,7 @@ class Game {
       applyFov()
     }
     rsz(); new ResizeObserver(rsz).observe(overlay)
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['BOARD','DEBUG','DAILY','START','BUGS']
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['DAILY','BOARD','DEBUG','START','BUGS']
     const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
     const makeFloppy = (label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
       const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
@@ -6298,7 +6288,7 @@ class Game {
       floppiesGroup.add(m)
       floppies.push({ mesh: m, label, target: m.position.clone(), targetRot: 0, floatPhase: Math.random() * Math.PI * 2 })
     })
-    let selectIndex = 0
+    let selectIndex = items.indexOf('DAILY') >= 0 ? items.indexOf('DAILY') : 0
     const cycle = (dir: number) => {
       if (dir === 0) return
       selectIndex = (selectIndex - dir + floppies.length) % floppies.length
