@@ -627,6 +627,29 @@ class Game {
 		this.altBgMesh = undefined
 	}
 
+	private exitAltTitleCleanup() {
+		try { this.disposeAltBg() } catch {}
+		try { this.removeAllAltBgPlanes?.() } catch {}
+		if (this.altTitleGroup) { this.scene.remove(this.altTitleGroup); this.altTitleGroup = undefined }
+		this.altTitleActive = false
+		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
+		if (this.altHiddenScene) {
+			if (this.groundMesh) this.groundMesh.visible = this.altHiddenScene.ground
+			if (this.player?.group) this.player.group.visible = this.altHiddenScene.player
+			const bills = [this.billboardGeocities, this.billboardYahoo, this.billboardDialup, (this as any).billboardJeeves]
+			bills.forEach((b, i) => { if (b) b.visible = !!this.altHiddenScene!.bills[i] })
+			if (this.grid && (this.grid as any)._prevVisible !== undefined) this.grid.visible = !!(this.grid as any)._prevVisible
+			this.altHiddenScene = undefined
+		}
+		if (this.altTouchOnDown) window.removeEventListener('pointerdown', this.altTouchOnDown)
+		if (this.altTouchOnMove) window.removeEventListener('pointermove', this.altTouchOnMove)
+		if (this.altTouchOnUp) window.removeEventListener('pointerup', this.altTouchOnUp)
+		;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
+		if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
+		if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
+		this.renderer.setClearColor(0x0d0f1a, 1)
+	}
+
 	private removeAllAltBgPlanes() {
 		try {
 			const children = [...this.scene.children]
@@ -1697,14 +1720,14 @@ class Game {
     bugBtn.onclick = () => this.showBestiary()
 
     const begin = () => {
+      this.exitAltTitleCleanup()
       this.titleOverlay.style.display = 'none'
       this.showTitle = false
       this.pauseDebounceUntil = performance.now() + 400
       // start default music; theme selection will switch later
       this.audio.startMusic('default' as ThemeKey)
-      // Safety: ensure any Alt Title background is removed
-      try { this.disposeAltBg() } catch {}
-      try { this.removeAllAltBgPlanes() } catch {}
+      // Safety: ensure any lingering alt planes are gone
+      this.exitAltTitleCleanup()
     }
     startBtn.onclick = begin
     const openOptions = () => {
@@ -4534,12 +4557,12 @@ class Game {
       if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
       if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
 		if (lbl === 'START') {
-			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
 		} else if (lbl === 'DAILY') {
 			this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
-			this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
 		} else {
-			this.showDebugPanel()
+			this.exitAltTitleCleanup(); this.showDebugPanel()
 		}
 	} }
   }
