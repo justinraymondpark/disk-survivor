@@ -6501,10 +6501,14 @@ class Game {
     selRow.style.alignItems = 'center'; selRow.style.gap = '8px'; selRow.style.marginBottom = '8px'
     const selLabel = document.createElement('strong'); selLabel.textContent = 'Adjust:'
     const sel = document.createElement('select') as HTMLSelectElement
-    sel.innerHTML = '<option value="drive">Floppy Drive</option><option value="title">Title Billboard</option>'
+    sel.innerHTML = '<option value="drive">Floppy Drive</option><option value="title">Title Billboard</option><option value="selected">Selected Floppy</option>'
     selRow.append(selLabel, sel)
     drv.appendChild(selRow)
     const rows: HTMLDivElement[] = []
+    // Offsets for currently selected floppy (applied every frame)
+    let selOffX = 0
+    let selOffY = 0
+    let selOffZ = 0
     const rebuildRows = () => {
       rows.forEach(r => r.remove()); rows.length = 0
       if (sel.value === 'drive') {
@@ -6517,14 +6521,23 @@ class Game {
         )
         titlePlane.visible = false
       } else {
-        rows.push(
-          mkRow('TitleX', -6.0, 6.0, 0.02, titleX, (v) => { titleX = v; applyTitle() }),
-          mkRow('TitleY', -0.2, 4.0, 0.02, titleY, (v) => { titleY = v; applyTitle() }),
-          mkRow('TitleZ', -8.0, 1.5, 0.02, titleZ, (v) => { titleZ = v; applyTitle() }),
-          mkRow('Tilt°', -150.0, 150.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() }),
-          mkRow('Scale', 0.3, 3.0, 0.01, titlePlane.scale.x, (v) => { titlePlane.scale.set(v, v, v) })
-        )
-        titlePlane.visible = true
+        if (sel.value === 'title') {
+          rows.push(
+            mkRow('TitleX', -6.0, 6.0, 0.02, titleX, (v) => { titleX = v; applyTitle() }),
+            mkRow('TitleY', -0.2, 4.0, 0.02, titleY, (v) => { titleY = v; applyTitle() }),
+            mkRow('TitleZ', -8.0, 1.5, 0.02, titleZ, (v) => { titleZ = v; applyTitle() }),
+            mkRow('Tilt°', -150.0, 150.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() }),
+            mkRow('Scale', 0.3, 3.0, 0.01, titlePlane.scale.x, (v) => { titlePlane.scale.set(v, v, v) })
+          )
+          titlePlane.visible = true
+        } else if (sel.value === 'selected') {
+          rows.push(
+            mkRow('SelX', -2.0, 2.0, 0.02, selOffX, (v) => { selOffX = v }),
+            mkRow('SelY', -2.0, 2.0, 0.02, selOffY, (v) => { selOffY = v }),
+            mkRow('SelZ', -2.0, 2.0, 0.02, selOffZ, (v) => { selOffZ = v })
+          )
+          titlePlane.visible = true
+        }
       }
       rows.forEach(r => drv.appendChild(r))
     }
@@ -6575,6 +6588,12 @@ class Game {
           const tt = performance.now() * 0.001 + f.floatPhase
           f.mesh.position.y = f.target.y + Math.sin(tt) * 0.03
           f.mesh.rotation.x = -0.18 + Math.sin(tt * 1.7) * 0.04
+          // Apply selected offsets after base placement
+          if (i === selectIndex) {
+            f.mesh.position.x += selOffX
+            f.mesh.position.y += selOffY
+            f.mesh.position.z += selOffZ
+          }
         }
         // Ease non-selected disks to base scale; keep selected slightly larger
         const baseScale = (i === selectIndex && dragging) ? 2.1 : (i === selectIndex ? 2.02 : 1.9)
