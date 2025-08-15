@@ -4673,9 +4673,9 @@ class Game {
           // Open leaderboards overlay
           this.showLeaderboards()
         } else if (lbl === 'BUGS') {
-          // Open bug report overlay/screen; fallback to leaderboards if method not implemented
+          // Open bug report overlay/screen; fallback to Bestiary if handler missing
           try { (this as any).showBugReport?.() } catch {}
-          if (!(this as any).showBugReport) this.showLeaderboards()
+          if (!(this as any).showBugReport) this.showBestiary()
         } else {
           this.showDebugPanel()
         }
@@ -6625,7 +6625,7 @@ class Game {
     selRow.style.alignItems = 'center'; selRow.style.gap = '8px'; selRow.style.marginBottom = '8px'
     const selLabel = document.createElement('strong'); selLabel.textContent = 'Adjust:'
     const sel = document.createElement('select') as HTMLSelectElement
-    sel.innerHTML = '<option value="drive">Floppy Drive</option><option value="title">Title Billboard</option><option value="selected">Selected Floppy</option>'
+    sel.innerHTML = '<option value="drive">Floppy Drive</option><option value="title">Title Billboard</option><option value="selected">Selected Floppy</option><option value="others">Non-selected Floppies</option>'
     selRow.append(selLabel, sel)
     drv.appendChild(selRow)
     const rows: HTMLDivElement[] = []
@@ -6659,6 +6659,18 @@ class Game {
             mkRow('SelX', -2.0, 2.0, 0.02, selOffX, (v) => { selOffX = v }),
             mkRow('SelY', -2.0, 2.0, 0.02, selOffY, (v) => { selOffY = v }),
             mkRow('SelZ', -2.0, 2.0, 0.02, selOffZ, (v) => { selOffZ = v })
+          )
+          titlePlane.visible = true
+        } else if (sel.value === 'others') {
+          rows.push(
+            mkRow('OthersY', -2.0, 2.0, 0.02, 0, (v) => {
+              // Apply a temporary Y offset to all non-selected targets for tuning
+              for (let i = 0; i < floppies.length; i++) {
+                if (i === selectIndex) continue
+                const f = floppies[i]
+                f.target.y += (v - 0)
+              }
+            })
           )
           titlePlane.visible = true
         }
@@ -6772,7 +6784,7 @@ class Game {
           else if (lbl === 'DAILY') { this.isDaily = true; this.isDailyV2 = false; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'DAILY2') { this.isDaily = false; this.isDailyV2 = true; this.dailyIdV2 = this.getDailyV2Id(); this.buildDailyV2Config(this.dailyIdV2); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'BOARD') this.showLeaderboards()
-          else if (lbl === 'BUGS') { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showLeaderboards() }
+          else if (lbl === 'BUGS') { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
           else this.showDebugPanel()
           return
         }
