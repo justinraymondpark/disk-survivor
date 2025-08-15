@@ -598,12 +598,20 @@ class Game {
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
     debugOverlay?: HTMLDivElement
+  private getTargetDpr(): number {
+    try {
+      const dpr = window.devicePixelRatio || 1
+      const coarse = matchMedia('(pointer: coarse)').matches
+      // On mobile/coarse input, cap for perf; on desktop, use full DPR
+      return coarse ? Math.min(dpr, 1.5) : dpr
+    } catch { return 1 }
+  }
   private fitRendererToCanvas() {
     try {
       const c = this.renderer.domElement as HTMLCanvasElement
       const cssW = Math.max(1, Math.round(c.clientWidth || (c as any).offsetWidth || 0))
       const cssH = Math.max(1, Math.round(c.clientHeight || (c as any).offsetHeight || 0))
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const dpr = this.getTargetDpr()
       this.renderer.setPixelRatio(dpr)
       this.renderer.setSize(cssW, cssH, false)
     } catch {}
@@ -2666,7 +2674,7 @@ class Game {
       const c = this.renderer.domElement as HTMLCanvasElement
       const cssW = Math.round(c.clientWidth)
       const cssH = Math.round(c.clientHeight)
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const dpr = this.getTargetDpr()
       const expectedW = Math.round(cssW * dpr)
       const expectedH = Math.round(cssH * dpr)
       if (Math.abs((c.width || 0) - expectedW) > 1 || Math.abs((c.height || 0) - expectedH) > 1) {
