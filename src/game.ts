@@ -4615,10 +4615,10 @@ class Game {
       const label = items[i]
       const m = makeFloppy(label)
       const angle = (i * 0.06)
-      // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
-      const offsetsX = [0, 0.62, -0.62, 1.24, -1.24]
-      const offsetsY = [0.90, -0.10, -0.12, -0.14, -0.16]
-      const offsetsZ = [0.60, -0.20, -0.28, -0.36, -0.44]
+      // Center the selected disk and fan others; expanded for 6 items
+      const offsetsX = [0, 0.62, -0.62, 1.24, -1.24, 1.86]
+      const offsetsY = [0.90, -0.12, -0.16, -0.20, -0.22, -0.24]
+      const offsetsZ = [0.60, -0.22, -0.30, -0.38, -0.46, -0.54]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
@@ -6424,9 +6424,9 @@ class Game {
       for (let i = 0; i < floppies.length; i++) {
         const idx = (i - selectIndex + floppies.length) % floppies.length
         const f = floppies[i]
-        const offsetsX = [0, 0.62, -0.62, 1.24, -1.24]
-        const offsetsY = [0.90, -0.10, -0.12, -0.14, -0.16]
-        const offsetsZ = [0.60, -0.20, -0.28, -0.36, -0.44]
+        const offsetsX = [0, 0.62, -0.62, 1.24, -1.24, 1.86]
+        const offsetsY = [0.90, -0.12, -0.16, -0.20, -0.22, -0.24]
+        const offsetsZ = [0.60, -0.22, -0.30, -0.38, -0.46, -0.54]
         const baseX = offsetsX[idx] ?? (idx * 0.62)
         const baseY = 0.05 + (idx * 0.16) + (offsetsY[idx] ?? 0)
         const baseZ = 0.66 - (idx * 0.04) + (offsetsZ[idx] ?? 0)
