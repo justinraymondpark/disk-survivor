@@ -6566,8 +6566,8 @@ class Game {
       }
       // Keep camera tilt target updated
       camera.lookAt(0, lookTargetY, 0)
-      // During drag, ease selected z-tilt back toward 0 if no move
-      if (!swipeActive) {
+      // During drag, ease selected z-tilt back toward 0 if no move (skip while selection timeline active)
+      if (!swipeActive && !selectTimeline) {
         const sel = floppies[selectIndex]
         if (sel) sel.mesh.rotation.z *= 0.85
         // Decay drag so card eases back when under threshold
