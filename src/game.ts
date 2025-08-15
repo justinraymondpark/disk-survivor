@@ -6230,7 +6230,7 @@ class Game {
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : 0xc1c1c1
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
@@ -6497,7 +6497,8 @@ class Game {
           mkRow('DriveX', -3.0, 3.0, 0.02, driveX, (v) => { driveX = v; applyDrive() }),
           mkRow('DriveY', -0.2, 2.0, 0.02, driveY, (v) => { driveY = v; applyDrive() }),
           mkRow('DriveZ', -8.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
-          mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() })
+          mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() }),
+          mkRow('Scale', 0.5, 3.0, 0.01, driveGroup.scale.x, (v) => { driveGroup.scale.set(v, v, v) })
         )
         titlePlane.visible = false
       } else {
@@ -6505,7 +6506,8 @@ class Game {
           mkRow('TitleX', -6.0, 6.0, 0.02, titleX, (v) => { titleX = v; applyTitle() }),
           mkRow('TitleY', -0.2, 4.0, 0.02, titleY, (v) => { titleY = v; applyTitle() }),
           mkRow('TitleZ', -8.0, 1.5, 0.02, titleZ, (v) => { titleZ = v; applyTitle() }),
-          mkRow('Tilt°', -35.0, 35.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() })
+          mkRow('Tilt°', -35.0, 35.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() }),
+          mkRow('Scale', 0.3, 3.0, 0.01, titlePlane.scale.x, (v) => { titlePlane.scale.set(v, v, v) })
         )
         titlePlane.visible = true
       }
