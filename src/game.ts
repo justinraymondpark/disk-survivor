@@ -1404,8 +1404,8 @@ class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     // Account for dynamic viewport on mobile (address bars)
     try {
-      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0)
-      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
       this.renderer.setSize(vw, vh)
     } catch {}
     this.renderer.setClearColor(0x0d0f1a, 1)
@@ -1882,8 +1882,8 @@ class Game {
   }
 
   onResize() {
-    const w = window.innerWidth
-    const h = window.innerHeight
+    const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
+    const h = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
     const aspect = w / h
     const viewSize = 12
     this.camera.left = -viewSize * aspect
@@ -2666,9 +2666,10 @@ class Game {
       const c = this.renderer.domElement as HTMLCanvasElement
       const cssW = Math.round(c.clientWidth)
       const cssH = Math.round(c.clientHeight)
-      const expectedW = Math.round(cssW)
-      const expectedH = Math.round(cssH)
-      if ((Math.abs((c.width || 0) - expectedW * Math.min(window.devicePixelRatio || 1, 1.5)) > 1) || (Math.abs((c.height || 0) - expectedH * Math.min(window.devicePixelRatio || 1, 1.5)) > 1)) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      const expectedW = Math.round(cssW * dpr)
+      const expectedH = Math.round(cssH * dpr)
+      if (Math.abs((c.width || 0) - expectedW) > 1 || Math.abs((c.height || 0) - expectedH) > 1) {
         this.fitRendererToCanvas()
       }
     } catch {}
