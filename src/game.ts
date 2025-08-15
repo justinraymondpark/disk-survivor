@@ -2924,10 +2924,27 @@ class Game {
       const ry = this.input.axesRight.y
       const rLen = Math.hypot(rx, ry)
       if (rLen > 0.12) {
-        // Direct yaw from stick for robust 360°
-        const yaw = Math.atan2(rx, -ry)
-        this.player.facing = yaw
-        this.player.group.rotation.y = yaw
+        // Prefer ray mapping for correct screen-up alignment; fallback to direct yaw if ray fails
+        const ndc = new THREE.Vector2(rx, -ry)
+        this.raycaster.setFromCamera(ndc, this.camera)
+        const hit = new THREE.Vector3()
+        const ok = this.raycaster.ray.intersectPlane(this.groundPlane, hit)
+        if (ok) {
+          const aim = hit.sub(this.player.group.position).setY(0)
+          if (aim.lengthSq() > 0) {
+            const yaw = Math.atan2(aim.x, aim.z)
+            this.player.facing = yaw
+            this.player.group.rotation.y = yaw
+          } else {
+            const yaw = Math.atan2(rx, -ry)
+            this.player.facing = yaw
+            this.player.group.rotation.y = yaw
+          }
+        } else {
+          const yaw = Math.atan2(rx, -ry)
+          this.player.facing = yaw
+          this.player.group.rotation.y = yaw
+        }
       } else if (this.input.hasRecentMouseMove()) {
         this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
         const hitMouse = new THREE.Vector3()
@@ -2939,18 +2956,10 @@ class Game {
           this.player.group.rotation.y = yaw
         }
       } else if (rx !== 0 || ry !== 0) {
-        // Fallback ray from stick
-        const ndc = new THREE.Vector2(rx, -ry)
-        this.raycaster.setFromCamera(ndc, this.camera)
-        const hit = new THREE.Vector3()
-        if (this.raycaster.ray.intersectPlane(this.groundPlane, hit)) {
-          const aim = hit.sub(this.player.group.position).setY(0)
-          if (aim.lengthSq() > 0) {
-            const yaw = Math.atan2(aim.x, aim.z)
-            this.player.facing = yaw
-            this.player.group.rotation.y = yaw
-          }
-        }
+        // Small stick deflection: fallback
+        const yaw = Math.atan2(rx, -ry)
+        this.player.facing = yaw
+        this.player.group.rotation.y = yaw
       }
       // Show touch pause only during gameplay
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
