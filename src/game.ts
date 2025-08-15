@@ -2640,11 +2640,13 @@ class Game {
       dbg.showTitle = this.showTitle
       dbg.playerYaw = this.player.group?.rotation?.y ?? 0
       dbg.cameraYaw = this.camera?.rotation?.y ?? 0
+      dbg.stickYaw = Math.atan2(this.input.axesRight.x, -this.input.axesRight.y)
+      dbg.stickLen = Math.hypot(this.input.axesRight.x, this.input.axesRight.y)
       dbg.scene = this.scene
       if (this.dbgHudVisible && this.dbgHud) {
         const lines = [
           `ALT:${dbg.altActive} BG:${dbg.bgCount} TITLE:${dbg.showTitle} THEME:${dbg.themeChosen}`,
-          `AR:(${dbg.axesRight.x.toFixed(2)},${dbg.axesRight.y.toFixed(2)}) AL:(${dbg.axesLeft.x.toFixed(2)},${dbg.axesLeft.y.toFixed(2)})`,
+          `AR:(${dbg.axesRight.x.toFixed(2)},${dbg.axesRight.y.toFixed(2)}) len:${dbg.stickLen.toFixed(2)} yaw:${dbg.stickYaw.toFixed(2)}`,
           `PY:${dbg.playerYaw.toFixed(2)} CY:${dbg.cameraYaw.toFixed(2)}`
         ]
         this.dbgHud.textContent = lines.join('\n')
@@ -2918,23 +2920,37 @@ class Game {
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Allow full rotation control before theme selection
       this.input.updateGamepad()
-      let aimVector = new THREE.Vector3()
-      if (this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0) {
-        const ndc = new THREE.Vector2(this.input.axesRight.x, -this.input.axesRight.y)
-        this.raycaster.setFromCamera(ndc, this.camera)
-        const hit = new THREE.Vector3()
-        this.raycaster.ray.intersectPlane(this.groundPlane, hit)
-        aimVector.copy(hit.sub(this.player.group.position)).setY(0).normalize()
+      const rx = this.input.axesRight.x
+      const ry = this.input.axesRight.y
+      const rLen = Math.hypot(rx, ry)
+      if (rLen > 0.12) {
+        // Direct yaw from stick for robust 360°
+        const yaw = Math.atan2(rx, -ry)
+        this.player.facing = yaw
+        this.player.group.rotation.y = yaw
       } else if (this.input.hasRecentMouseMove()) {
         this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
         const hitMouse = new THREE.Vector3()
         this.raycaster.ray.intersectPlane(this.groundPlane, hitMouse)
-        aimVector.copy(hitMouse.sub(this.player.group.position)).setY(0).normalize()
-      }
-      if (aimVector.lengthSq() > 0) {
-        const yaw = Math.atan2(aimVector.x, aimVector.z)
-        this.player.facing = yaw
-        this.player.group.rotation.y = yaw
+        const aim = hitMouse.sub(this.player.group.position).setY(0)
+        if (aim.lengthSq() > 0) {
+          const yaw = Math.atan2(aim.x, aim.z)
+          this.player.facing = yaw
+          this.player.group.rotation.y = yaw
+        }
+      } else if (rx !== 0 || ry !== 0) {
+        // Fallback ray from stick
+        const ndc = new THREE.Vector2(rx, -ry)
+        this.raycaster.setFromCamera(ndc, this.camera)
+        const hit = new THREE.Vector3()
+        if (this.raycaster.ray.intersectPlane(this.groundPlane, hit)) {
+          const aim = hit.sub(this.player.group.position).setY(0)
+          if (aim.lengthSq() > 0) {
+            const yaw = Math.atan2(aim.x, aim.z)
+            this.player.facing = yaw
+            this.player.group.rotation.y = yaw
+          }
+        }
       }
       // Show touch pause only during gameplay
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
