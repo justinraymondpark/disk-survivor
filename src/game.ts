@@ -1767,7 +1767,8 @@ class Game {
       this.buildDailyPlan(this.dailyId)
       begin()
     }
-    altBtn.onclick = () => this.showAltTitle()
+    // Use safe DOM-only Alt Title to avoid GL/context/viewport interactions
+    altBtn.onclick = () => this.showAltTitleSafe()
     this.uiSelectIndex = 0
 
     // Changelog overlay (hidden by default)
@@ -6096,6 +6097,51 @@ class Game {
       if (overlay.parentElement) requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
+  }
+
+  private showAltTitleSafe() {
+    if (this.altTitleActive) return
+    this.altTitleActive = true
+    const overlay = document.createElement('div') as HTMLDivElement
+    overlay.className = 'overlay'
+    overlay.style.display = 'flex'
+    overlay.style.flexDirection = 'column'
+    overlay.style.gap = '16px'
+    const card = document.createElement('div') as HTMLDivElement
+    card.className = 'card'
+    card.style.minWidth = '520px'
+    card.style.maxWidth = '86vw'
+    card.style.display = 'flex'
+    ;(card.style as any).flexDirection = 'column'
+    card.style.gap = '10px'
+    const title = document.createElement('strong'); title.textContent = 'Alt Title'
+    const grid = document.createElement('div')
+    grid.style.display = 'grid'
+    ;(grid.style as any).gridTemplateColumns = 'repeat(2, minmax(160px, 1fr))'
+    grid.style.gap = '8px'
+    const makeBtn = (label: string, onClick: () => void) => {
+      const b = document.createElement('button') as HTMLButtonElement
+      b.className = 'card nav-card'
+      b.style.padding = '10px'
+      b.innerHTML = `<strong>${label}</strong>`
+      b.onclick = onClick
+      return b
+    }
+    const start = makeBtn('Start', () => { overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.pauseDebounceUntil = performance.now() + 400; this.audio.startMusic('default' as ThemeKey) })
+    const daily = makeBtn('Daily Disk', () => { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.pauseDebounceUntil = performance.now() + 400; this.audio.startMusic('default' as ThemeKey) })
+    const dbg = makeBtn('Debug Mode', () => { overlay.remove(); this.altTitleActive = false; this.showDebugPanel() })
+    const boards = makeBtn('Leaderboards', () => { overlay.remove(); this.altTitleActive = false; this.showLeaderboards() })
+    grid.append(start, daily, dbg, boards)
+    const close = document.createElement('button') as HTMLButtonElement
+    close.className = 'card'
+    close.style.width = 'auto'
+    close.style.minHeight = 'unset'
+    close.style.padding = '6px 10px'
+    close.innerHTML = '<strong>Back</strong>'
+    close.onclick = () => { overlay.remove(); this.altTitleActive = false }
+    card.append(title, grid, close)
+    overlay.appendChild(card)
+    this.root.appendChild(overlay)
   }
 
   private updateHitCounter() {
