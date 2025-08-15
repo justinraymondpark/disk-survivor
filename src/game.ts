@@ -6459,13 +6459,14 @@ class Game {
     const titlePlane = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 3.0), new THREE.MeshBasicMaterial({ transparent: true }))
     ;(titlePlane.material as THREE.MeshBasicMaterial).map = new THREE.TextureLoader().load('/textures/title/dstitle.png')
     ;(titlePlane.material as THREE.MeshBasicMaterial).map!.colorSpace = THREE.SRGBColorSpace
-    titlePlane.position.set(0, 1.2, -3.5)
+    titlePlane.position.set(0, 1.56, -4.5)
+    titlePlane.scale.set(0.68, 0.68, 0.68)
     titlePlane.visible = false
     scene.add(titlePlane)
-    let titleX = titlePlane.position.x
-    let titleY = titlePlane.position.y
-    let titleZ = titlePlane.position.z
-    let titleTilt = 0
+    let titleX = 0
+    let titleY = 1.56
+    let titleZ = -4.5
+    let titleTilt = -82.5
     const applyDrive = () => {
       driveGroup.position.set(driveX, driveY, driveZ)
       const body = driveGroup.children[0] as THREE.Mesh
@@ -6475,6 +6476,8 @@ class Game {
       titlePlane.position.set(titleX, titleY, titleZ)
       titlePlane.rotation.x = THREE.MathUtils.degToRad(titleTilt)
     }
+    // Apply initial title defaults
+    applyTitle()
     // Dropdown to pick what the sliders control
     const selRow = document.createElement('div') as HTMLDivElement
     selRow.style.display = 'grid'; (selRow.style as any).gridTemplateColumns = 'auto 1fr'
