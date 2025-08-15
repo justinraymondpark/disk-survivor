@@ -6507,7 +6507,7 @@ class Game {
     const rows: HTMLDivElement[] = []
     // Offsets for currently selected floppy (applied every frame)
     let selOffX = 0
-    let selOffY = 0
+    let selOffY = 0.7
     let selOffZ = 0
     const rebuildRows = () => {
       rows.forEach(r => r.remove()); rows.length = 0
