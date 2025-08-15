@@ -4452,7 +4452,7 @@ class Game {
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0xcc5555 : 0xc1c1c1
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
@@ -6460,17 +6460,59 @@ class Game {
     let driveY = driveGroup.position.y
     let driveZ = driveGroup.position.z
     let driveTilt = THREE.MathUtils.radToDeg((driveGroup.children[0] as THREE.Mesh)?.rotation.x || 15)
+    // Title billboard (optional)
+    const titlePlane = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 3.0), new THREE.MeshBasicMaterial({ transparent: true }))
+    ;(titlePlane.material as THREE.MeshBasicMaterial).map = new THREE.TextureLoader().load('/textures/title/dstitle.png')
+    ;(titlePlane.material as THREE.MeshBasicMaterial).map!.colorSpace = THREE.SRGBColorSpace
+    titlePlane.position.set(0, 1.2, -3.5)
+    titlePlane.visible = false
+    scene.add(titlePlane)
+    let titleX = titlePlane.position.x
+    let titleY = titlePlane.position.y
+    let titleZ = titlePlane.position.z
+    let titleTilt = 0
     const applyDrive = () => {
       driveGroup.position.set(driveX, driveY, driveZ)
       const body = driveGroup.children[0] as THREE.Mesh
       if (body) body.rotation.x = THREE.MathUtils.degToRad(driveTilt)
     }
-    drv.append(
-      mkRow('DriveX', -3.0, 3.0, 0.02, driveX, (v) => { driveX = v; applyDrive() }),
-      mkRow('DriveY', -0.2, 2.0, 0.02, driveY, (v) => { driveY = v; applyDrive() }),
-      mkRow('DriveZ', -8.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
-      mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() })
-    )
+    const applyTitle = () => {
+      titlePlane.position.set(titleX, titleY, titleZ)
+      titlePlane.rotation.x = THREE.MathUtils.degToRad(titleTilt)
+    }
+    // Dropdown to pick what the sliders control
+    const selRow = document.createElement('div') as HTMLDivElement
+    selRow.style.display = 'grid'; (selRow.style as any).gridTemplateColumns = 'auto 1fr'
+    selRow.style.alignItems = 'center'; selRow.style.gap = '8px'; selRow.style.marginBottom = '8px'
+    const selLabel = document.createElement('strong'); selLabel.textContent = 'Adjust:'
+    const sel = document.createElement('select') as HTMLSelectElement
+    sel.innerHTML = '<option value="drive">Floppy Drive</option><option value="title">Title Billboard</option>'
+    selRow.append(selLabel, sel)
+    drv.appendChild(selRow)
+    const rows: HTMLDivElement[] = []
+    const rebuildRows = () => {
+      rows.forEach(r => r.remove()); rows.length = 0
+      if (sel.value === 'drive') {
+        rows.push(
+          mkRow('DriveX', -3.0, 3.0, 0.02, driveX, (v) => { driveX = v; applyDrive() }),
+          mkRow('DriveY', -0.2, 2.0, 0.02, driveY, (v) => { driveY = v; applyDrive() }),
+          mkRow('DriveZ', -8.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
+          mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() })
+        )
+        titlePlane.visible = false
+      } else {
+        rows.push(
+          mkRow('TitleX', -6.0, 6.0, 0.02, titleX, (v) => { titleX = v; applyTitle() }),
+          mkRow('TitleY', -0.2, 4.0, 0.02, titleY, (v) => { titleY = v; applyTitle() }),
+          mkRow('TitleZ', -8.0, 1.5, 0.02, titleZ, (v) => { titleZ = v; applyTitle() }),
+          mkRow('Tilt°', -35.0, 35.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() })
+        )
+        titlePlane.visible = true
+      }
+      rows.forEach(r => drv.appendChild(r))
+    }
+    sel.onchange = rebuildRows
+    rebuildRows()
     overlay.appendChild(drv)
     // Controller navigation
     let navCooldown = 0
