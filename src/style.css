@@ -174,7 +174,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 30;
 }
 /* Ensure Alt Title overlay always sits above WebGL canvas */
