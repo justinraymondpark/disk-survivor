@@ -2575,6 +2575,8 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
+    // Safety: if Alt Title is not active, ensure any leftover background plane is removed
+    if (!this.altTitleActive && this.altBgMesh) { this.disposeAltBg() }
     // Alt Title updates (animations and controller input)
     if (this.altTitleActive && this.altTitleGroup) {
       // Controller left/right and A
@@ -2831,6 +2833,26 @@ class Game {
       this.player.group.position.add(new THREE.Vector3(mv.x, 0, mv.y).multiplyScalar(this.player.speed * dt))
       this.checkThemeTiles()
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
+      // Allow full rotation control before theme selection
+      this.input.updateGamepad()
+      let aimVector = new THREE.Vector3()
+      if (this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0) {
+        const ndc = new THREE.Vector2(this.input.axesRight.x, -this.input.axesRight.y)
+        this.raycaster.setFromCamera(ndc, this.camera)
+        const hit = new THREE.Vector3()
+        this.raycaster.ray.intersectPlane(this.groundPlane, hit)
+        aimVector.copy(hit.sub(this.player.group.position)).setY(0).normalize()
+      } else if (this.input.hasRecentMouseMove()) {
+        this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
+        const hitMouse = new THREE.Vector3()
+        this.raycaster.ray.intersectPlane(this.groundPlane, hitMouse)
+        aimVector.copy(hitMouse.sub(this.player.group.position)).setY(0).normalize()
+      }
+      if (aimVector.lengthSq() > 0) {
+        const yaw = Math.atan2(aimVector.x, aimVector.z)
+        this.player.facing = yaw
+        this.player.group.rotation.y = yaw
+      }
       // Show touch pause only during gameplay
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
       if (this.optionsFab) this.optionsFab.style.display = 'none'
