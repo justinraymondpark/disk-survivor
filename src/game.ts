@@ -4284,6 +4284,10 @@ class Game {
   isDaily = false
   dailyId = ''
   dailyWavePlan: EnemyType[] = []
+  // Daily Disk 2.0 mode (rotates every 5 minutes for testing)
+  isDailyV2 = false
+  dailyIdV2 = ''
+  dailyV2WavePlan: EnemyType[] = []
   // Debug custom wave plan
   debugUseWavePlan = false
   debugWavePlan: EnemyType[] = []
@@ -4346,6 +4350,122 @@ class Game {
       plan[minute] = pool[Math.floor(rnd() * pool.length)]
     }
     this.dailyWavePlan = plan
+  }
+
+  private getDailyV2Id() {
+    // 5-minute rotating id in New York time for testing
+    const now = new Date()
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+    const parts = fmt.formatToParts(now)
+    const y = parts.find(p => p.type === 'year')!.value
+    const m = parts.find(p => p.type === 'month')!.value
+    const d = parts.find(p => p.type === 'day')!.value
+    const hh = Number(parts.find(p => p.type === 'hour')!.value)
+    const mm = Number(parts.find(p => p.type === 'minute')!.value)
+    const slot = Math.floor((mm % 60) / 5)
+    return `${y}-${m}-${d}-s${slot}`
+  }
+
+  private buildDailyV2Config(id: string) {
+    const rnd = this.seedRng(this.hashString(id))
+    // Theme pick
+    const themes = ['rings','stripes','blocks'] as const
+    const theme = themes[Math.floor(rnd() * themes.length)]
+    // Clear obstacles and set base theme
+    this.applyTheme('default')
+    // Helper to add obstacle boxes and index them
+    const addBox = (x: number, z: number, w: number, h: number, color = 0x334455) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1, h), new THREE.MeshBasicMaterial({ color }))
+      m.position.set(x, 0.5, z)
+      this.scene.add(m)
+      this.themeObstacles.push(m)
+      const cs = this.obstacleCellSize
+      const key = `${Math.floor(x / cs)},${Math.floor(z / cs)}`
+      const list = this.themeObstacleCells.get(key) || []
+      list.push(m)
+      this.themeObstacleCells.set(key, list)
+    }
+    const bounds = 16
+    const safeR = 5
+    const inSafe = (x: number, z: number) => (Math.hypot(x, z) < safeR)
+    if (theme === 'rings') {
+      const ringCount = 3 + Math.floor(rnd() * 4)
+      const spacing = 2.2 + rnd() * 0.8
+      const thick = 0.6 + rnd() * 0.3
+      for (let i = 1; i <= ringCount; i++) {
+        const r = i * spacing
+        const slices = 24
+        const gaps = 1 + Math.floor(rnd() * 3)
+        const gapStart = Math.floor(rnd() * slices)
+        for (let s = 0; s < slices; s++) {
+          let skip = false
+          for (let g = 0; g < gaps; g++) if (((gapStart + g * Math.floor(slices / gaps)) % slices) === s) skip = true
+          if (skip) continue
+          const ang = (s / slices) * Math.PI * 2
+          const cx = Math.cos(ang) * r
+          const cz = Math.sin(ang) * r
+          if (Math.abs(cx) > bounds || Math.abs(cz) > bounds) continue
+          if (inSafe(cx, cz)) continue
+          // Short chord segment oriented tangentially
+          const segLen = (2 * Math.PI * r) / slices * 0.9
+          const w = Math.max(0.4, Math.min(1.2, segLen))
+          const h = thick
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1, h), new THREE.MeshBasicMaterial({ color: 0x2e445a }))
+          m.position.set(cx, 0.5, cz)
+          m.rotation.y = ang
+          this.scene.add(m)
+          this.themeObstacles.push(m)
+          const cs = this.obstacleCellSize
+          const key = `${Math.floor(cx / cs)},${Math.floor(cz / cs)}`
+          const list = this.themeObstacleCells.get(key) || []
+          list.push(m)
+          this.themeObstacleCells.set(key, list)
+        }
+      }
+    } else if (theme === 'stripes') {
+      const vertical = rnd() < 0.5
+      const stripeCount = 5 + Math.floor(rnd() * 4)
+      const width = 0.7 + rnd() * 0.6
+      for (let i = 0; i < stripeCount; i++) {
+        const t = (i / (stripeCount - 1)) * 2 - 1
+        const pos = t * bounds * 0.8
+        const gap = (rnd() < 0.4) ? (2 + rnd() * 3) : 0
+        if (vertical) {
+          // vertical stripe at x=pos with an optional gap around z≈0
+          if (gap > 0) { addBox(pos, -bounds * 0.6, width, bounds - gap, 0x3a4d3f); addBox(pos, bounds * 0.6, width, bounds - gap, 0x3a4d3f) }
+          else addBox(pos, 0, width, bounds * 1.6, 0x3a4d3f)
+        } else {
+          if (gap > 0) { addBox(-bounds * 0.6, pos, bounds - gap, width, 0x3a4d3f); addBox(bounds * 0.6, pos, bounds - gap, width, 0x3a4d3f) }
+          else addBox(0, pos, bounds * 1.6, width, 0x3a4d3f)
+        }
+      }
+    } else if (theme === 'blocks') {
+      const step = 3
+      const density = 0.28 + rnd() * 0.17
+      const boulevardRow = Math.floor(rnd() * 7) - 3
+      const boulevardCol = Math.floor(rnd() * 7) - 3
+      for (let gz = -5; gz <= 5; gz++) {
+        for (let gx = -5; gx <= 5; gx++) {
+          if (gz === boulevardRow || gx === boulevardCol) continue
+          if (rnd() > density) continue
+          const w = step * (1 + Math.floor(rnd() * 2))
+          const h = step * (1 + Math.floor(rnd() * 2))
+          const x = gx * step
+          const z = gz * step
+          if (inSafe(x, z)) continue
+          addBox(x, z, w, h, 0x4a4540)
+        }
+      }
+    }
+    // Simple ground tint per theme
+    if (theme === 'rings') this.groundMesh.material = new THREE.MeshBasicMaterial({ color: 0x10202a })
+    if (theme === 'stripes') this.groundMesh.material = new THREE.MeshBasicMaterial({ color: 0x1a261a })
+    if (theme === 'blocks') this.groundMesh.material = new THREE.MeshBasicMaterial({ color: 0x1e1b18 })
+
+    // Build a basic wave plan reusing daily plan
+    const planId = id + `-${theme}`
+    this.buildDailyPlan(planId)
+    this.dailyV2WavePlan = this.dailyWavePlan.slice()
   }
 
   // ALT TITLE: build a small 3D scene with floppies and a drive slot
@@ -4451,16 +4571,16 @@ class Game {
     const floppiesGroup = new THREE.Group()
     floppiesGroup.position.y = 0 // align vertically with drive so bundle centers together
     g.add(floppiesGroup)
-    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD' | 'BUGS') => {
+    const makeFloppy = (label: 'START' | 'DAILY' | 'DAILY2' | 'DEBUG' | 'BOARD' | 'BUGS') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
-             const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
+             const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'DAILY2' ? 'dailydisk2.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
       ;(texTop as any).colorSpace = THREE.SRGBColorSpace
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'DAILY2' ? 0x99cc62 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
@@ -4489,7 +4609,7 @@ class Game {
       // No overlay text label (top texture already includes text)
       return body
     }
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['BOARD','DEBUG','DAILY','BUGS','START']
+    const items: ('START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS')[] = ['DAILY2','DAILY','BOARD','DEBUG','BUGS','START']
     this.altFloppies = []
     for (let i = 0; i < items.length; i++) {
       const label = items[i]
@@ -4512,7 +4632,7 @@ class Game {
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
     // Input: swipe/left-right cycles
-		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
+		const onChoose = (lbl: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS') => {
       const sel = this.altFloppies[0].mesh
       // Insert animation into drive
       const start = sel.position.clone()
@@ -4538,7 +4658,10 @@ class Game {
           // Start as usual
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
         } else if (lbl === 'DAILY') {
-          this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+          this.isDaily = true; this.isDailyV2 = false; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+          this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
+        } else if (lbl === 'DAILY2') {
+          this.isDaily = false; this.isDailyV2 = true; this.dailyIdV2 = this.getDailyV2Id(); this.buildDailyV2Config(this.dailyIdV2)
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
         } else if (lbl === 'BOARD') {
           // Open leaderboards overlay
@@ -6225,17 +6348,17 @@ class Game {
       applyFov()
     }
     rsz(); new ResizeObserver(rsz).observe(overlay)
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['DAILY','BOARD','DEBUG','START','BUGS']
-    const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
-    const makeFloppy = (label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
-      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
+    const items: ('START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS')[] = ['DAILY2','DAILY','BOARD','DEBUG','START','BUGS']
+    const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
+    const makeFloppy = (label: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS') => {
+      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'DAILY2' ? 'dailydisk2.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
       ;(texTop as any).colorSpace = THREE.SRGBColorSpace
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'DAILY2' ? 0x99cc62 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0x3440bf : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
@@ -6326,7 +6449,7 @@ class Game {
       spinDur: number; pauseDur: number; moveDur: number; fadeDur: number;
       startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotZ: number; selIndex: number;
     } | undefined
-    const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
+    const doSelect = (lbl: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS') => {
       const sel = floppies[selectIndex]
       const slot = scene.getObjectByName('slot') as THREE.Mesh
       const targetWorld = slot ? slot.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0.3)
@@ -6640,7 +6763,8 @@ class Game {
           selectTimeline = undefined
           cleanup(); overlay.remove(); this.altTitleActive = false
           if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-          else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'DAILY') { this.isDaily = true; this.isDailyV2 = false; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'DAILY2') { this.isDaily = false; this.isDailyV2 = true; this.dailyIdV2 = this.getDailyV2Id(); this.buildDailyV2Config(this.dailyIdV2); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'BOARD') this.showLeaderboards()
           else if (lbl === 'BUGS') { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showLeaderboards() }
           else this.showDebugPanel()
