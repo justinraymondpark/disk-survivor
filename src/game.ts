@@ -1391,12 +1391,6 @@ class Game {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
-    // Account for dynamic viewport on mobile (address bars)
-    try {
-      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0)
-      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
-      this.renderer.setSize(vw, vh)
-    } catch {}
     this.renderer.setClearColor(0x0d0f1a, 1)
 
     this.scene = new THREE.Scene()
@@ -1881,11 +1875,6 @@ class Game {
     this.camera.bottom = -viewSize
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(w, h)
-    try {
-      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0)
-      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
-      this.renderer.setSize(vw, vh)
-    } catch {}
   }
   private pickOffscreenSpawn(minMargin = 3, maxMargin = 8, tries = 12): THREE.Vector3 {
     const aspect = window.innerWidth / window.innerHeight

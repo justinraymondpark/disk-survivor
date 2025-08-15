@@ -38,8 +38,8 @@ html, body {
 #jeeves-badge { position: fixed; right: 12px; top: 12px; z-index: 50; }
 #game-canvas {
   display: block;
-  width: 100dvw; /* Use dynamic viewport units to avoid browser UI bars */
-  height: 100svh; /* Small viewport height to match visible area on mobile */
+  width: 100vw;
+  height: 100vh;
   /* Nudge to cover potential subpixel seams on some DPRs */
   position: fixed;
   left: 0;
