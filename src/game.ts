@@ -658,6 +658,17 @@ class Game {
 		if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
 		if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
 		this.renderer.setClearColor(0x0d0f1a, 1)
+		// Force a renderer size refresh after layout changes (fixes partial canvas on some devices)
+		try {
+			this.onResize()
+			this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+			this.renderer.setSize(window.innerWidth, window.innerHeight)
+			setTimeout(() => {
+				this.onResize()
+				this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+				this.renderer.setSize(window.innerWidth, window.innerHeight)
+			}, 100)
+		} catch {}
 	}
 
 	private removeAllAltBgPlanes() {
