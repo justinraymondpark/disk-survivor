@@ -2867,6 +2867,20 @@ class Game {
       const yaw = Math.atan2(aimVector.x, aimVector.z)
       this.player.facing = yaw
       this.player.group.rotation.y = yaw
+    } else {
+      // Stick-only mapping if ray did not produce an aim vector (avoid dead zone)
+      const rx = this.input.axesRight.x
+      const ry = this.input.axesRight.y
+      if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
+        const yawScreen = Math.atan2(-rx, -ry)
+        const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
+        const camYaw = Math.atan2(camDir.x, camDir.z)
+        let yaw = yawScreen + camYaw
+        if (yaw > Math.PI) yaw -= Math.PI * 2
+        if (yaw <= -Math.PI) yaw += Math.PI * 2
+        this.player.facing = yaw
+        this.player.group.rotation.y = yaw
+      }
     }
 
     // Pause toggle (Start/P/Enter edge)
