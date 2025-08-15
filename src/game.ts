@@ -6351,47 +6351,41 @@ class Game {
     let swipeStartX = 0
     let tapStartTime = 0
     let prevTouchAction = ''
-    let didCycle = false
-    const threshold = 40
+    let dragging = false
+    let dragDX = 0
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
       swipeActive = true
-      didCycle = false
+      dragging = true
       swipeStartX = e.clientX
       tapStartTime = performance.now()
       prevTouchAction = (overlay.style as any).touchAction || ''
       ;(overlay.style as any).touchAction = 'none'
+      // Seed a small drag so first frame moves immediately
+      dragDX = 0.001
     }
     const onPointerMove = (e: PointerEvent) => {
       if (!swipeActive || (e.pointerType !== 'touch' && e.pointerType !== 'mouse')) return
-      const dx = THREE.MathUtils.clamp(e.clientX - swipeStartX, -140, 140)
-      const sel = floppies[selectIndex]
-      if (sel) {
-        const tilt = THREE.MathUtils.clamp(dx / 600, -0.22, 0.22)
-        sel.mesh.rotation.z = tilt
-        const mag = Math.min(1, Math.abs(dx) / 140)
-        const targetScale = 1.9 + 0.2 * (0.5 + 0.5 * (1 - (1 - mag) * (1 - mag)))
-        sel.mesh.scale.setScalar(targetScale)
-      }
-      if (Math.abs(dx) > threshold && !didCycle) {
-        didCycle = true
-        cycle(dx > 0 ? -1 : 1)
-        swipeStartX = e.clientX
-        didCycle = false
-      }
+      const rect = overlay.getBoundingClientRect()
+      const dx = e.clientX - swipeStartX
+      const dxNorm = rect.width > 0 ? THREE.MathUtils.clamp(dx / rect.width, -0.9, 0.9) : 0
+      // Record normalized drag for render-loop application
+      dragDX = dxNorm
     }
     const onPointerUp = (ev: PointerEvent) => {
       if (ev.pointerType !== 'touch' && ev.pointerType !== 'mouse') return
+      const rect = overlay.getBoundingClientRect()
       const dx = ev.clientX - swipeStartX
+      const dxNorm = rect.width > 0 ? (dx / rect.width) : 0
       const dt = performance.now() - tapStartTime
-      if (Math.abs(dx) > threshold) {
-        // already cycled in move; just ease back
+      // Cycle only on release if dragged far enough (~20% of overlay width)
+      if (Math.abs(dxNorm) > 0.2) {
+        cycle(dxNorm > 0 ? -1 : 1)
       } else if (dt < 250) {
         doSelect(floppies[selectIndex].label)
       }
       swipeActive = false
-      const sel = floppies[selectIndex]
-      if (sel) sel.mesh.rotation.z = 0
+      dragging = false
       ;(overlay.style as any).touchAction = prevTouchAction || ''
     }
     window.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
@@ -6486,14 +6480,21 @@ class Game {
         const isSel = !!selectTimeline && i === selectTimeline.selIndex
         // Skip overriding transforms on selected during timeline
         if (!isSel) {
-          f.mesh.position.lerp(f.target, 0.12)
+          // Apply drag offset to selected card while dragging; others lerp to target
+          if (i === selectIndex && dragging) {
+            f.mesh.position.x = f.target.x + dragDX
+            const tilt = THREE.MathUtils.clamp(dragDX * 0.6, -0.22, 0.22)
+            f.mesh.rotation.z = tilt
+          } else {
+            f.mesh.position.lerp(f.target, 0.12)
+          }
           f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
           const tt = performance.now() * 0.001 + f.floatPhase
           f.mesh.position.y = f.target.y + Math.sin(tt) * 0.03
           f.mesh.rotation.x = -0.18 + Math.sin(tt * 1.7) * 0.04
         }
         // Ease non-selected disks to base scale; keep selected slightly larger
-        const baseScale = (i === selectIndex) ? 2.05 : 1.9
+        const baseScale = (i === selectIndex && dragging) ? 2.1 : (i === selectIndex ? 2.02 : 1.9)
         const curr = f.mesh.scale.x
         f.mesh.scale.setScalar(curr + (baseScale - curr) * 0.2)
       }
@@ -6554,6 +6555,8 @@ class Game {
       if (!swipeActive) {
         const sel = floppies[selectIndex]
         if (sel) sel.mesh.rotation.z *= 0.85
+        // Decay drag so card eases back when under threshold
+        dragDX *= 0.85
       }
       renderer.render(scene, camera)
       if (overlay.parentElement) raf = requestAnimationFrame(tick)
