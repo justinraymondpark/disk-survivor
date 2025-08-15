@@ -4631,12 +4631,25 @@ class Game {
       floppiesGroup.add(m)
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
-    // Force initial positions/rotations to targets to avoid first-frame interpolation clipping
-    for (let i = 0; i < this.altFloppies.length; i++) {
-      const f = this.altFloppies[i]
-      f.mesh.position.copy(f.target)
-      f.mesh.rotation.y = f.targetRot
+    // Recompute targets relative to initial selection index and snap positions to targets
+    let selectIndex = 0
+    const recomputeTargets = () => {
+      for (let i = 0; i < this.altFloppies.length; i++) {
+        const idx = (i - selectIndex + this.altFloppies.length) % this.altFloppies.length
+        const offsetsX = [0, 0.62, -0.62, 1.24, -1.24, 1.86]
+        const offsetsY = [0.90, -0.12, -0.16, -0.20, -0.22, -0.24]
+        const offsetsZ = [0.60, -0.22, -0.30, -0.38, -0.46, -0.54]
+        const baseX = offsetsX[idx] ?? (idx * 0.62)
+        const baseY = 0.05 + (idx * 0.16) + (offsetsY[idx] ?? 0)
+        const baseZ = 0.66 - (idx * 0.04) + (offsetsZ[idx] ?? 0)
+        const f = this.altFloppies[i]
+        f.target.set(baseX, baseY, baseZ)
+        f.targetRot = 0.06 * idx
+        f.mesh.position.copy(f.target)
+        f.mesh.rotation.y = f.targetRot
+      }
     }
+    recomputeTargets()
     // Input: swipe/left-right cycles
 		const onChoose = (lbl: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS') => {
       const sel = this.altFloppies[0].mesh
