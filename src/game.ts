@@ -6481,19 +6481,8 @@ class Game {
         if (moveAxis > 0 || dpadRight) cycle(1)
         if (moveAxis < 0 || dpadLeft) cycle(-1)
       }
-      if (a && !prevA) selectAnim = { t: 0, dur: 240 }
+      if (a && !prevA) doSelect(floppies[selectIndex].label)
       prevA = a
-      // Apply select bounce then trigger
-      if (selectAnim) {
-        selectAnim.t += dt * 1000
-        const u = Math.min(1, selectAnim.t / selectAnim.dur)
-        // Brief tilt during bounce
-        const sel2 = floppies[selectIndex]
-        if (sel2) sel2.mesh.rotation.z = 0.1 * Math.sin(u * Math.PI)
-        const sel = floppies[selectIndex]
-        if (sel) sel.mesh.scale.setScalar(2.1 + 0.15 * Math.sin(u * Math.PI))
-        if (u >= 1) { const lbl = floppies[selectIndex].label; selectAnim = undefined; doSelect(lbl) }
-      }
       for (let i = 0; i < floppies.length; i++) {
         const f = floppies[i]
         const isSel = !!selectTimeline && i === selectTimeline.selIndex
@@ -6536,7 +6525,12 @@ class Game {
         if (tEl < st.spinDur) {
           const u = Math.max(0, Math.min(1, tEl / st.spinDur))
           const e = easeInOutSine(u)
-          selF.mesh.rotation.x = st.startRotX + e * (Math.PI * 2)
+          selF.mesh.rotation.y += (Math.PI * 2 - selF.mesh.rotation.y % (Math.PI * 2)) * 0 // preserve existing Y base
+          selF.mesh.rotation.y = (selF.mesh.rotation.y || 0) + (Math.PI * 2) * (e - (selF.mesh.rotation.y as number ? 0 : 0))
+          // Force clean single spin around Y from original yaw
+          selF.mesh.rotation.y = (st as any)._baseSpinY ?? selF.mesh.rotation.y
+          if ((st as any)._baseSpinY == null) (st as any)._baseSpinY = selF.mesh.rotation.y
+          selF.mesh.rotation.y = (st as any)._baseSpinY + e * (Math.PI * 2)
         } else if (tEl < st.spinDur + st.pauseDur) {
           // hold pose
         } else if (tEl < st.spinDur + st.pauseDur + st.moveDur) {
