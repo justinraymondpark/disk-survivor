@@ -3172,11 +3172,27 @@ class Game {
     // Aim and rotation (forward +Z)
     aimVector = new THREE.Vector3()
     if (this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0) {
-      const ndc = new THREE.Vector2(this.input.axesRight.x, -this.input.axesRight.y)
-      this.raycaster.setFromCamera(ndc, this.camera)
-      const hitPoint2 = new THREE.Vector3()
-      this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint2)
-      aimVector.copy(hitPoint2.sub(this.player.group.position)).setY(0).normalize()
+      const rx = this.input.axesRight.x
+      const ry = this.input.axesRight.y
+      const len = Math.hypot(rx, ry)
+      if (len > 0.12) {
+        // Prefer screen-space mapping to avoid dead zone; rotate by camera yaw so up=up, left=left
+        const yawScreen = Math.atan2(-rx, -ry)
+        const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
+        const camYaw = Math.atan2(camDir.x, camDir.z)
+        let yaw = yawScreen + camYaw
+        if (yaw > Math.PI) yaw -= Math.PI * 2
+        if (yaw <= -Math.PI) yaw += Math.PI * 2
+        this.player.facing = yaw
+        this.player.group.rotation.y = yaw
+        aimVector.set(0, 0, 0)
+      } else {
+        const ndc = new THREE.Vector2(rx, -ry)
+        this.raycaster.setFromCamera(ndc, this.camera)
+        const hitPoint2 = new THREE.Vector3()
+        this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint2)
+        aimVector.copy(hitPoint2.sub(this.player.group.position)).setY(0).normalize()
+      }
     } else if (this.input.hasRecentMouseMove()) {
       this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
       const hitPoint = new THREE.Vector3()
