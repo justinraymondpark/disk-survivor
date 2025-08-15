@@ -1417,6 +1417,8 @@ class Game {
       this.renderer.setSize(vw, vh)
     } catch {}
     this.renderer.setClearColor(0x0d0f1a, 1)
+    this.renderer.autoClear = true
+    try { this.renderer.clear(true, true, true) } catch {}
 
     this.scene = new THREE.Scene()
 
@@ -2669,6 +2671,7 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
+    try { this.renderer.clear(true, true, true) } catch {}
     // Per-frame: if canvas/backing size mismatches CSS, refit
     try {
       const c = this.renderer.domElement as HTMLCanvasElement
