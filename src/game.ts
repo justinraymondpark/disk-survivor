@@ -68,12 +68,23 @@ class InputManager {
     if (this.gamepadIndex == null) return
     const gp = navigator.getGamepads()?.[this.gamepadIndex]
     if (!gp) return
-    const deadZone = 0.15
+    // Reduce deadzone for finer rotation; apply radial scaling to prevent hard cutoffs
+    const deadZone = 0.08
     const dz = (v: number) => (Math.abs(v) < deadZone ? 0 : v)
     const gpLX = dz(gp.axes[0] ?? 0)
     const gpLY = dz(gp.axes[1] ?? 0)
-    const gpRX = dz(gp.axes[2] ?? 0)
-    const gpRY = dz(gp.axes[3] ?? 0)
+    // Radial mapping for right stick to avoid angular dead sectors
+    const rawRX = gp.axes[2] ?? 0
+    const rawRY = gp.axes[3] ?? 0
+    let gpRX = dz(rawRX)
+    let gpRY = dz(rawRY)
+    const lenR = Math.hypot(gpRX, gpRY)
+    if (lenR > 0) {
+      const n = { x: gpRX / lenR, y: gpRY / lenR }
+      const scaled = Math.max(0, (lenR - deadZone) / (1 - deadZone))
+      gpRX = n.x * scaled
+      gpRY = n.y * scaled
+    }
     const touchRecent = this.hasRecentTouch()
     // Left stick: if gamepad has input, use it; otherwise keep touch if recent, else zero
     if (gpLX !== 0 || gpLY !== 0) {

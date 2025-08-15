@@ -338,3 +338,5 @@ html, body {
   display: none;
   z-index: 40;
 }
+/* Dev HUD */
+#dbg-hud { pointer-events: none; }
