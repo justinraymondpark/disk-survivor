@@ -598,16 +598,6 @@ class Game {
   titleOverlay: HTMLDivElement
   changelogOverlay: HTMLDivElement
     debugOverlay?: HTMLDivElement
-  private fitRendererToCanvas() {
-    try {
-      const c = this.renderer.domElement as HTMLCanvasElement
-      const cssW = Math.max(1, Math.round(c.clientWidth || (c as any).offsetWidth || 0))
-      const cssH = Math.max(1, Math.round(c.clientHeight || (c as any).offsetHeight || 0))
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
-      this.renderer.setPixelRatio(dpr)
-      this.renderer.setSize(cssW, cssH, false)
-    } catch {}
-  }
   // Alt Title state
   altTitleActive = false
   altTitleGroup?: THREE.Group
@@ -1396,7 +1386,6 @@ class Game {
   constructor(private root: HTMLElement) {
     const canvas = document.createElement('canvas')
     canvas.id = 'game-canvas'
-    ;(window as any).gameCanvas = canvas
     this.root.appendChild(canvas)
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
@@ -1892,7 +1881,11 @@ class Game {
     this.camera.bottom = -viewSize
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(w, h)
-    this.fitRendererToCanvas()
+    try {
+      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0)
+      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
+      this.renderer.setSize(vw, vh)
+    } catch {}
   }
   private pickOffscreenSpawn(minMargin = 3, maxMargin = 8, tries = 12): THREE.Vector3 {
     const aspect = window.innerWidth / window.innerHeight
@@ -2661,17 +2654,6 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
-    // Per-frame: if canvas/backing size mismatches CSS, refit
-    try {
-      const c = this.renderer.domElement as HTMLCanvasElement
-      const cssW = Math.round(c.clientWidth)
-      const cssH = Math.round(c.clientHeight)
-      const expectedW = Math.round(cssW)
-      const expectedH = Math.round(cssH)
-      if ((Math.abs((c.width || 0) - expectedW * Math.min(window.devicePixelRatio || 1, 1.5)) > 1) || (Math.abs((c.height || 0) - expectedH * Math.min(window.devicePixelRatio || 1, 1.5)) > 1)) {
-        this.fitRendererToCanvas()
-      }
-    } catch {}
     // If we just left title/alt, make sure no overlay is visible
     if (now < this.overlayUnstuckUntil) {
       try { if (this.titleOverlay) this.titleOverlay.style.display = 'none' } catch {}
