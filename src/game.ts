@@ -118,13 +118,18 @@ class InputManager {
     if (this.keys['w'] || this.keys['arrowup']) y -= 1
     if (this.keys['s'] || this.keys['arrowdown']) y += 1
 
+    // Prefer keyboard if any key is pressed
+    if (x !== 0 || y !== 0) {
+      const lenKb = Math.hypot(x, y) || 1
+      return { x: x / lenKb, y: y / lenKb }
+    }
+    // Otherwise, use left stick / touch axes
     const gx = this.axesLeft.x
     const gy = this.axesLeft.y
     if (gx !== 0 || gy !== 0) {
       return { x: gx, y: gy }
     }
-    const len = Math.hypot(x, y) || 1
-    return { x: x / len, y: y / len }
+    return { x: 0, y: 0 }
   }
 
   hasRecentMouseMove(thresholdMs = 1500): boolean {
