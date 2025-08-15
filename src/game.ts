@@ -6254,23 +6254,18 @@ class Game {
     const buildDriveGroup = (): THREE.Group => {
       const g = new THREE.Group()
       const driveMat = new THREE.MeshBasicMaterial({ color: 0xd8d2c5 })
-      const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
+      // Make the drive wider and much deeper, but keep the front face near the same Z
+      const depth = 2.5
+      const width = 5.6
+      const height = 1.2
+      const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), driveMat)
       body.rotation.x = THREE.MathUtils.degToRad(5.5)
+      // Position body so its front face stays near z≈0.31 (same as old front)
+      body.position.z = -((depth - 0.6) * 0.5)
       g.add(body)
-      // Front label texture: "DISK SURVIVOR"
-      const frontCanvas = document.createElement('canvas'); frontCanvas.width = 512; frontCanvas.height = 128
-      const fctx = frontCanvas.getContext('2d')!
-      fctx.fillStyle = '#0a0a0a'; fctx.fillRect(0, 0, frontCanvas.width, frontCanvas.height)
-      fctx.fillStyle = '#e7efe4'; fctx.font = 'bold 60px monospace'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'
-      fctx.fillText('DISK SURVIVOR', frontCanvas.width / 2, frontCanvas.height / 2)
-      const frontTex = new THREE.CanvasTexture(frontCanvas)
-      const frontMat = new THREE.MeshBasicMaterial({ map: frontTex })
-      const frontGeom = new THREE.PlaneGeometry(4.2, 0.6)
-      const frontLabel = new THREE.Mesh(frontGeom, frontMat)
-      frontLabel.position.set(0, 0.65, 0.31)
-      body.add(frontLabel)
+      // Remove text front label per request; keep only slot
       const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
-      const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.18, 0.22), slotMat)
       slot.name = 'slot'
       slot.position.set(0, 0.18, 0.31)
       g.add(slot)
