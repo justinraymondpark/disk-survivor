@@ -626,6 +626,21 @@ class Game {
 		else matAny.dispose()
 		this.altBgMesh = undefined
 	}
+
+	private removeAllAltBgPlanes() {
+		try {
+			const children = [...this.scene.children]
+			for (const c of children) {
+				if ((c as any)?.name === 'alt-bg-plane') {
+					this.scene.remove(c as any)
+					try { (c as any).geometry?.dispose?.() } catch {}
+					const matAny = (c as any).material
+					if (Array.isArray(matAny)) matAny.forEach((m: any) => m?.dispose?.())
+					else matAny?.dispose?.()
+				}
+			}
+		} catch {}
+	}
   // Title art element reference (static for now)
   titleImgEl?: HTMLImageElement
   autoFire = true
@@ -1689,6 +1704,7 @@ class Game {
       this.audio.startMusic('default' as ThemeKey)
       // Safety: ensure any Alt Title background is removed
       try { this.disposeAltBg() } catch {}
+      try { this.removeAllAltBgPlanes() } catch {}
     }
     startBtn.onclick = begin
     const openOptions = () => {
@@ -4240,6 +4256,7 @@ class Game {
 		bgMat.depthWrite = false
 		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 3.0, frustumHeight * 3.0)
 		const bg = new THREE.Mesh(bgGeom, bgMat)
+		bg.name = 'alt-bg-plane'
 		bg.renderOrder = 1000
 		bg.position.copy(this.camera.position)
 		bg.quaternion.copy(this.camera.quaternion)
