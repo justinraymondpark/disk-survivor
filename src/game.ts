@@ -6445,7 +6445,7 @@ class Game {
     drv.append(
       mkRow('DriveX', -3.0, 3.0, 0.02, driveX, (v) => { driveX = v; applyDrive() }),
       mkRow('DriveY', -0.2, 2.0, 0.02, driveY, (v) => { driveY = v; applyDrive() }),
-      mkRow('DriveZ', -1.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
+      mkRow('DriveZ', -8.0, 1.5, 0.02, driveZ, (v) => { driveZ = v; applyDrive() }),
       mkRow('Tilt°', 0.0, 35.0, 0.5, driveTilt, (v) => { driveTilt = v; applyDrive() })
     )
     overlay.appendChild(drv)
