@@ -6460,14 +6460,16 @@ class Game {
     drv.style.display = 'none'
     ;(drv.style as any).zIndex = '4000'
     ;(drv.style as any).pointerEvents = 'auto'
+    overlay.appendChild(drv)
     let driveX = driveGroup.position.x
     let driveY = driveGroup.position.y
     let driveZ = driveGroup.position.z
     let driveTilt = THREE.MathUtils.radToDeg((driveGroup.children[0] as THREE.Mesh)?.rotation.x || 15)
     // Title billboard (optional)
     const titlePlane = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 3.0), new THREE.MeshBasicMaterial({ transparent: true }))
-    ;(titlePlane.material as THREE.MeshBasicMaterial).map = new THREE.TextureLoader().load('/textures/title/dstitle.png')
-    ;(titlePlane.material as THREE.MeshBasicMaterial).map!.colorSpace = THREE.SRGBColorSpace
+    const titleTex = new THREE.TextureLoader().load('/textures/title/dstitle.png', () => { titlePlane.visible = true })
+    ;(titleTex as any).colorSpace = THREE.SRGBColorSpace
+    ;(titlePlane.material as THREE.MeshBasicMaterial).map = titleTex
     titlePlane.position.set(0, 1.56, -4.5)
     titlePlane.scale.set(0.68, 0.68, 0.68)
     titlePlane.visible = true
@@ -6522,7 +6524,10 @@ class Game {
     }
     sel.onchange = rebuildRows
     rebuildRows()
-    overlay.appendChild(drv)
+    // Bring overlay, controls and title plane to top order in DOM layering
+    ;(overlay.style as any).zIndex = '2000'
+    ;(ctrl.style as any).zIndex = '4000'
+    ;(drv.style as any).zIndex = '4000'
     // Controller navigation
     let navCooldown = 0
     let prevA = false
