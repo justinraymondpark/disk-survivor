@@ -6321,8 +6321,8 @@ class Game {
       if (e.key.toLowerCase() === 'c' && e.shiftKey) { ctrl.style.display = ctrl.style.display === 'none' ? 'block' : 'none'; return }
       if (e.key.toLowerCase() === 'f' && e.shiftKey) { drv.style.display = drv.style.display === 'none' ? 'block' : 'none'; return }
       if (selectTimeline) return
-      if (e.key === 'ArrowRight') cycle(1)
-      else if (e.key === 'ArrowLeft') cycle(-1)
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') cycle(1)
+      else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') cycle(-1)
       else if (e.key === 'Enter') doSelect((floppies[selectIndex]?.label as any) || 'START')
     }
     window.addEventListener('keydown', onKey)
@@ -6608,7 +6608,7 @@ class Game {
         const tEl = now - st.start
         const selF = floppies[st.selIndex]
         // Fade others
-        const fU = Math.max(0, Math.min(1, tEl / st.fadeDur))
+        const fU = Math.max(0, Math.min(1, tEl / (st.fadeDur * 0.5)))
         const alpha = 1 - fU
         const applyAlpha = (obj: any, a: number) => {
           if (obj && obj.material) {
