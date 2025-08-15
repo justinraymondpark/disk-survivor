@@ -1687,6 +1687,8 @@ class Game {
       this.pauseDebounceUntil = performance.now() + 400
       // start default music; theme selection will switch later
       this.audio.startMusic('default' as ThemeKey)
+      // Safety: ensure any Alt Title background is removed
+      try { this.disposeAltBg() } catch {}
     }
     startBtn.onclick = begin
     const openOptions = () => {
