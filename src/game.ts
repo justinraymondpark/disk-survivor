@@ -6525,7 +6525,9 @@ class Game {
         if (tEl < st.spinDur) {
           const u = Math.max(0, Math.min(1, tEl / st.spinDur))
           const e = easeInOutSine(u)
-          // Spin around Z axis from original rotation
+          // Only drive Z during spin; freeze X/Y to their base so there is no bounce-back
+          selF.mesh.rotation.x = 0
+          selF.mesh.rotation.y = 0
           selF.mesh.rotation.z = st.startRotZ + e * (Math.PI * 2)
         } else if (tEl < st.spinDur + st.pauseDur) {
           // hold pose
