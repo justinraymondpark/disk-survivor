@@ -4343,6 +4343,8 @@ class Game {
   private showAltTitle() {
     if (this.altTitleActive) return
     this.altTitleActive = true
+    // Ensure DOM overlay z-index dominates
+    try { (this.titleOverlay.classList as any).add?.('alt-title') } catch {}
     // Hide classic title UI
     this.titleOverlay.style.display = 'none'
 		// Group anchored near origin in front of camera
@@ -4387,21 +4389,8 @@ class Game {
 		hide(this.pauseTouchBtn)
 		// Elements that may have been created outside of field refs
 		hide(document.querySelector('#wave') as HTMLElement)
-		// Add opaque full-screen background in world, aligned to camera each frame
-		const frustumWidth = (this.camera.right - this.camera.left)
-		const frustumHeight = (this.camera.top - this.camera.bottom)
-		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.DoubleSide })
-		bgMat.depthTest = false
-		bgMat.depthWrite = false
-		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 3.0, frustumHeight * 3.0)
-		const bg = new THREE.Mesh(bgGeom, bgMat)
-		bg.name = 'alt-bg-plane'
-		bg.renderOrder = 1000
-		bg.position.copy(this.camera.position)
-		bg.quaternion.copy(this.camera.quaternion)
-		bg.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
-		this.scene.add(bg)
-		this.altBgMesh = bg
+		// Remove world background plane to avoid lingering opaque cover; rely on DOM UI hides instead
+		this.altBgMesh = undefined
     // Keep everything on default layer; rely on oversized opaque background + DOM hides
     // Ensures we don't accidentally hide needed DOM buttons
     // Debounce A/Enter so we don't select immediately on entry
