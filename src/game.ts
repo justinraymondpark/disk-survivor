@@ -312,7 +312,9 @@ type Projectile = {
   damage: number
   pierce: number
   last: THREE.Vector3
-    kind?: 'rocket' | 'side' | 'bullet'
+    kind?: 'rocket' | 'side' | 'bullet' | 'zip' | 'zipFrag'
+  // Optional extra data for behaviors (e.g., explodeAtTime for Zip Bomb)
+  data?: any
 }
 
 type Enemy = {
@@ -427,6 +429,14 @@ class Game {
   sharedSideBulletMat = new THREE.MeshBasicMaterial({ color: 0x99ddff })
   sharedRocketGeom = new THREE.ConeGeometry(0.18, 0.6, 10)
   sharedRocketMat = new THREE.MeshBasicMaterial({ color: 0xff8844 })
+  // New weapon shared resources
+  sharedZipGeom = new THREE.SphereGeometry(0.16, 10, 10)
+  sharedZipMat = new THREE.MeshBasicMaterial({ color: 0x66aaff })
+  sharedZipFragGeom = new THREE.SphereGeometry(0.12, 8, 8)
+  sharedZipFragMat = new THREE.MeshBasicMaterial({ color: 0x88ccff })
+  sharedPopupGeom = new THREE.PlaneGeometry(0.9, 0.7)
+  sharedPopupMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+  sharedDefragMat = new THREE.MeshBasicMaterial({ color: 0x55ffee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending })
   sharedXPGeom = new THREE.BoxGeometry(0.25, 0.25, 0.25)
   sharedXPOrbMat = new THREE.MeshBasicMaterial({ color: 0x66ff88 })
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
@@ -583,6 +593,45 @@ class Game {
   paintOffDuration = 1.3
   paintTimer = 0
   paintDps = 10
+
+  // New weapons: Defrag Spiral
+  defragLevel = 0
+  defragArms = 3
+  defragRadius = 1.4
+  defragSpeed = 1.5
+  defragDps = 10
+
+  // Zip Bomb
+  zipLevel = 0
+  zipInterval = 3.2
+  zipTimer = 0
+  zipDamage = 8
+  zipFragCount = 8
+  zipFragDamage = 4
+  zipFragSpeed = 10
+
+  // Pop-up Storm
+  popupLevel = 0
+  popupInterval = 5.5
+  popupTimer = 0
+  popupDuration = 2.2
+  popupCount = 4
+  popupDps = 7
+
+  // Cursor Beam
+  cursorBeamLevel = 0
+  cursorBeamRange = 7
+  cursorBeamDps = 7
+  cursorBeamWidth = 0.45
+
+  // Antivirus Sweep
+  sweepLevel = 0
+  sweepOn = true
+  sweepTimer = 0
+  sweepOnDuration = 1.1
+  sweepOffDuration = 0.9
+  sweepRadius = 2.3
+  sweepDps = 12
   paintDuration = 1.3
   paintGap = 0.35
   paintRadius = 1.38
@@ -1063,6 +1112,11 @@ class Game {
       'Shield Wall': '🛡️',
       'Sata Cable Tail': '🪫',
       'Paint.exe': '🎨',
+      'Defrag Spiral': '🌀',
+      'Zip Bomb': '🧨',
+      'Pop-up Storm': '📣',
+      'Cursor Beam': '🖱️',
+      'Antivirus Sweep': '🧹',
       'Turbo CPU': '⚡',
       'SCSI Splitter': '🔀',
       'Overclocked Bus': '🚌',
@@ -1091,7 +1145,7 @@ class Game {
       ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
       return row
     }
-    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe']
+    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep']
     const upgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
     weapons.forEach(w => form.appendChild(makeRow(w, 'weapon')))
     upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
@@ -1186,6 +1240,11 @@ class Game {
           else if (w.name === 'Magic Lasso') this.levelUpLasso()
           else if (w.name === 'Shield Wall') this.levelUpShield()
           else if (w.name === 'Sata Cable Tail') this.levelUpSataTail()
+          else if (w.name === 'Defrag Spiral') this.levelUpDefrag()
+          else if (w.name === 'Zip Bomb') this.levelUpZip()
+          else if (w.name === 'Pop-up Storm') this.levelUpPopup()
+          else if (w.name === 'Cursor Beam') this.levelUpCursorBeam()
+          else if (w.name === 'Antivirus Sweep') this.levelUpSweep()
         }
       }
       for (const u of selectedUpgrades) {
@@ -1937,6 +1996,8 @@ class Game {
       this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: this.projectilePierce, last: mesh.position.clone(), kind: 'bullet' })
     }
     this.audio.playShoot()
+    // Cursor Beam gets a momentary width boost on manual fire (visual gameplay feedback)
+    if (this.ownedWeapons.has('Cursor Beam')) this.cursorBeamWidth = Math.min(1.2, this.cursorBeamWidth + 0.08)
   }
 
   dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp') {
@@ -2038,7 +2099,12 @@ class Game {
         w === 'Shield Wall' ? Math.max(1, this.shieldLevel || 1) :
         w === 'Sata Cable Tail' ? Math.max(1, this.sataTailLevel || 1) :
         w === 'Dial-up Burst' ? Math.max(1, this.burstLevel || 1) :
-        w === 'Dot Matrix' ? (this.sideBullets ? 1 + 0 : 1) : 1
+        w === 'Dot Matrix' ? (this.sideBullets ? 1 + 0 : 1) :
+        w === 'Defrag Spiral' ? Math.max(1, this.defragLevel || 1) :
+        w === 'Zip Bomb' ? Math.max(1, this.zipLevel || 1) :
+        w === 'Pop-up Storm' ? Math.max(1, this.popupLevel || 1) :
+        w === 'Cursor Beam' ? Math.max(1, this.cursorBeamLevel || 1) :
+        w === 'Antivirus Sweep' ? Math.max(1, this.sweepLevel || 1) : 1
       wslots.appendChild(this.makeSlotIcon(`${w} Lv.${lvl}`))
     }
     for (const [u, lvl] of this.ownedUpgrades) {
@@ -2105,8 +2171,17 @@ class Game {
         pool.push({ title: 'Shield Wall', desc: 'Blocking energy wall', icon: '🛡️', apply: () => this.addWeapon('Shield Wall') })
       if (!this.ownedWeapons.has('Paint.exe'))
         pool.push({ title: 'Paint.exe', desc: 'Leaves damaging paint on ground', icon: '🎨', apply: () => this.addWeapon('Paint.exe') })
-      if (!this.ownedWeapons.has('Shield Wall'))
-        pool.push({ title: 'Shield Wall', desc: 'Blocking energy wall', icon: '🛡️', apply: () => this.addWeapon('Shield Wall') })
+      // New weapons
+      if (!this.ownedWeapons.has('Defrag Spiral'))
+        pool.push({ title: 'Defrag Spiral', desc: 'Orbiting sector beams that sweep outwards', icon: '🌀', apply: () => this.addWeapon('Defrag Spiral') })
+      if (!this.ownedWeapons.has('Zip Bomb'))
+        pool.push({ title: 'Zip Bomb', desc: 'Sticky charge that bursts into fragments', icon: '🧨', apply: () => this.addWeapon('Zip Bomb') })
+      if (!this.ownedWeapons.has('Pop-up Storm'))
+        pool.push({ title: 'Pop-up Storm', desc: 'Random pop-ups that body-block and deal touch damage', icon: '📣', apply: () => this.addWeapon('Pop-up Storm') })
+      if (!this.ownedWeapons.has('Cursor Beam'))
+        pool.push({ title: 'Cursor Beam', desc: 'Thin beam toward aim target', icon: '🖱️', apply: () => this.addWeapon('Cursor Beam') })
+      if (!this.ownedWeapons.has('Antivirus Sweep'))
+        pool.push({ title: 'Antivirus Sweep', desc: 'Pulsing circular sweep around player', icon: '🧹', apply: () => this.addWeapon('Antivirus Sweep') })
     }
 
     // Upgrades (max 5 unique; upgrades can level)
@@ -2139,9 +2214,14 @@ class Game {
     if (this.ownedWeapons.has('Tape Whirl')) pool.push({ title: 'Tape Whirl (Level up)', desc: 'Bigger radius, higher DPS', icon: '📼', apply: () => this.levelUpWhirl() })
     if (this.ownedWeapons.has('Sata Cable Tail')) pool.push({ title: 'Sata Cable Tail (Level up)', desc: 'Longer, stronger tail', icon: '🔌', apply: () => this.levelUpSataTail() })
     if (this.ownedWeapons.has('Paint.exe')) pool.push({ title: 'Paint.exe (Level up)', desc: 'More uptime, stronger DPS, longer paint', icon: '🎨', apply: () => this.levelUpPaint() })
+    if (this.ownedWeapons.has('Defrag Spiral')) pool.push({ title: 'Defrag Spiral (Level up)', desc: '+1 arm, +radius, +DPS', icon: '🌀', apply: () => this.levelUpDefrag() })
+    if (this.ownedWeapons.has('Zip Bomb')) pool.push({ title: 'Zip Bomb (Level up)', desc: 'More fragments, higher damage, shorter cooldown', icon: '🧨', apply: () => this.levelUpZip() })
+    if (this.ownedWeapons.has('Pop-up Storm')) pool.push({ title: 'Pop-up Storm (Level up)', desc: 'More pop-ups, longer duration, higher DPS', icon: '📣', apply: () => this.levelUpPopup() })
+    if (this.ownedWeapons.has('Cursor Beam')) pool.push({ title: 'Cursor Beam (Level up)', desc: '+range, +width, +DPS', icon: '🖱️', apply: () => this.levelUpCursorBeam() })
+    if (this.ownedWeapons.has('Antivirus Sweep')) pool.push({ title: 'Antivirus Sweep (Level up)', desc: 'Wider radius, +DPS, higher uptime', icon: '🧹', apply: () => this.levelUpSweep() })
 
     // Filter out entries that would be invalid due to caps
-    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe']
+    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep']
     const isWeaponName = (t: string) => allWeapons.includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
@@ -2191,7 +2271,10 @@ class Game {
   }
 
   isWeapon(name: string) {
-    return ['CRT Beam', 'Dot Matrix', 'Dial-up Burst', 'SCSI Rocket', 'Tape Whirl', 'Magic Lasso', 'Shield Wall', 'Sata Cable Tail', 'Paint.exe'].includes(name)
+    return [
+      'CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe',
+      'Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep'
+    ].includes(name)
   }
 
   addWeapon(name: string) {
@@ -2285,6 +2368,44 @@ class Game {
       this.shieldTimer = 0
       this.shieldOn = true
       this.shieldLevel = 1
+    }
+    if (name === 'Defrag Spiral' && this.defragLevel === 0) {
+      this.defragLevel = 1
+      this.defragArms = 3
+      this.defragRadius = 1.4
+      this.defragSpeed = 1.5
+      this.defragDps = 10
+    }
+    if (name === 'Zip Bomb' && this.zipLevel === 0) {
+      this.zipLevel = 1
+      this.zipTimer = 0
+      this.zipInterval = 3.2
+      this.zipDamage = 8
+      this.zipFragCount = 8
+      this.zipFragDamage = 4
+    }
+    if (name === 'Pop-up Storm' && this.popupLevel === 0) {
+      this.popupLevel = 1
+      this.popupTimer = 0
+      this.popupInterval = 5.5
+      this.popupDuration = 2.2
+      this.popupCount = 4
+      this.popupDps = 7
+    }
+    if (name === 'Cursor Beam' && this.cursorBeamLevel === 0) {
+      this.cursorBeamLevel = 1
+      this.cursorBeamRange = 7
+      this.cursorBeamDps = 7
+      this.cursorBeamWidth = 0.45
+    }
+    if (name === 'Antivirus Sweep' && this.sweepLevel === 0) {
+      this.sweepLevel = 1
+      this.sweepOn = true
+      this.sweepTimer = 0
+      this.sweepOnDuration = 1.1
+      this.sweepOffDuration = 0.9
+      this.sweepRadius = 2.3
+      this.sweepDps = 12
     }
     this.updateInventoryUI()
   }
@@ -3343,6 +3464,128 @@ class Game {
       }
     }
 
+    // Defrag Spiral: orbiting sector beams sweeping outward
+    if (this.ownedWeapons.has('Defrag Spiral') && this.defragLevel > 0) {
+      const arms = this.defragArms
+      const baseR = this.defragRadius
+      for (let i = 0; i < arms; i++) {
+        const ang = this.gameTime * this.defragSpeed + (i * Math.PI * 2) / arms
+        const segs = 8
+        for (let s = 0; s < segs; s++) {
+          const t = (s + 1) / segs
+          const r = baseR * t
+          const px = this.player.group.position.x + Math.cos(ang) * r
+          const pz = this.player.group.position.z + Math.sin(ang) * r
+          // Damage nearby enemies at these sample points
+          for (const e of this.enemies) {
+            if (!e.alive) continue
+            const dx = e.mesh.position.x - px
+            const dz = e.mesh.position.z - pz
+            if (dx * dx + dz * dz < 0.22) {
+              const dmg = (this.defragDps / segs) * dt
+              e.hp -= dmg
+              this.onEnemyDamaged(e, dmg)
+            }
+          }
+          // Optional visual dots (low-cost, pooled if needed) skipped for perf
+        }
+      }
+    }
+
+    // Zip Bomb auto-fire
+    if (this.ownedWeapons.has('Zip Bomb') && this.zipLevel > 0) {
+      this.zipTimer += dt
+      if (this.zipTimer >= this.zipInterval) {
+        this.zipTimer = 0
+        this.fireZipBomb()
+      }
+    }
+
+    // Pop-up Storm: spawn popups around player that damage on touch
+    if (this.ownedWeapons.has('Pop-up Storm') && this.popupLevel > 0) {
+      this.popupTimer += dt
+      if (this.popupTimer >= this.popupInterval) {
+        this.popupTimer = 0
+        const n = this.popupCount
+        const life = this.popupDuration
+        for (let i = 0; i < n; i++) {
+          const ang = Math.random() * Math.PI * 2
+          const r = 1.5 + Math.random() * 2.2
+          const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
+          const quad = new THREE.Mesh(this.sharedPopupGeom, this.sharedPopupMat.clone())
+          quad.position.copy(pos)
+          quad.rotation.x = -Math.PI / 2
+          this.scene.add(quad)
+          const born = performance.now()
+          const tick = () => {
+            const t = (performance.now() - born) / (life * 1000)
+            if (t >= 1) { this.scene.remove(quad); (quad.material as any).dispose?.(); (quad.geometry as any).dispose?.(); return }
+            ;(quad.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - t)
+            // Damage on contact
+            for (const e of this.enemies) {
+              if (!e.alive) continue
+              const q = quad.position.clone(); q.y = 0
+              const ep = e.mesh.position.clone(); ep.y = 0
+              if (q.distanceToSquared(ep) < 0.6 * 0.6) {
+                const dmg = this.popupDps * dt
+                e.hp -= dmg
+                this.onEnemyDamaged(e, dmg)
+              }
+            }
+            requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+        }
+      }
+    }
+
+    // Cursor Beam: continuous thin beam towards current aim
+    if (this.ownedWeapons.has('Cursor Beam') && this.cursorBeamLevel > 0) {
+      // Recompute aimVector like main loop uses
+      let aim = new THREE.Vector3()
+      const padAim = this.input.getAimVector?.() as THREE.Vector3 | undefined
+      if (padAim && padAim.lengthSq() > 0) aim.copy(padAim)
+      if (aim.lengthSq() === 0) {
+        // fallback to facing
+        aim.set(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
+      }
+      if (aim.lengthSq() > 0) {
+        const origin = this.player.group.position.clone()
+        const dir = aim.clone().normalize()
+        for (const e of this.enemies) {
+          if (!e.alive) continue
+          const to = e.mesh.position.clone().sub(origin); to.y = 0
+          const proj = dir.clone().multiplyScalar(Math.max(0, Math.min(this.cursorBeamRange, to.dot(dir))))
+          const closest = origin.clone().add(proj)
+          const d2 = closest.distanceToSquared(e.mesh.position.clone().setY(0))
+          if (d2 < this.cursorBeamWidth * this.cursorBeamWidth) {
+            const dmg = this.cursorBeamDps * dt
+            e.hp -= dmg
+            this.onEnemyDamaged(e, dmg)
+          }
+        }
+      }
+    }
+
+    // Antivirus Sweep: pulsing circle around player
+    if (this.ownedWeapons.has('Antivirus Sweep') && this.sweepLevel > 0) {
+      this.sweepTimer += dt
+      const phase = this.sweepOn ? this.sweepOnDuration : this.sweepOffDuration
+      if (this.sweepTimer >= phase) { this.sweepTimer = 0; this.sweepOn = !this.sweepOn }
+      if (this.sweepOn) {
+        const r = this.sweepRadius
+        for (const e of this.enemies) {
+          if (!e.alive) continue
+          const d2 = e.mesh.position.clone().setY(0).distanceToSquared(this.player.group.position.clone().setY(0))
+          if (d2 < r * r) {
+            const dmg = this.sweepDps * dt
+            e.hp -= dmg
+            this.onEnemyDamaged(e, dmg)
+          }
+        }
+      }
+    }
+
     // Sata Cable Tail update (follow and flap)
     if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
       // Keep tail anchored to player local, and just animate local offsets for a floppy feel
@@ -4048,6 +4291,15 @@ class Game {
           p.mesh.lookAt(nearest.mesh.position.clone().setY(p.mesh.position.y))
         }
       }
+      // Zip Bomb: explode at ttl threshold to spawn fragments
+      if (p.kind === 'zip' && p.ttl <= 0.4 && !p.data?.armed) {
+        p.data = { armed: true }
+        this.explodeZip(p.mesh.position.clone(), this.zipFragCount, this.zipFragDamage)
+        p.alive = false
+        this.scene.remove(p.mesh)
+        continue
+      }
+
       p.mesh.position.addScaledVector(p.velocity, dt)
 
       // Bullet vs Jeeves/DailyV2 obstacles (AABB test, stop bullet)
@@ -4915,6 +5167,32 @@ class Game {
     this.scene.add(mesh)
     const rocket: Projectile = { mesh, velocity: new THREE.Vector3(), alive: true, ttl: 5.0, damage: this.rocketDamage, pierce: 0, last: mesh.position.clone(), kind: 'rocket' }
     this.projectiles.push(rocket)
+  }
+
+  private fireZipBomb() {
+    const start = new THREE.Vector3()
+    this.player.weaponAnchor.getWorldPosition(start)
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
+    const mesh = new THREE.Mesh(this.sharedZipGeom, this.sharedZipMat)
+    mesh.position.copy(start).add(forward.clone().multiplyScalar(0.2))
+    mesh.position.y = 0.55
+    this.scene.add(mesh)
+    const proj: Projectile = { mesh, velocity: forward.clone().multiplyScalar(9), alive: true, ttl: 1.2, damage: this.zipDamage, pierce: 0, last: mesh.position.clone(), kind: 'zip', data: { armed: false } }
+    this.projectiles.push(proj)
+  }
+
+  private explodeZip(center: THREE.Vector3, count: number, fragDamage: number) {
+    for (let i = 0; i < count; i++) {
+      const ang = (i / count) * Math.PI * 2
+      const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang))
+      const frag = new THREE.Mesh(this.sharedZipFragGeom, this.sharedZipFragMat)
+      frag.position.copy(center)
+      frag.position.y = 0.55
+      this.scene.add(frag)
+      const p: Projectile = { mesh: frag, velocity: dir.clone().multiplyScalar(this.zipFragSpeed), alive: true, ttl: 0.8, damage: fragDamage, pierce: 0, last: frag.position.clone(), kind: 'zipFrag' }
+      this.projectiles.push(p)
+    }
+    this.audio.playExplosion?.()
   }
 
   spawnEnemyByWave(minute: number) {
@@ -5797,6 +6075,45 @@ class Game {
     }
   }
 
+  private levelUpDefrag() {
+    this.defragLevel += 1
+    this.defragArms = Math.min(6, this.defragArms + 1)
+    this.defragRadius = Math.min(3.6, this.defragRadius + 0.3)
+    this.defragDps += 4
+    this.defragSpeed = Math.min(3.2, this.defragSpeed + 0.15)
+  }
+
+  private levelUpZip() {
+    this.zipLevel += 1
+    this.zipInterval = Math.max(1.6, this.zipInterval * 0.9)
+    this.zipDamage += 2
+    this.zipFragDamage += 1
+    this.zipFragCount = Math.min(16, this.zipFragCount + 2)
+  }
+
+  private levelUpPopup() {
+    this.popupLevel += 1
+    this.popupInterval = Math.max(3.0, this.popupInterval * 0.9)
+    this.popupDuration = Math.min(4.5, this.popupDuration + 0.3)
+    this.popupCount = Math.min(8, this.popupCount + 1)
+    this.popupDps += 2
+  }
+
+  private levelUpCursorBeam() {
+    this.cursorBeamLevel += 1
+    this.cursorBeamRange = Math.min(12, this.cursorBeamRange + 1)
+    this.cursorBeamDps += 2
+    this.cursorBeamWidth = Math.min(0.9, this.cursorBeamWidth + 0.05)
+  }
+
+  private levelUpSweep() {
+    this.sweepLevel += 1
+    this.sweepRadius = Math.min(4.5, this.sweepRadius + 0.3)
+    this.sweepDps += 3
+    this.sweepOnDuration = Math.min(2.0, this.sweepOnDuration + 0.1)
+    this.sweepOffDuration = Math.max(0.5, this.sweepOffDuration - 0.05)
+  }
+
   private levelUpPaint() {
     this.paintLevel += 1
     // Increase uptime (on more than off), increase DPS a bit, and extend paint life modestly
@@ -5894,6 +6211,11 @@ class Game {
       case 'Magic Lasso': return '🪢'
       case 'Shield Wall': return '🛡️'
       case 'Paint.exe': return '🎨'
+      case 'Defrag Spiral': return '🌀'
+      case 'Zip Bomb': return '🧨'
+      case 'Pop-up Storm': return '📣'
+      case 'Cursor Beam': return '🖱️'
+      case 'Antivirus Sweep': return '🧹'
       default: return ''
     }
   }

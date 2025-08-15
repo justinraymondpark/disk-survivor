@@ -1,3 +1,12 @@
+## 0.1.28
+- Weapons: add five new weapons (initial balance, visuals TBD)
+  - Defrag Spiral (🌀): orbiting sector beams that damage in a spiral near the player
+  - Zip Bomb (🧨): sticky charge that bursts into radial fragments
+  - Pop-up Storm (📣): temporary pop-ups around player that body-block and damage on contact
+  - Cursor Beam (🖱️): thin continuous beam toward aim/facing
+  - Antivirus Sweep (🧹): pulsing AoE ring around the player
+- Debug: loadout menu includes the new weapons and level-ups; inventory shows levels
+
 ## 0.1.27
 - Alt Title: add 3D floppy scene (beta) as a separate WebGL overlay
   - Access via the safe Alt menu button "3D (beta)"
