@@ -6313,69 +6313,21 @@ class Game {
       else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
     }
     window.addEventListener('keydown', onKey)
+    let selectTimeline: {
+      start: number; label: 'START'|'DAILY'|'DEBUG'|'BOARD';
+      spinDur: number; pauseDur: number; moveDur: number; fadeDur: number;
+      startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotX: number; selIndex: number;
+    } | undefined
     const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
       const sel = floppies[selectIndex]
-      const others = floppies.filter((f) => f !== sel)
-      // Helpers
-      const applyAlpha = (obj: any, a: number, recursive = false) => {
-        if (obj && obj.material) {
-          const mat = obj.material as any
-          if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
-          else { mat.transparent = true; mat.opacity = a }
-        }
-        if (recursive && obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a, true))
-      }
-      const easeInOutSine = (x: number) => -(Math.cos(Math.PI * Math.max(0, Math.min(1, x))) - 1) / 2
-      const easeInOutCubic = (x: number) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
-
-      // Targets
       const slot = scene.getObjectByName('slot') as THREE.Mesh
       const targetWorld = slot ? slot.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0.3)
       const endLocal = floppiesGroup.worldToLocal(targetWorld.clone())
-      const startPos = sel.mesh.position.clone()
-      const startRotX = sel.mesh.rotation.x
-
-      const spinDur = 600
-      const pauseDur = 220
-      const moveDur = 1000
-      const fadeDur = 700
-      const t0 = performance.now()
-
-      const tick = () => {
-        const now = performance.now()
-        const t = now - t0
-        // Slow fade of other disks
-        const fU = Math.max(0, Math.min(1, t / fadeDur))
-        const alpha = 1 - fU
-        for (const o of others) {
-          applyAlpha(o.mesh, alpha, true)
-          if (alpha <= 0.02) o.mesh.visible = false
-        }
-        if (t < spinDur) {
-          // Spin selected on X once using smooth ease
-          const u = t / spinDur
-          const e = easeInOutSine(u)
-          sel.mesh.rotation.x = startRotX + e * (Math.PI * 2)
-        } else if (t < spinDur + pauseDur) {
-          // brief hold
-        } else if (t < spinDur + pauseDur + moveDur) {
-          const mT = t - spinDur - pauseDur
-          const u = mT / moveDur
-          const e = easeInOutCubic(u)
-          const p = new THREE.Vector3().lerpVectors(startPos, endLocal, e)
-          sel.mesh.position.copy(p)
-        } else {
-          // Done: proceed
-          cleanup(); overlay.remove(); this.altTitleActive = false
-          if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-          else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-          else if (lbl === 'BOARD') this.showLeaderboards()
-          else this.showDebugPanel()
-          return
-        }
-        if (overlay.parentElement) requestAnimationFrame(tick)
+      selectTimeline = {
+        start: performance.now(), label: lbl,
+        spinDur: 600, pauseDur: 220, moveDur: 1000, fadeDur: 700,
+        startPos: sel.mesh.position.clone(), endLocal, startRotX: sel.mesh.rotation.x, selIndex: selectIndex
       }
-      requestAnimationFrame(tick)
     }
     // Simple picking on click
     const ray = new THREE.Raycaster()
@@ -6542,16 +6494,68 @@ class Game {
         if (sel) sel.mesh.scale.setScalar(2.1 + 0.15 * Math.sin(u * Math.PI))
         if (u >= 1) { const lbl = floppies[selectIndex].label; selectAnim = undefined; doSelect(lbl) }
       }
-      for (const f of floppies) {
-        f.mesh.position.lerp(f.target, 0.12)
-        f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
-        const t = performance.now() * 0.001 + f.floatPhase
-        f.mesh.position.y = f.target.y + Math.sin(t) * 0.03
-        f.mesh.rotation.x = -0.18 + Math.sin(t * 1.7) * 0.04
+      for (let i = 0; i < floppies.length; i++) {
+        const f = floppies[i]
+        const isSel = !!selectTimeline && i === selectTimeline.selIndex
+        // Skip overriding transforms on selected during timeline
+        if (!isSel) {
+          f.mesh.position.lerp(f.target, 0.12)
+          f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
+          const tt = performance.now() * 0.001 + f.floatPhase
+          f.mesh.position.y = f.target.y + Math.sin(tt) * 0.03
+          f.mesh.rotation.x = -0.18 + Math.sin(tt * 1.7) * 0.04
+        }
         // Ease non-selected disks to base scale; keep selected slightly larger
-        const baseScale = (f === floppies[selectIndex]) ? 2.05 : 1.9
+        const baseScale = (i === selectIndex) ? 2.05 : 1.9
         const curr = f.mesh.scale.x
         f.mesh.scale.setScalar(curr + (baseScale - curr) * 0.2)
+      }
+      // Selection timeline animation (spin → pause → move) + slow fade of others
+      if (selectTimeline) {
+        const easeInOutSine = (x: number) => -(Math.cos(Math.PI * Math.max(0, Math.min(1, x))) - 1) / 2
+        const easeInOutCubic = (x: number) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+        const st = selectTimeline
+        const tEl = now - st.start
+        const selF = floppies[st.selIndex]
+        // Fade others
+        const fU = Math.max(0, Math.min(1, tEl / st.fadeDur))
+        const alpha = 1 - fU
+        const applyAlpha = (obj: any, a: number) => {
+          if (obj && obj.material) {
+            const mat = obj.material as any
+            if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
+            else { mat.transparent = true; mat.opacity = a }
+          }
+          if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a))
+        }
+        for (let i = 0; i < floppies.length; i++) if (i !== st.selIndex) {
+          const m: any = floppies[i].mesh
+          applyAlpha(m, alpha)
+          if (alpha <= 0.02) m.visible = false
+        }
+        if (tEl < st.spinDur) {
+          const u = Math.max(0, Math.min(1, tEl / st.spinDur))
+          const e = easeInOutSine(u)
+          selF.mesh.rotation.x = st.startRotX + e * (Math.PI * 2)
+        } else if (tEl < st.spinDur + st.pauseDur) {
+          // hold pose
+        } else if (tEl < st.spinDur + st.pauseDur + st.moveDur) {
+          const mT = tEl - st.spinDur - st.pauseDur
+          const u = Math.max(0, Math.min(1, mT / st.moveDur))
+          const e = easeInOutCubic(u)
+          const p = new THREE.Vector3().lerpVectors(st.startPos, st.endLocal, e)
+          selF.mesh.position.copy(p)
+        } else {
+          // Finish
+          const lbl = st.label
+          selectTimeline = undefined
+          cleanup(); overlay.remove(); this.altTitleActive = false
+          if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'BOARD') this.showLeaderboards()
+          else this.showDebugPanel()
+          return
+        }
       }
       // Keep camera tilt target updated
       camera.lookAt(0, lookTargetY, 0)
