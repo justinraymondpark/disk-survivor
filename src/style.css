@@ -177,8 +177,6 @@ html, body {
   background: rgba(0, 0, 0, 0.45);
   z-index: 30;
 }
-/* Ensure Alt Title overlay always sits above WebGL canvas */
-#app + .overlay, .overlay.alt-title { z-index: 60; }
 .death-flash {
   position: fixed; inset: 0; pointer-events: none; z-index: 80;
   background: rgba(120, 0, 30, 0.0);
