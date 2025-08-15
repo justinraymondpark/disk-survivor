@@ -6316,7 +6316,7 @@ class Game {
     let selectTimeline: {
       start: number; label: 'START'|'DAILY'|'DEBUG'|'BOARD';
       spinDur: number; pauseDur: number; moveDur: number; fadeDur: number;
-      startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotX: number; selIndex: number;
+      startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotZ: number; selIndex: number;
     } | undefined
     const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
       const sel = floppies[selectIndex]
@@ -6326,7 +6326,7 @@ class Game {
       selectTimeline = {
         start: performance.now(), label: lbl,
         spinDur: 600, pauseDur: 220, moveDur: 1000, fadeDur: 700,
-        startPos: sel.mesh.position.clone(), endLocal, startRotX: sel.mesh.rotation.x, selIndex: selectIndex
+        startPos: sel.mesh.position.clone(), endLocal, startRotZ: sel.mesh.rotation.z, selIndex: selectIndex
       }
     }
     // Simple picking on click
@@ -6507,29 +6507,26 @@ class Game {
         const selF = floppies[st.selIndex]
         // Fade others
         const fU = Math.max(0, Math.min(1, tEl / st.fadeDur))
-        const alpha = 1 - fU
+        const alpha = 1 - Math.min(1, fU * fU)
         const applyAlpha = (obj: any, a: number) => {
           if (obj && obj.material) {
             const mat = obj.material as any
-            if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
-            else { mat.transparent = true; mat.opacity = a }
+            const setMat = (mm: any) => { mm.transparent = true; mm.opacity = a; mm.depthWrite = false; mm.needsUpdate = true }
+            if (Array.isArray(mat)) mat.forEach((mm: any) => setMat(mm))
+            else setMat(mat)
           }
           if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a))
         }
         for (let i = 0; i < floppies.length; i++) if (i !== st.selIndex) {
           const m: any = floppies[i].mesh
           applyAlpha(m, alpha)
-          if (alpha <= 0.02) m.visible = false
+          if (alpha <= 0.01) m.visible = false
         }
         if (tEl < st.spinDur) {
           const u = Math.max(0, Math.min(1, tEl / st.spinDur))
           const e = easeInOutSine(u)
-          selF.mesh.rotation.y += (Math.PI * 2 - selF.mesh.rotation.y % (Math.PI * 2)) * 0 // preserve existing Y base
-          selF.mesh.rotation.y = (selF.mesh.rotation.y || 0) + (Math.PI * 2) * (e - (selF.mesh.rotation.y as number ? 0 : 0))
-          // Force clean single spin around Y from original yaw
-          selF.mesh.rotation.y = (st as any)._baseSpinY ?? selF.mesh.rotation.y
-          if ((st as any)._baseSpinY == null) (st as any)._baseSpinY = selF.mesh.rotation.y
-          selF.mesh.rotation.y = (st as any)._baseSpinY + e * (Math.PI * 2)
+          // Spin around Z axis from original rotation
+          selF.mesh.rotation.z = st.startRotZ + e * (Math.PI * 2)
         } else if (tEl < st.spinDur + st.pauseDur) {
           // hold pose
         } else if (tEl < st.spinDur + st.pauseDur + st.moveDur) {
