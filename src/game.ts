@@ -377,7 +377,6 @@ type XPOrb = {
   value: number
   alive: boolean
 }
-
 type Theme = 'default' | 'geocities' | 'yahoo' | 'dialup' | 'jeeves'
 
 class Game {
@@ -995,7 +994,6 @@ class Game {
       this.showDebugPanel()
     }
   }
-
   private showDebugPanel() {
     if (!this.debugOverlay) {
       this.debugOverlay = document.createElement('div') as HTMLDivElement
@@ -2032,7 +2030,6 @@ class Game {
     cards.forEach((c, i) => c.classList.toggle('selected', i === 0))
     setTimeout(() => { cards.forEach((c) => (c.disabled = false)) }, 500)
   }
-
   rollChoices(num: number) {
     const pool: { title: string; desc: string; icon: string; apply: () => void }[] = []
 
@@ -2280,14 +2277,6 @@ class Game {
     this.scene.add(mesh)
     this.pickups.push({ mesh, kind: 'xp', alive: true, xpValue: value })
   }
-
-  // getCurrentWave unused after replacement odds; keep if later needed
-  // private getCurrentWave(): number {
-  //   return Math.max(0, Math.floor(this.gameTime / 60))
-  // }
-
-     // Deprecated: computeXpBundleValue and dropXpBundleAt removed (replaced by replacement odds in spawnXP)
-
 
   private dropXpOnDeath(e: Enemy): void {
     const pos = e.mesh.position.clone()
@@ -2593,13 +2582,15 @@ class Game {
   allowGameProgress() {
     return this.themeChosen && !this.isPausedForLevelUp && !this.isPaused
   }
-
   loop() {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
-    // Safety: if Alt Title is not active, ensure any leftover background plane is removed
-    if (!this.altTitleActive && this.altBgMesh) { this.disposeAltBg() }
+    // Safety: if Alt Title is not active, ensure any leftover background plane(s) are removed
+    if (!this.altTitleActive) {
+      if (this.altBgMesh) this.disposeAltBg()
+      try { (this as any).removeAllAltBgPlanes?.() } catch {}
+    }
     // Alt Title updates (animations and controller input)
     if (this.altTitleActive && this.altTitleGroup) {
       // Controller left/right and A
@@ -2649,9 +2640,14 @@ class Game {
       if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
       // Keep background aligned to camera and positioned in front; add subtle float to disks
 			if (this.altBgMesh) {
-        this.altBgMesh.position.copy(this.camera.position)
-        this.altBgMesh.quaternion.copy(this.camera.quaternion)
-        this.altBgMesh.position.add(new THREE.Vector3(0, 0, -5.0).applyQuaternion(this.camera.quaternion))
+        const bg = this.altBgMesh
+        bg.position.copy(this.camera.position)
+        bg.quaternion.copy(this.camera.quaternion)
+        const desired = new THREE.Vector3(0, 0, -2.0).applyQuaternion(this.camera.quaternion)
+        bg.position.add(desired)
+        const mat = (bg.material as any)
+        if (mat) { mat.depthTest = false; mat.depthWrite = false }
+        bg.renderOrder = -1000
 			}
       // Slightly stronger floatiness
       const t = performance.now() * 0.001
@@ -3372,7 +3368,6 @@ class Game {
         }
       }
     }
-
           // Special weapons passive timers
       // Speed boost in Kernel Panic
       const speedMul = this.kernelPanic ? 1.4 : 1.0
@@ -4145,7 +4140,6 @@ class Game {
     this.frameId++
     requestAnimationFrame(() => this.loop())
   }
-
   togglePause() {
     this.isPaused = !this.isPaused
     this.pauseOverlay.style.display = this.isPaused ? 'flex' : 'none'
@@ -5360,7 +5354,6 @@ class Game {
       }
     }
   }
-
   private updateLasso() {
     const curr = this.player.group.position.clone()
     curr.y = 0
