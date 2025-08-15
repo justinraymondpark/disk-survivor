@@ -5893,13 +5893,22 @@ class Game {
       const body = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
       body.position.set(0, 0.6, 0)
       group.add(body)
-      // Add billboard face similar to gameplay
+      // Add face plane similar to gameplay, but have it rotate with the model (not billboard)
       try {
         const faceTex = this.makeFaceTexture(t)
-        const faceSize = t === 'brute' ? 1.2 : 0.9
-        const face = new THREE.Mesh(new THREE.PlaneGeometry(faceSize, faceSize), new THREE.MeshBasicMaterial({ map: faceTex, transparent: true }))
+        geom.computeBoundingSphere()
+        const radius = Math.max(0.45, (geom.boundingSphere?.radius ?? 0.6))
+        const faceSize = t === 'brute' ? 1.2 : Math.min(1.2, radius * 1.6)
+        const faceMat = new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+        faceMat.depthTest = false
+        faceMat.depthWrite = false
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(faceSize, faceSize), faceMat)
         face.name = 'bestiary-face'
-        face.position.set(0, 0.95, 0.0)
+        const faceHeight = t === 'brute' ? 1.1 : Math.max(0.7, radius * 1.2)
+        const frontOffset = Math.min(1.2, radius * 1.05)
+        face.position.set(0, faceHeight, frontOffset)
+        // Orient so its front is +Z; it will rotate with the group
+        face.rotation.y = 0
         group.add(face)
       } catch {}
       return group
@@ -5925,8 +5934,6 @@ class Game {
     const tick = () => {
       if (currentMesh) {
         currentMesh.rotation.y += 0.01
-        const face = (currentMesh as THREE.Object3D).getObjectByName?.('bestiary-face') as THREE.Mesh | undefined
-        if (face) face.lookAt(cam.position)
       }
       renderer.render(scene, cam)
       if (overlay.parentElement) requestAnimationFrame(tick)
