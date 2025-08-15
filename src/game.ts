@@ -2755,8 +2755,8 @@ class Game {
           const swayZ = Math.cos(t * 0.7 + ph) * 0.02
       // If this is the selected top disk, let it drag slightly under the finger
           if (i === 0) {
-            // Decay drag when not actively dragging
-            if (!this.altDragging) this.altDragDX = this.altDragDX * Math.max(0, 1 - dt * 10)
+            // Decay drag when not actively dragging; keep a tiny bias so first post-down frame is non-zero
+            if (!this.altDragging) this.altDragDX = (this.altDragDX * Math.max(0, 1 - dt * 10)) + 0.0001
             const dragX = this.altDragDX
         mesh.position.x = f.target.x + swayX + dragX
             // Scale up slightly while dragging
@@ -4407,6 +4407,9 @@ class Game {
     // Ensures we don't accidentally hide needed DOM buttons
     // Debounce A/Enter so we don't select immediately on entry
     this.altEnterDebounceUntil = performance.now() + 600
+    // Pre-arm touch behavior so the very first touch can drag immediately
+    this.altPrevTouchAction = (document.body.style as any).touchAction
+    ;(document.body.style as any).touchAction = 'none'
     // Drive slot (simple box with inset)
     const driveMat = new THREE.MeshBasicMaterial({ color: 0xd8d2c5 })
     driveMat.depthTest = false
@@ -4553,7 +4556,7 @@ class Game {
 		window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
     this.altTouchOnDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return
+      if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
       this.altSwipeStartX = e.clientX
       this.altSwipeActive = true
       this.altSwipeDidCycle = false
@@ -4561,12 +4564,11 @@ class Game {
       // Initialize drag immediately so first frame moves
       this.altDragDX = 0.001
       // Maximize swipe hit area
-      this.altPrevTouchAction = (document.body.style as any).touchAction
-      ;(document.body.style as any).touchAction = 'none'
+      // touchAction already set on entry; keep it unchanged here
       this.altTapStartTime = performance.now()
     }
 				this.altTouchOnMove = (e: PointerEvent) => {
-			if (!this.altSwipeActive || e.pointerType !== 'touch') return
+			if (!this.altSwipeActive || (e.pointerType !== 'touch' && e.pointerType !== 'mouse')) return
       const dx = e.clientX - this.altSwipeStartX
       // On first touch frame after down, ensure drag is initialized so card moves immediately
       if (!this.altDragging) this.altDragging = true
@@ -4575,7 +4577,7 @@ class Game {
       this.altDragDX = THREE.MathUtils.clamp(dx / halfW, -0.9, 0.9)
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return
+      if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
       const dx = e.clientX - this.altSwipeStartX
       const dtap = performance.now() - this.altTapStartTime
       const threshold = Math.max(24, Math.floor(window.innerWidth * 0.2))
