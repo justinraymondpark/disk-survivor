@@ -434,9 +434,10 @@ class Game {
   sharedZipMat = new THREE.MeshBasicMaterial({ color: 0x66aaff })
   sharedZipFragGeom = new THREE.SphereGeometry(0.12, 8, 8)
   sharedZipFragMat = new THREE.MeshBasicMaterial({ color: 0x88ccff })
-  sharedPopupGeom = new THREE.PlaneGeometry(0.9, 0.7)
+  sharedPopupGeom = new THREE.PlaneGeometry(1.2, 1.0)
   sharedPopupMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
   sharedDefragMat = new THREE.MeshBasicMaterial({ color: 0x55ffee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending })
+  sharedDefragDotGeom = new THREE.CircleGeometry(0.08, 10)
   sharedXPGeom = new THREE.BoxGeometry(0.25, 0.25, 0.25)
   sharedXPOrbMat = new THREE.MeshBasicMaterial({ color: 0x66ff88 })
   sharedXPCubeGeom = new THREE.BoxGeometry(0.42, 0.42, 0.42)
@@ -612,10 +613,10 @@ class Game {
 
   // Pop-up Storm
   popupLevel = 0
-  popupInterval = 5.5
+  popupInterval = 5.0
   popupTimer = 0
-  popupDuration = 2.2
-  popupCount = 4
+  popupDuration = 2.6
+  popupCount = 5
   popupDps = 7
 
   // Cursor Beam
@@ -1793,7 +1794,7 @@ class Game {
     this.root.appendChild(this.titleOverlay)
 
     lbBtn.onclick = () => this.showLeaderboards() /* implemented below */
-    bugBtn.onclick = () => this.showBestiary()
+    bugBtn.onclick = () => { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
 
     const begin = () => {
       this.exitAltTitleCleanup()
@@ -3464,7 +3465,7 @@ class Game {
       }
     }
 
-    // Defrag Spiral: orbiting sector beams sweeping outward
+    // Defrag Spiral: orbiting sector beams sweeping outward (with subtle dots)
     if (this.ownedWeapons.has('Defrag Spiral') && this.defragLevel > 0) {
       const arms = this.defragArms
       const baseR = this.defragRadius
@@ -3487,7 +3488,22 @@ class Game {
               this.onEnemyDamaged(e, dmg)
             }
           }
-          // Optional visual dots (low-cost, pooled if needed) skipped for perf
+          // Visual: transient dot
+          if ((Math.random() < 0.25)) {
+            const dot = new THREE.Mesh(this.sharedDefragDotGeom, this.sharedDefragMat)
+            dot.rotation.x = -Math.PI / 2
+            dot.position.set(px, 0.03, pz)
+            this.scene.add(dot)
+            const born = performance.now()
+            const life = 120
+            const fade = () => {
+              const u = (performance.now() - born) / life
+              if (u >= 1) { this.scene.remove(dot); (dot.material as any).dispose?.(); (dot.geometry as any).dispose?.(); return }
+              ;(dot.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - u)
+              requestAnimationFrame(fade)
+            }
+            requestAnimationFrame(fade)
+          }
         }
       }
     }
@@ -3510,7 +3526,7 @@ class Game {
         const life = this.popupDuration
         for (let i = 0; i < n; i++) {
           const ang = Math.random() * Math.PI * 2
-          const r = 1.5 + Math.random() * 2.2
+          const r = 2.5 + Math.random() * 4.0
           const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
           const quad = new THREE.Mesh(this.sharedPopupGeom, this.sharedPopupMat.clone())
           quad.position.copy(pos)
@@ -3539,7 +3555,7 @@ class Game {
       }
     }
 
-    // Cursor Beam: continuous thin beam towards current aim
+    // Cursor Beam: continuous thin beam towards current aim with visible quad
     if (this.ownedWeapons.has('Cursor Beam') && this.cursorBeamLevel > 0) {
       // Build aim from right stick; fallback to facing
       let aim = new THREE.Vector3()
@@ -3557,6 +3573,18 @@ class Game {
       if (aim.lengthSq() > 0) {
         const origin = this.player.group.position.clone()
         const dir = aim.clone().normalize()
+        // Visual beam
+        const len = this.cursorBeamRange
+        const geom = new THREE.PlaneGeometry(len, Math.max(0.1, this.cursorBeamWidth))
+        const mat = new THREE.MeshBasicMaterial({ color: 0x99e0ff, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+        const beam = new THREE.Mesh(geom, mat)
+        beam.rotation.x = -Math.PI / 2
+        const mid = origin.clone().add(dir.clone().multiplyScalar(len * 0.5))
+        beam.position.set(mid.x, 0.18, mid.z)
+        const yaw = Math.atan2(dir.x, dir.z)
+        beam.rotation.z = yaw
+        this.scene.add(beam)
+        setTimeout(() => { this.scene.remove(beam); (beam.material as any).dispose?.(); (beam.geometry as any).dispose?.() }, 60)
         for (const e of this.enemies) {
           if (!e.alive) continue
           const to = e.mesh.position.clone().sub(origin); to.y = 0
@@ -3572,13 +3600,21 @@ class Game {
       }
     }
 
-    // Antivirus Sweep: pulsing circle around player
+    // Antivirus Sweep: pulsing circle around player with ring visuals
     if (this.ownedWeapons.has('Antivirus Sweep') && this.sweepLevel > 0) {
       this.sweepTimer += dt
       const phase = this.sweepOn ? this.sweepOnDuration : this.sweepOffDuration
       if (this.sweepTimer >= phase) { this.sweepTimer = 0; this.sweepOn = !this.sweepOn }
       if (this.sweepOn) {
         const r = this.sweepRadius
+        // Visual ring
+        const ringGeom = new THREE.RingGeometry(r * 0.95, r, 48)
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.32, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+        const ring = new THREE.Mesh(ringGeom, ringMat)
+        ring.rotation.x = -Math.PI / 2
+        ring.position.copy(this.player.group.position).setY(0.02)
+        this.scene.add(ring)
+        setTimeout(() => { this.scene.remove(ring); ringGeom.dispose(); (ring.material as any).dispose?.() }, 90)
         for (const e of this.enemies) {
           if (!e.alive) continue
           const d2 = e.mesh.position.clone().setY(0).distanceToSquared(this.player.group.position.clone().setY(0))
