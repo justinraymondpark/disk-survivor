@@ -598,7 +598,7 @@ class Game {
   // New weapons: Defrag Spiral
   defragLevel = 0
   defragArms = 3
-  defragRadius = 1.4
+  defragRadius = 1.7
   defragSpeed = 1.5
   defragDps = 10
 
@@ -622,7 +622,7 @@ class Game {
   // Cursor Beam
   cursorBeamLevel = 0
   cursorBeamRange = 7
-  cursorBeamDps = 7
+  cursorBeamDps = 10
   cursorBeamWidth = 0.45
 
   // Antivirus Sweep
@@ -3471,7 +3471,7 @@ class Game {
       const baseR = this.defragRadius
       for (let i = 0; i < arms; i++) {
         const ang = this.gameTime * this.defragSpeed + (i * Math.PI * 2) / arms
-        const segs = 8
+        const segs = 10
         for (let s = 0; s < segs; s++) {
           const t = (s + 1) / segs
           const r = baseR * t
@@ -3482,8 +3482,8 @@ class Game {
             if (!e.alive) continue
             const dx = e.mesh.position.x - px
             const dz = e.mesh.position.z - pz
-            if (dx * dx + dz * dz < 0.22) {
-              const dmg = (this.defragDps / segs) * dt
+            if (dx * dx + dz * dz < 0.28) {
+              const dmg = (this.defragDps / segs) * 1.2 * dt
               e.hp -= dmg
               this.onEnemyDamaged(e, dmg)
             }
@@ -3542,8 +3542,8 @@ class Game {
               if (!e.alive) continue
               const q = quad.position.clone(); q.y = 0
               const ep = e.mesh.position.clone(); ep.y = 0
-              if (q.distanceToSquared(ep) < 0.6 * 0.6) {
-                const dmg = this.popupDps * dt
+              if (q.distanceToSquared(ep) < 0.85 * 0.85) {
+                const dmg = this.popupDps * 1.0 * dt
                 e.hp -= dmg
                 this.onEnemyDamaged(e, dmg)
               }
@@ -3591,8 +3591,8 @@ class Game {
           const proj = dir.clone().multiplyScalar(Math.max(0, Math.min(this.cursorBeamRange, to.dot(dir))))
           const closest = origin.clone().add(proj)
           const d2 = closest.distanceToSquared(e.mesh.position.clone().setY(0))
-          if (d2 < this.cursorBeamWidth * this.cursorBeamWidth) {
-            const dmg = this.cursorBeamDps * dt
+          if (d2 < (this.cursorBeamWidth * 0.7) * (this.cursorBeamWidth * 0.7)) {
+            const dmg = this.cursorBeamDps * 1.0 * dt
             e.hp -= dmg
             this.onEnemyDamaged(e, dmg)
           }
