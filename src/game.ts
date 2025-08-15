@@ -6176,7 +6176,8 @@ class Game {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100)
     camera.position.set(0, 2.8, 5.8)
-    camera.lookAt(0, 0.5, 0)
+    let lookTargetY = 0.5
+    camera.lookAt(0, lookTargetY, 0)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
     // Simple ground to catch some color
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
@@ -6283,44 +6284,97 @@ class Game {
     }
     canvas.addEventListener('click', onClick)
 
-    // Touch swipe for mobile: detect horizontal swipes
+    // Touch/Mouse drag with subtle wiggle and scale on selected disk
     let swipeActive = false
     let swipeStartX = 0
     let tapStartTime = 0
     let prevTouchAction = ''
+    let didCycle = false
     const threshold = 40
-    const onTouchDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
       swipeActive = true
+      didCycle = false
       swipeStartX = e.clientX
       tapStartTime = performance.now()
       prevTouchAction = (overlay.style as any).touchAction || ''
       ;(overlay.style as any).touchAction = 'none'
     }
-    const onTouchMove = (e: PointerEvent) => {
-      if (!swipeActive || e.pointerType !== 'touch') return
-      // No-op; just track movement until release
+    const onPointerMove = (e: PointerEvent) => {
+      if (!swipeActive || (e.pointerType !== 'touch' && e.pointerType !== 'mouse')) return
+      const dx = THREE.MathUtils.clamp(e.clientX - swipeStartX, -140, 140)
+      const sel = floppies[selectIndex]
+      if (sel) {
+        const tilt = THREE.MathUtils.clamp(dx / 600, -0.22, 0.22)
+        sel.mesh.rotation.z = tilt
+        const mag = Math.min(1, Math.abs(dx) / 140)
+        const targetScale = 1.9 + 0.2 * (0.5 + 0.5 * (1 - (1 - mag) * (1 - mag)))
+        sel.mesh.scale.setScalar(targetScale)
+      }
+      if (Math.abs(dx) > threshold && !didCycle) {
+        didCycle = true
+        cycle(dx > 0 ? -1 : 1)
+        swipeStartX = e.clientX
+        didCycle = false
+      }
     }
-    const onTouchUp = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return
-      const dx = e.clientX - swipeStartX
+    const onPointerUp = (ev: PointerEvent) => {
+      if (ev.pointerType !== 'touch' && ev.pointerType !== 'mouse') return
+      const dx = ev.clientX - swipeStartX
       const dt = performance.now() - tapStartTime
       if (Math.abs(dx) > threshold) {
-        cycle(dx > 0 ? -1 : 1)
+        // already cycled in move; just ease back
       } else if (dt < 250) {
-        doSelect(floppies[selectIndex].label)
+        // small bounce before select
+        selectAnim = { t: 0, dur: 240 }
       }
       swipeActive = false
+      const sel = floppies[selectIndex]
+      if (sel) sel.mesh.rotation.z = 0
       ;(overlay.style as any).touchAction = prevTouchAction || ''
     }
-    window.addEventListener('pointerdown', onTouchDown, { passive: true } as any)
-    window.addEventListener('pointermove', onTouchMove, { passive: true } as any)
-    window.addEventListener('pointerup', onTouchUp, { passive: true } as any)
+    window.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
+    window.addEventListener('pointermove', onPointerMove, { passive: true } as any)
+    window.addEventListener('pointerup', onPointerUp, { passive: true } as any)
+
+    // Camera tweak sliders (temporary)
+    const ctrl = document.createElement('div') as HTMLDivElement
+    ctrl.className = 'card'
+    ctrl.style.position = 'absolute'
+    ctrl.style.left = '12px'
+    ctrl.style.top = '12px'
+    ctrl.style.minWidth = '240px'
+    ctrl.style.padding = '10px'
+    const mkRow = (label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void) => {
+      const row = document.createElement('div') as HTMLDivElement
+      row.style.display = 'grid'; (row.style as any).gridTemplateColumns = 'auto 1fr auto'
+      row.style.alignItems = 'center'
+      row.style.gap = '8px'
+      row.style.marginBottom = '8px'
+      const name = document.createElement('strong'); name.textContent = label
+      const input = document.createElement('input') as HTMLInputElement
+      input.type = 'range'; input.min = String(min); input.max = String(max); input.step = String(step); input.value = String(value)
+      const val = document.createElement('div') as HTMLDivElement
+      val.className = 'carddesc'
+      const set = (v: number) => { val.textContent = String(Number(v.toFixed(2))); onChange(v) }
+      set(value)
+      input.oninput = () => set(parseFloat(input.value))
+      row.append(name, input, val)
+      return row
+    }
+    ctrl.append(
+      mkRow('FOV', 35, 70, 1, camera.fov, (v) => { camera.fov = v; camera.updateProjectionMatrix() }),
+      mkRow('CamY', 1.2, 4.0, 0.05, camera.position.y, (v) => { camera.position.y = v }),
+      mkRow('CamZ', 3.0, 8.0, 0.05, camera.position.z, (v) => { camera.position.z = v }),
+      mkRow('LookY', 0.2, 1.2, 0.02, lookTargetY, (v) => { lookTargetY = v })
+    )
+    overlay.appendChild(ctrl)
     // Controller navigation
     let navCooldown = 0
     let prevA = false
     let raf = 0
     let last = performance.now()
+    let selectAnim: { t: number; dur: number } | undefined
     const tick = () => {
       const now = performance.now()
       const dt = Math.min(0.033, (now - last) / 1000)
@@ -6337,14 +6391,36 @@ class Game {
         if (moveAxis > 0 || dpadRight) cycle(1)
         if (moveAxis < 0 || dpadLeft) cycle(-1)
       }
-      if (a && !prevA) doSelect(floppies[selectIndex].label)
+      if (a && !prevA) selectAnim = { t: 0, dur: 240 }
       prevA = a
+      // Apply select bounce then trigger
+      if (selectAnim) {
+        selectAnim.t += dt * 1000
+        const u = Math.min(1, selectAnim.t / selectAnim.dur)
+        // Brief tilt during bounce
+        const sel2 = floppies[selectIndex]
+        if (sel2) sel2.mesh.rotation.z = 0.1 * Math.sin(u * Math.PI)
+        const sel = floppies[selectIndex]
+        if (sel) sel.mesh.scale.setScalar(2.1 + 0.15 * Math.sin(u * Math.PI))
+        if (u >= 1) { const lbl = floppies[selectIndex].label; selectAnim = undefined; doSelect(lbl) }
+      }
       for (const f of floppies) {
         f.mesh.position.lerp(f.target, 0.12)
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
         const t = performance.now() * 0.001 + f.floatPhase
         f.mesh.position.y = f.target.y + Math.sin(t) * 0.03
         f.mesh.rotation.x = -0.18 + Math.sin(t * 1.7) * 0.04
+        // Ease non-selected disks to base scale; keep selected slightly larger
+        const baseScale = (f === floppies[selectIndex]) ? 2.05 : 1.9
+        const curr = f.mesh.scale.x
+        f.mesh.scale.setScalar(curr + (baseScale - curr) * 0.2)
+      }
+      // Keep camera tilt target updated
+      camera.lookAt(0, lookTargetY, 0)
+      // During drag, ease selected z-tilt back toward 0 if no move
+      if (!swipeActive) {
+        const sel = floppies[selectIndex]
+        if (sel) sel.mesh.rotation.z *= 0.85
       }
       renderer.render(scene, camera)
       if (overlay.parentElement) raf = requestAnimationFrame(tick)
@@ -6353,9 +6429,9 @@ class Game {
     const cleanup = () => {
       try { window.removeEventListener('keydown', onKey) } catch {}
       try { canvas.removeEventListener('click', onClick) } catch {}
-      try { window.removeEventListener('pointerdown', onTouchDown as any) } catch {}
-      try { window.removeEventListener('pointermove', onTouchMove as any) } catch {}
-      try { window.removeEventListener('pointerup', onTouchUp as any) } catch {}
+      try { window.removeEventListener('pointerdown', onPointerDown as any) } catch {}
+      try { window.removeEventListener('pointermove', onPointerMove as any) } catch {}
+      try { window.removeEventListener('pointerup', onPointerUp as any) } catch {}
       try { cancelAnimationFrame(raf) } catch {}
       try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
       try { renderer.dispose() } catch {}
