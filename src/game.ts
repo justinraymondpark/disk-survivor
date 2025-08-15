@@ -3541,12 +3541,17 @@ class Game {
 
     // Cursor Beam: continuous thin beam towards current aim
     if (this.ownedWeapons.has('Cursor Beam') && this.cursorBeamLevel > 0) {
-      // Recompute aimVector like main loop uses
+      // Build aim from right stick; fallback to facing
       let aim = new THREE.Vector3()
-      const padAim = this.input.getAimVector?.() as THREE.Vector3 | undefined
-      if (padAim && padAim.lengthSq() > 0) aim.copy(padAim)
-      if (aim.lengthSq() === 0) {
-        // fallback to facing
+      const rx = this.input.axesRight.x
+      const ry = this.input.axesRight.y
+      if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
+        const yawScreen = Math.atan2(-rx, -ry)
+        const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
+        const camYaw = Math.atan2(camDir.x, camDir.z)
+        const yawWorld = yawScreen + camYaw
+        aim.set(Math.sin(yawWorld), 0, Math.cos(yawWorld)).normalize()
+      } else {
         aim.set(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
       }
       if (aim.lengthSq() > 0) {
@@ -5192,7 +5197,8 @@ class Game {
       const p: Projectile = { mesh: frag, velocity: dir.clone().multiplyScalar(this.zipFragSpeed), alive: true, ttl: 0.8, damage: fragDamage, pierce: 0, last: frag.position.clone(), kind: 'zipFrag' }
       this.projectiles.push(p)
     }
-    this.audio.playExplosion?.()
+    // Reuse shockwave thump for zip burst
+    this.audio.playShockwave()
   }
 
   spawnEnemyByWave(minute: number) {
