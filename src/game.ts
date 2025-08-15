@@ -6325,7 +6325,7 @@ class Game {
       const endLocal = floppiesGroup.worldToLocal(targetWorld.clone())
       selectTimeline = {
         start: performance.now(), label: lbl,
-        spinDur: 600, pauseDur: 220, moveDur: 1000, fadeDur: 700,
+        spinDur: 600, pauseDur: 220, moveDur: 1000, fadeDur: 1000,
         startPos: sel.mesh.position.clone(), endLocal, startRotZ: sel.mesh.rotation.z, selIndex: selectIndex
       }
     }
@@ -6507,7 +6507,7 @@ class Game {
         const selF = floppies[st.selIndex]
         // Fade others
         const fU = Math.max(0, Math.min(1, tEl / st.fadeDur))
-        const alpha = 1 - Math.min(1, fU * fU)
+        const alpha = 1 - fU
         const applyAlpha = (obj: any, a: number) => {
           if (obj && obj.material) {
             const mat = obj.material as any
@@ -6525,10 +6525,9 @@ class Game {
         if (tEl < st.spinDur) {
           const u = Math.max(0, Math.min(1, tEl / st.spinDur))
           const e = easeInOutSine(u)
-          // Only drive Z during spin; freeze X/Y to their base so there is no bounce-back
-          selF.mesh.rotation.x = 0
-          selF.mesh.rotation.y = 0
-          selF.mesh.rotation.z = st.startRotZ + e * (Math.PI * 2)
+          // Drive Z from captured base; do not recalc from current to avoid easing reversal
+          (st as any)._spinBaseZ ??= selF.mesh.rotation.z
+          selF.mesh.rotation.z = (st as any)._spinBaseZ + e * (Math.PI * 2)
         } else if (tEl < st.spinDur + st.pauseDur) {
           // hold pose
         } else if (tEl < st.spinDur + st.pauseDur + st.moveDur) {
