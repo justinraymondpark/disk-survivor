@@ -4570,14 +4570,15 @@ class Game {
       const dx = e.clientX - this.altSwipeStartX
       // On first touch frame after down, ensure drag is initialized so card moves immediately
       if (!this.altDragging) this.altDragging = true
-      // Record drag for render-loop application
-      this.altDragDX = THREE.MathUtils.clamp(dx / 140, -0.8, 0.8)
+      // Normalize drag to viewport width so it feels consistent across devices
+      const halfW = Math.max(1, window.innerWidth * 0.5)
+      this.altDragDX = THREE.MathUtils.clamp(dx / halfW, -0.9, 0.9)
 		}
     this.altTouchOnUp = (e: PointerEvent) => {
       if (e.pointerType !== 'touch') return
       const dx = e.clientX - this.altSwipeStartX
       const dtap = performance.now() - this.altTapStartTime
-      const threshold = 40
+      const threshold = Math.max(24, Math.floor(window.innerWidth * 0.2))
       if (Math.abs(dx) > threshold) {
         // Decide direction by drag
         this.cycleAltFloppies(dx > 0 ? -1 : 1)
@@ -4588,10 +4589,8 @@ class Game {
 		  this.altSelectDance = { m: selF.mesh, t: 0, dur: 400, startScale: selF.mesh.scale.x, startRZ: selF.mesh.rotation.z, makeInsert }
         setTimeout(() => this.disposeAltBg(), 700)
       }
-      // Ease card back to stack alignment
+      // Ease card back to stack alignment (let decay handle return; do not zero immediately)
       this.altDragging = false
-      this.altDragDX = 0
-      if (this.altFloppies[0]) { const f = this.altFloppies[0]; f.mesh.rotation.z = 0 }
       this.altSwipeActive = false
       ;(document.body.style as any).touchAction = this.altPrevTouchAction || ''
     }
