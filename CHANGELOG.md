@@ -1,3 +1,7 @@
+## 0.1.26
+- Build: silence TS unused error by making `showAltTitle` public (noUnusedLocals flags only private members)
+- UI: Alt button now opens safe DOM-only Alt Title that launches game reliably
+
 ## 0.1.25
 - Game Over: added shareable summary preview with Copy and Share buttons
   - Format: `Disk Survivor|Daily Disk 🌊<wave> 🕚<seconds> [🎯#rank if available]` + weapon emojis + wave color blocks

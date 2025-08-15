@@ -4341,7 +4341,7 @@ class Game {
   }
 
   // ALT TITLE: build a small 3D scene with floppies and a drive slot
-  private showAltTitle() {
+  showAltTitle() {
     if (this.altTitleActive) return
     this.altTitleActive = true
     // Hide classic title UI
