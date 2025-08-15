@@ -6174,9 +6174,9 @@ class Game {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
-    camera.position.set(0, 2.2, 5.2)
-    camera.lookAt(0, 0.7, 0)
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100)
+    camera.position.set(0, 2.8, 5.8)
+    camera.lookAt(0, 0.5, 0)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
     // Simple ground to catch some color
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
@@ -6282,8 +6282,63 @@ class Game {
       }
     }
     canvas.addEventListener('click', onClick)
+
+    // Touch swipe for mobile: detect horizontal swipes
+    let swipeActive = false
+    let swipeStartX = 0
+    let tapStartTime = 0
+    let prevTouchAction = ''
+    const threshold = 40
+    const onTouchDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
+      swipeActive = true
+      swipeStartX = e.clientX
+      tapStartTime = performance.now()
+      prevTouchAction = (overlay.style as any).touchAction || ''
+      ;(overlay.style as any).touchAction = 'none'
+    }
+    const onTouchMove = (e: PointerEvent) => {
+      if (!swipeActive || e.pointerType !== 'touch') return
+      // No-op; just track movement until release
+    }
+    const onTouchUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
+      const dx = e.clientX - swipeStartX
+      const dt = performance.now() - tapStartTime
+      if (Math.abs(dx) > threshold) {
+        cycle(dx > 0 ? -1 : 1)
+      } else if (dt < 250) {
+        doSelect(floppies[selectIndex].label)
+      }
+      swipeActive = false
+      ;(overlay.style as any).touchAction = prevTouchAction || ''
+    }
+    window.addEventListener('pointerdown', onTouchDown, { passive: true } as any)
+    window.addEventListener('pointermove', onTouchMove, { passive: true } as any)
+    window.addEventListener('pointerup', onTouchUp, { passive: true } as any)
+    // Controller navigation
+    let navCooldown = 0
+    let prevA = false
     let raf = 0
+    let last = performance.now()
     const tick = () => {
+      const now = performance.now()
+      const dt = Math.min(0.033, (now - last) / 1000)
+      last = now
+      navCooldown = Math.max(0, navCooldown - dt)
+      const gp = this.input?.getActiveGamepad?.()
+      const axisX = this.input?.axesLeft?.x ?? 0
+      const moveAxis = Math.abs(axisX) > 0.6 ? Math.sign(axisX) : 0
+      const dpadLeft = !!gp && !!gp.buttons?.[14]?.pressed
+      const dpadRight = !!gp && !!gp.buttons?.[15]?.pressed
+      const a = !!gp && !!gp.buttons?.[0]?.pressed
+      if (navCooldown <= 0 && (moveAxis !== 0 || dpadLeft || dpadRight)) {
+        navCooldown = 0.22
+        if (moveAxis > 0 || dpadRight) cycle(1)
+        if (moveAxis < 0 || dpadLeft) cycle(-1)
+      }
+      if (a && !prevA) doSelect(floppies[selectIndex].label)
+      prevA = a
       for (const f of floppies) {
         f.mesh.position.lerp(f.target, 0.12)
         f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
@@ -6298,6 +6353,9 @@ class Game {
     const cleanup = () => {
       try { window.removeEventListener('keydown', onKey) } catch {}
       try { canvas.removeEventListener('click', onClick) } catch {}
+      try { window.removeEventListener('pointerdown', onTouchDown as any) } catch {}
+      try { window.removeEventListener('pointermove', onTouchMove as any) } catch {}
+      try { window.removeEventListener('pointerup', onTouchUp as any) } catch {}
       try { cancelAnimationFrame(raf) } catch {}
       try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
       try { renderer.dispose() } catch {}

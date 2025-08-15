@@ -2,8 +2,8 @@
 - Alt Title: add 3D floppy scene (beta) as a separate WebGL overlay
   - Access via the safe Alt menu button "3D (beta)"
   - Independent renderer/camera so it won't interfere with gameplay
-  - Arrow keys cycle; Enter selects; mouse click selects; Back returns
-  - Camera pulled back to show more of the layout
+  - Arrow keys cycle; Enter selects; mouse click selects; Back returns; touch swipe left/right cycles; tap selects; controller A confirms
+  - Camera pulled back, wider FOV, slightly steeper tilt
 
 ## 0.1.26
 - Build: silence TS unused error by making `showAltTitle` public (noUnusedLocals flags only private members)
