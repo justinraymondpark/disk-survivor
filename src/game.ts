@@ -672,6 +672,9 @@ class Game {
   pendingLevelUps = 0
   // Debug toggles
   debugShowDamage = false
+  // Dev debug HUD
+  private dbgHud?: HTMLDivElement
+  private dbgHudVisible = false
 
   private makeHorseshoeMagnet(): THREE.Object3D {
     const group = new THREE.Group()
@@ -1762,6 +1765,35 @@ class Game {
     this.changelogOverlay.style.display = 'none'
     this.root.appendChild(this.changelogOverlay)
 
+    // Minimal dev debug HUD (Shift+D toggles)
+    const makeDbgHud = () => {
+      const d = document.createElement('div') as HTMLDivElement
+      d.id = 'dbg-hud'
+      d.style.position = 'fixed'
+      d.style.left = '8px'
+      d.style.bottom = '8px'
+      d.style.zIndex = '1000'
+      d.style.pointerEvents = 'none'
+      d.style.background = 'rgba(0,0,0,0.5)'
+      d.style.border = '1px solid #1f2a44'
+      d.style.borderRadius = '6px'
+      d.style.padding = '6px 8px'
+      d.style.color = '#9be3ff'
+      d.style.fontFamily = 'ui-monospace, monospace'
+      d.style.fontSize = '11px'
+      d.style.whiteSpace = 'pre'
+      d.style.display = 'none'
+      this.root.appendChild(d)
+      this.dbgHud = d
+      window.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key.toLowerCase() === 'd' && e.shiftKey) {
+          this.dbgHudVisible = !this.dbgHudVisible
+          if (this.dbgHud) this.dbgHud.style.display = this.dbgHudVisible ? 'block' : 'none'
+        }
+      })
+    }
+    makeDbgHud()
+
     this.updateHud()
     this.updateHPBar()
     this.updateInventoryUI()
@@ -2586,6 +2618,27 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
+    // Update debug globals and HUD if enabled
+    try {
+      const dbg: any = (window as any).__dbg || ((window as any).__dbg = {})
+      dbg.altActive = this.altTitleActive
+      dbg.bgCount = this.scene.children.filter((c: any) => c?.name === 'alt-bg-plane').length
+      dbg.axesRight = { x: this.input.axesRight.x, y: this.input.axesRight.y }
+      dbg.axesLeft = { x: this.input.axesLeft.x, y: this.input.axesLeft.y }
+      dbg.themeChosen = this.themeChosen
+      dbg.showTitle = this.showTitle
+      dbg.playerYaw = this.player.group?.rotation?.y ?? 0
+      dbg.cameraYaw = this.camera?.rotation?.y ?? 0
+      dbg.scene = this.scene
+      if (this.dbgHudVisible && this.dbgHud) {
+        const lines = [
+          `ALT:${dbg.altActive} BG:${dbg.bgCount} TITLE:${dbg.showTitle} THEME:${dbg.themeChosen}`,
+          `AR:(${dbg.axesRight.x.toFixed(2)},${dbg.axesRight.y.toFixed(2)}) AL:(${dbg.axesLeft.x.toFixed(2)},${dbg.axesLeft.y.toFixed(2)})`,
+          `PY:${dbg.playerYaw.toFixed(2)} CY:${dbg.cameraYaw.toFixed(2)}`
+        ]
+        this.dbgHud.textContent = lines.join('\n')
+      }
+    } catch {}
     // Safety: if Alt Title is not active, ensure any leftover background plane(s) are removed
     if (!this.altTitleActive) {
       if (this.altBgMesh) this.disposeAltBg()
