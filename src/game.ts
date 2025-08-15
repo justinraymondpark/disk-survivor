@@ -6332,7 +6332,7 @@ class Game {
         startPos: sel.mesh.position.clone(), endLocal, startRotZ: sel.mesh.rotation.z, selIndex: selectIndex
       }
     }
-    // Simple picking on click
+    // Simple picking on click (must hit selected disk to activate)
     const ray = new THREE.Raycaster()
     const mouse = new THREE.Vector2()
     const onClick = (ev: MouseEvent) => {
@@ -6340,23 +6340,12 @@ class Game {
       mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1)
       ray.setFromCamera(mouse, camera)
-      const meshes = floppies.map(f => f.mesh)
-      const hit = ray.intersectObjects(meshes, true)[0]
-      if (hit) {
-        const idx = meshes.findIndex(m => (hit.object as any) === m || m.children.includes(hit.object as any))
-        if (idx >= 0) selectIndex = idx
-        if (!selectTimeline) {
-          doSelect(floppies[selectIndex].label)
-          // Debounce accidental double taps/clicks for 350ms
-          const until = performance.now() + 350
-          const prev = onPointerDown
-          const guard = () => { if (performance.now() < until) return; overlay.removeEventListener('pointerdown', guard as any); overlay.addEventListener('pointerdown', prev as any, { passive: true } as any) }
-          overlay.removeEventListener('pointerdown', prev as any)
-          overlay.addEventListener('pointerdown', guard as any, { passive: true } as any)
-        }
-      }
+      const sel = floppies[selectIndex]?.mesh
+      if (!sel) return
+      const selHit = ray.intersectObject(sel, true)[0]
+      if (selHit && !selectTimeline) doSelect(floppies[selectIndex].label)
     }
-    // Do not register click; pointer tap handling below avoids double-trigger
+    canvas.addEventListener('click', onClick)
 
     // Touch/Mouse drag with subtle wiggle and scale on selected disk
     overlay.style.touchAction = 'none'
@@ -6404,9 +6393,9 @@ class Game {
       dragging = false
       ;(overlay.style as any).touchAction = prevTouchAction || ''
     }
-    overlay.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
-    overlay.addEventListener('pointermove', onPointerMove, { passive: true } as any)
-    overlay.addEventListener('pointerup', onPointerUp, { passive: true } as any)
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
+    canvas.addEventListener('pointermove', onPointerMove, { passive: true } as any)
+    canvas.addEventListener('pointerup', onPointerUp, { passive: true } as any)
 
     // Camera tweak sliders (temporary)
     const ctrl = document.createElement('div') as HTMLDivElement
@@ -6442,6 +6431,12 @@ class Game {
       mkRow('LookY', 0.1, 1.5, 0.02, lookTargetY, (v) => { lookTargetY = v })
     )
     overlay.appendChild(ctrl)
+    // Small FABs: ensure Options/Changelog are clickable over the overlay
+    try {
+      if (this.optionsFab) { this.optionsFab.style.display = 'inline-flex'; (this.optionsFab.style as any).pointerEvents = 'auto' }
+      if (this.changelogFab) { this.changelogFab.style.display = 'inline-flex'; (this.changelogFab.style as any).pointerEvents = 'auto' }
+      if (this.fullscreenBtn) { this.fullscreenBtn.style.display = 'inline-flex'; (this.fullscreenBtn.style as any).pointerEvents = 'auto' }
+    } catch {}
     // Drive tweak panel (Shift+F)
     const drv = document.createElement('div') as HTMLDivElement
     drv.className = 'card'
@@ -6628,9 +6623,9 @@ class Game {
     const cleanup = () => {
       try { window.removeEventListener('keydown', onKey) } catch {}
       try { canvas.removeEventListener('click', onClick) } catch {}
-      try { overlay.removeEventListener('pointerdown', onPointerDown as any) } catch {}
-      try { overlay.removeEventListener('pointermove', onPointerMove as any) } catch {}
-      try { overlay.removeEventListener('pointerup', onPointerUp as any) } catch {}
+      try { canvas.removeEventListener('pointerdown', onPointerDown as any) } catch {}
+      try { canvas.removeEventListener('pointermove', onPointerMove as any) } catch {}
+      try { canvas.removeEventListener('pointerup', onPointerUp as any) } catch {}
       try { cancelAnimationFrame(raf) } catch {}
       try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
       try { renderer.dispose() } catch {}
