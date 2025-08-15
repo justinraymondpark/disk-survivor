@@ -6704,6 +6704,8 @@ class Game {
     let prevA = false
     let raf = 0
     let last = performance.now()
+    // Freeze layout for a brief moment so first render cannot show an intermediate grouping
+    const layoutFreezeUntil = performance.now() + 120
     // removed unused pre-bounce selectAnim (spin handled in timeline)
     const tick = () => {
       const now = performance.now()
@@ -6728,6 +6730,11 @@ class Game {
         const isSel = !!selectTimeline && i === selectTimeline.selIndex
         // Skip overriding transforms on selected during timeline
         if (!isSel) {
+          // During initial freeze, snap meshes exactly to targets to avoid pre-interaction mismatch
+          if (now < layoutFreezeUntil) {
+            f.mesh.position.copy(f.target)
+            f.mesh.rotation.y = f.targetRot
+          } else {
           // Apply drag offset to selected card while dragging; others lerp to target
           if (i === selectIndex && dragging) {
             f.mesh.position.x = f.target.x + dragDX
@@ -6740,6 +6747,7 @@ class Game {
           const tt = performance.now() * 0.001 + f.floatPhase
           f.mesh.position.y = f.target.y + Math.sin(tt) * 0.03
           f.mesh.rotation.x = -0.18 + Math.sin(tt * 1.7) * 0.04
+          }
           // Apply selected offsets after base placement
           if (i === selectIndex) {
             f.mesh.position.x += selOffX
