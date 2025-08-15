@@ -4360,7 +4360,7 @@ class Game {
     const y = parts.find(p => p.type === 'year')!.value
     const m = parts.find(p => p.type === 'month')!.value
     const d = parts.find(p => p.type === 'day')!.value
-    const hh = Number(parts.find(p => p.type === 'hour')!.value)
+    // hour is not used; keep extraction minimal
     const mm = Number(parts.find(p => p.type === 'minute')!.value)
     const slot = Math.floor((mm % 60) / 5)
     return `${y}-${m}-${d}-s${slot}`
@@ -6445,7 +6445,7 @@ class Game {
     }
     window.addEventListener('keydown', onKey)
     let selectTimeline: {
-      start: number; label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS';
+      start: number; label: 'START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS';
       spinDur: number; pauseDur: number; moveDur: number; fadeDur: number;
       startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotZ: number; selIndex: number;
     } | undefined
@@ -6471,7 +6471,7 @@ class Game {
       const sel = floppies[selectIndex]?.mesh
       if (!sel) return
       const selHit = ray.intersectObject(sel, true)[0]
-      if (selHit && !selectTimeline) doSelect(floppies[selectIndex].label)
+      if (selHit && !selectTimeline) doSelect(floppies[selectIndex].label as ('START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS'))
     }
     canvas.addEventListener('click', onClick)
 
