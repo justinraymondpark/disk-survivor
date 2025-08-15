@@ -2793,7 +2793,7 @@ class Game {
       // Controller left/right and A
       const gp = this.input.getActiveGamepad()
       const axisX = this.input.axesLeft.x
-      const moveAxis = Math.abs(axisX) > 0.6 ? Math.sign(axisX) : 0
+      const moveAxis = Math.abs(axisX) > 0.3 ? Math.sign(axisX) : 0
       this.altNavCooldown = Math.max(0, this.altNavCooldown - dt)
       const dpadLeft = !!gp && gp.buttons[14]?.pressed
       const dpadRight = !!gp && gp.buttons[15]?.pressed
@@ -6426,7 +6426,7 @@ class Game {
     backBtn.style.minHeight = 'unset'
     backBtn.style.padding = '6px 10px'
     backBtn.innerHTML = '<strong>Back</strong>'
-    backBtn.onclick = () => overlay.remove()
+    backBtn.onclick = () => { overlay.remove(); this.showAltTitle3DOverlay() }
     btnRow.appendChild(backBtn)
 
     wrap.append(title, desc, mainBox, dailyBox, btnRow)
@@ -6499,7 +6499,7 @@ class Game {
     btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'flex-end'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '8px'
     const backBtn = document.createElement('button') as HTMLButtonElement
     backBtn.className = 'card'; backBtn.innerHTML = '<strong>Back</strong>'
-    backBtn.onclick = () => overlay.remove()
+    backBtn.onclick = () => { overlay.remove(); this.showAltTitle3DOverlay() }
     btnRow.appendChild(backBtn)
     right.append(view, blurb, btnRow)
 
@@ -6663,7 +6663,7 @@ class Game {
     close.style.minHeight = 'unset'
     close.style.padding = '6px 10px'
     close.innerHTML = '<strong>Back</strong>'
-    close.onclick = () => { overlay.remove(); this.altTitleActive = false }
+    close.onclick = () => { overlay.remove(); this.altTitleActive = false; this.showAltTitle3DOverlay() }
     card.append(title, grid, close)
     overlay.appendChild(card)
     this.root.appendChild(overlay)

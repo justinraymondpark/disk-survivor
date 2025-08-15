@@ -99,10 +99,10 @@ Play online: https://garfieldslament.com/
 
 ### Debug mode
 
-- Available from the Start screen as a fourth button: Debug Mode.
+- Available from the 3D Title menu as a button: Debug Mode (the 3D menu is now the default; formerly called Alt Title).
 - Lets you toggle any weapon or upgrade and set desired levels before starting a run.
 - Enforces the same caps as gameplay: max 5 weapons and 5 upgrades.
-- Use B on a controller or the Back button to return to the Start screen.
+- Use B on a controller or the Back button to return to the 3D Title menu.
 
 ### Fonts
 
@@ -175,12 +175,11 @@ Play online: https://garfieldslament.com/
 - Controller navigation
   - Title and pause overlays support d-pad/left stick for horizontal and vertical movement and A/Enter to activate; Start button is ignored on the title so it doesn’t immediately pause.
 
-- Alt Title (3D floppy/drive title)
-  - Built in `showAltTitle()` in `src/game.ts`. Uses a small Three.js scene: drive slot plus a stack of floppies with CanvasTexture labels (“START”, “DAILY DISK”, “DEBUG MODE”).
-  - Current tuning: group scale ≈ 4x; floppies tightened and centered under the slot.
-  - An opaque background plane is attached directly to the camera, oversized to fully cover the viewport. Depth test/write is disabled and `renderOrder` is high so it draws over game/UI.
-  - A/Enter has a short debounce after entering the Alt Title to prevent immediate selection. Left/right (or d-pad) cycles between floppies; A/Enter inserts the front disk with a brief ease-in-out animation, then dispatches to the chosen mode.
-  - If it needs reframing, adjust `g.scale.set(...)` and the stack target positions in `cycleAltFloppies(...)`.
+- 3D Title menu (formerly “Alt Title”)
+  - Implemented by `showAltTitle3DOverlay()` in `src/game.ts`. Uses a separate Three.js overlay scene: floppy drive slot plus a stack of textured floppies (Start, Daily, Daily 2.0, Debug, Leaderboards, Bug Report).
+  - Tuned for multiple aspect ratios; includes a Shift+F panel to tweak slot/title positions and selected/others offsets.
+  - An opaque background plane covers gameplay/UI while the menu is active.
+  - Navigation: Left/right (or A/D) cycles; d-pad or left stick also cycles; tap/click on the selected floppy to insert; controller A confirms. Drag swipes move one disk per gesture.
 
 ### House rules for future edits
 
