@@ -1775,6 +1775,7 @@ class Game {
     this.changelogOverlay = document.createElement('div') as HTMLDivElement
     this.changelogOverlay.className = 'overlay'
     this.changelogOverlay.style.display = 'none'
+    ;(this.changelogOverlay.style as any).zIndex = '3000'
     this.root.appendChild(this.changelogOverlay)
 
     // Minimal dev debug HUD (Shift+D toggles)
@@ -6390,7 +6391,13 @@ class Game {
       if (Math.abs(dxNorm) > 0.2) {
         cycle(dxNorm > 0 ? -1 : 1)
       } else if (dt < 250) {
-        if (!selectTimeline) doSelect(floppies[selectIndex].label)
+        // Only select if tap hits the currently selected disk
+        const rectC = canvas.getBoundingClientRect()
+        mouse.x = ((ev.clientX - rectC.left) / rectC.width) * 2 - 1
+        mouse.y = -(((ev.clientY - rectC.top) / rectC.height) * 2 - 1)
+        ray.setFromCamera(mouse, camera)
+        const sel = floppies[selectIndex]?.mesh
+        if (sel && ray.intersectObject(sel, true).length > 0 && !selectTimeline) doSelect(floppies[selectIndex].label)
       }
       swipeActive = false
       dragging = false
