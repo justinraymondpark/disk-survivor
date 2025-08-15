@@ -1,3 +1,9 @@
+## 0.1.29
+- Removal: Removed two weapons from the game
+  - Cursor Beam (🖱️)
+  - Antivirus Sweep (🧹)
+  - Purged from weapon lists, debug loadout, level-up choices, inventory UI, loop logic, and emoji mapping
+
 ## 0.1.28
 - Weapons: add five new weapons (initial balance, visuals TBD)
   - Defrag Spiral (🌀): orbiting sector beams that damage in a spiral near the player

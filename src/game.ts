@@ -619,20 +619,7 @@ class Game {
   popupCount = 5
   popupDps = 7
 
-  // Cursor Beam
-  cursorBeamLevel = 0
-  cursorBeamRange = 7
-  cursorBeamDps = 10
-  cursorBeamWidth = 0.45
-
-  // Antivirus Sweep
-  sweepLevel = 0
-  sweepOn = true
-  sweepTimer = 0
-  sweepOnDuration = 1.1
-  sweepOffDuration = 0.9
-  sweepRadius = 2.3
-  sweepDps = 12
+  
   paintDuration = 1.3
   paintGap = 0.35
   paintRadius = 1.38
@@ -1116,8 +1103,6 @@ class Game {
       'Defrag Spiral': '🌀',
       'Zip Bomb': '🧨',
       'Pop-up Storm': '📣',
-      'Cursor Beam': '🖱️',
-      'Antivirus Sweep': '🧹',
       'Turbo CPU': '⚡',
       'SCSI Splitter': '🔀',
       'Overclocked Bus': '🚌',
@@ -1146,7 +1131,7 @@ class Game {
       ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
       return row
     }
-    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep']
+    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm']
     const upgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
     weapons.forEach(w => form.appendChild(makeRow(w, 'weapon')))
     upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
@@ -1244,8 +1229,6 @@ class Game {
           else if (w.name === 'Defrag Spiral') this.levelUpDefrag()
           else if (w.name === 'Zip Bomb') this.levelUpZip()
           else if (w.name === 'Pop-up Storm') this.levelUpPopup()
-          else if (w.name === 'Cursor Beam') this.levelUpCursorBeam()
-          else if (w.name === 'Antivirus Sweep') this.levelUpSweep()
         }
       }
       for (const u of selectedUpgrades) {
@@ -1997,8 +1980,6 @@ class Game {
       this.projectiles.push({ mesh, velocity: dir.multiplyScalar(14), alive: true, ttl: 1.6, damage: this.projectileDamage, pierce: this.projectilePierce, last: mesh.position.clone(), kind: 'bullet' })
     }
     this.audio.playShoot()
-    // Cursor Beam gets a momentary width boost on manual fire (visual gameplay feedback)
-    if (this.ownedWeapons.has('Cursor Beam')) this.cursorBeamWidth = Math.min(1.2, this.cursorBeamWidth + 0.08)
   }
 
   dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp') {
@@ -2103,9 +2084,7 @@ class Game {
         w === 'Dot Matrix' ? (this.sideBullets ? 1 + 0 : 1) :
         w === 'Defrag Spiral' ? Math.max(1, this.defragLevel || 1) :
         w === 'Zip Bomb' ? Math.max(1, this.zipLevel || 1) :
-        w === 'Pop-up Storm' ? Math.max(1, this.popupLevel || 1) :
-        w === 'Cursor Beam' ? Math.max(1, this.cursorBeamLevel || 1) :
-        w === 'Antivirus Sweep' ? Math.max(1, this.sweepLevel || 1) : 1
+        w === 'Pop-up Storm' ? Math.max(1, this.popupLevel || 1) : 1
       wslots.appendChild(this.makeSlotIcon(`${w} Lv.${lvl}`))
     }
     for (const [u, lvl] of this.ownedUpgrades) {
@@ -2179,10 +2158,6 @@ class Game {
         pool.push({ title: 'Zip Bomb', desc: 'Sticky charge that bursts into fragments', icon: '🧨', apply: () => this.addWeapon('Zip Bomb') })
       if (!this.ownedWeapons.has('Pop-up Storm'))
         pool.push({ title: 'Pop-up Storm', desc: 'Random pop-ups that body-block and deal touch damage', icon: '📣', apply: () => this.addWeapon('Pop-up Storm') })
-      if (!this.ownedWeapons.has('Cursor Beam'))
-        pool.push({ title: 'Cursor Beam', desc: 'Thin beam toward aim target', icon: '🖱️', apply: () => this.addWeapon('Cursor Beam') })
-      if (!this.ownedWeapons.has('Antivirus Sweep'))
-        pool.push({ title: 'Antivirus Sweep', desc: 'Pulsing circular sweep around player', icon: '🧹', apply: () => this.addWeapon('Antivirus Sweep') })
     }
 
     // Upgrades (max 5 unique; upgrades can level)
@@ -2218,11 +2193,9 @@ class Game {
     if (this.ownedWeapons.has('Defrag Spiral')) pool.push({ title: 'Defrag Spiral (Level up)', desc: '+1 arm, +radius, +DPS', icon: '🌀', apply: () => this.levelUpDefrag() })
     if (this.ownedWeapons.has('Zip Bomb')) pool.push({ title: 'Zip Bomb (Level up)', desc: 'More fragments, higher damage, shorter cooldown', icon: '🧨', apply: () => this.levelUpZip() })
     if (this.ownedWeapons.has('Pop-up Storm')) pool.push({ title: 'Pop-up Storm (Level up)', desc: 'More pop-ups, longer duration, higher DPS', icon: '📣', apply: () => this.levelUpPopup() })
-    if (this.ownedWeapons.has('Cursor Beam')) pool.push({ title: 'Cursor Beam (Level up)', desc: '+range, +width, +DPS', icon: '🖱️', apply: () => this.levelUpCursorBeam() })
-    if (this.ownedWeapons.has('Antivirus Sweep')) pool.push({ title: 'Antivirus Sweep (Level up)', desc: 'Wider radius, +DPS, higher uptime', icon: '🧹', apply: () => this.levelUpSweep() })
 
     // Filter out entries that would be invalid due to caps
-    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep']
+    const allWeapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm']
     const isWeaponName = (t: string) => allWeapons.includes(t)
     const isWeaponLevelUp = (t: string) => /\(\s*Level up\s*\)$/i.test(t)
     const canApply = (title: string) => {
@@ -2274,7 +2247,7 @@ class Game {
   isWeapon(name: string) {
     return [
       'CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe',
-      'Defrag Spiral','Zip Bomb','Pop-up Storm','Cursor Beam','Antivirus Sweep'
+      'Defrag Spiral','Zip Bomb','Pop-up Storm'
     ].includes(name)
   }
 
@@ -2393,21 +2366,7 @@ class Game {
       this.popupCount = 4
       this.popupDps = 7
     }
-    if (name === 'Cursor Beam' && this.cursorBeamLevel === 0) {
-      this.cursorBeamLevel = 1
-      this.cursorBeamRange = 7
-      this.cursorBeamDps = 7
-      this.cursorBeamWidth = 0.45
-    }
-    if (name === 'Antivirus Sweep' && this.sweepLevel === 0) {
-      this.sweepLevel = 1
-      this.sweepOn = true
-      this.sweepTimer = 0
-      this.sweepOnDuration = 1.1
-      this.sweepOffDuration = 0.9
-      this.sweepRadius = 2.3
-      this.sweepDps = 12
-    }
+    // Removed: Cursor Beam and Antivirus Sweep
     this.updateInventoryUI()
   }
 
@@ -3555,77 +3514,8 @@ class Game {
       }
     }
 
-    // Cursor Beam: continuous thin beam towards current aim with visible quad
-    if (this.ownedWeapons.has('Cursor Beam') && this.cursorBeamLevel > 0) {
-      // Build aim from right stick; fallback to facing
-      let aim = new THREE.Vector3()
-      const rx = this.input.axesRight.x
-      const ry = this.input.axesRight.y
-      if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
-        const yawScreen = Math.atan2(-rx, -ry)
-        const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
-        const camYaw = Math.atan2(camDir.x, camDir.z)
-        const yawWorld = yawScreen + camYaw
-        aim.set(Math.sin(yawWorld), 0, Math.cos(yawWorld)).normalize()
-      } else {
-        aim.set(0, 0, 1).applyQuaternion(this.player.group.quaternion).setY(0).normalize()
-      }
-      if (aim.lengthSq() > 0) {
-        const origin = this.player.group.position.clone()
-        const dir = aim.clone().normalize()
-        // Visual beam
-        const len = this.cursorBeamRange
-        const geom = new THREE.PlaneGeometry(len, Math.max(0.1, this.cursorBeamWidth))
-        const mat = new THREE.MeshBasicMaterial({ color: 0x99e0ff, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
-        const beam = new THREE.Mesh(geom, mat)
-        beam.rotation.x = -Math.PI / 2
-        const mid = origin.clone().add(dir.clone().multiplyScalar(len * 0.5))
-        beam.position.set(mid.x, 0.18, mid.z)
-        const yaw = Math.atan2(dir.x, dir.z)
-        beam.rotation.z = yaw
-        this.scene.add(beam)
-        setTimeout(() => { this.scene.remove(beam); (beam.material as any).dispose?.(); (beam.geometry as any).dispose?.() }, 60)
-        for (const e of this.enemies) {
-          if (!e.alive) continue
-          const to = e.mesh.position.clone().sub(origin); to.y = 0
-          const proj = dir.clone().multiplyScalar(Math.max(0, Math.min(this.cursorBeamRange, to.dot(dir))))
-          const closest = origin.clone().add(proj)
-          const d2 = closest.distanceToSquared(e.mesh.position.clone().setY(0))
-          if (d2 < (this.cursorBeamWidth * 0.7) * (this.cursorBeamWidth * 0.7)) {
-            const dmg = this.cursorBeamDps * 1.0 * dt
-            e.hp -= dmg
-            this.onEnemyDamaged(e, dmg)
-          }
-        }
-      }
-    }
-
-    // Antivirus Sweep: pulsing circle around player with ring visuals
-    if (this.ownedWeapons.has('Antivirus Sweep') && this.sweepLevel > 0) {
-      this.sweepTimer += dt
-      const phase = this.sweepOn ? this.sweepOnDuration : this.sweepOffDuration
-      if (this.sweepTimer >= phase) { this.sweepTimer = 0; this.sweepOn = !this.sweepOn }
-      if (this.sweepOn) {
-        const r = this.sweepRadius
-        // Visual ring
-        const ringGeom = new THREE.RingGeometry(r * 0.95, r, 48)
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x88ffcc, transparent: true, opacity: 0.32, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
-        const ring = new THREE.Mesh(ringGeom, ringMat)
-        ring.rotation.x = -Math.PI / 2
-        ring.position.copy(this.player.group.position).setY(0.02)
-        this.scene.add(ring)
-        setTimeout(() => { this.scene.remove(ring); ringGeom.dispose(); (ring.material as any).dispose?.() }, 90)
-        for (const e of this.enemies) {
-          if (!e.alive) continue
-          const d2 = e.mesh.position.clone().setY(0).distanceToSquared(this.player.group.position.clone().setY(0))
-          if (d2 < r * r) {
-            const dmg = this.sweepDps * dt
-            e.hp -= dmg
-            this.onEnemyDamaged(e, dmg)
-          }
-        }
-      }
-    }
+    // Cursor Beam removed
+    // Antivirus Sweep removed
 
     // Sata Cable Tail update (follow and flap)
     if (this.ownedWeapons.has('Sata Cable Tail') && this.sataTailGroup && this.sataTailSegments.length > 0) {
@@ -6144,20 +6034,7 @@ class Game {
     this.popupDps += 2
   }
 
-  private levelUpCursorBeam() {
-    this.cursorBeamLevel += 1
-    this.cursorBeamRange = Math.min(12, this.cursorBeamRange + 1)
-    this.cursorBeamDps += 2
-    this.cursorBeamWidth = Math.min(0.9, this.cursorBeamWidth + 0.05)
-  }
-
-  private levelUpSweep() {
-    this.sweepLevel += 1
-    this.sweepRadius = Math.min(4.5, this.sweepRadius + 0.3)
-    this.sweepDps += 3
-    this.sweepOnDuration = Math.min(2.0, this.sweepOnDuration + 0.1)
-    this.sweepOffDuration = Math.max(0.5, this.sweepOffDuration - 0.05)
-  }
+  // Removed: Cursor Beam and Antivirus Sweep level-ups
 
   private levelUpPaint() {
     this.paintLevel += 1
@@ -6259,8 +6136,6 @@ class Game {
       case 'Defrag Spiral': return '🌀'
       case 'Zip Bomb': return '🧨'
       case 'Pop-up Storm': return '📣'
-      case 'Cursor Beam': return '🖱️'
-      case 'Antivirus Sweep': return '🧹'
       default: return ''
     }
   }
