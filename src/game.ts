@@ -6441,6 +6441,8 @@ class Game {
       mkRow('LookY', 0.1, 1.5, 0.02, lookTargetY, (v) => { lookTargetY = v })
     )
     overlay.appendChild(ctrl)
+    ;(ctrl.style as any).zIndex = '4000'
+    ;(ctrl.style as any).pointerEvents = 'auto'
     // Small FABs: ensure Options/Changelog are clickable over the overlay
     try {
       if (this.optionsFab) { this.optionsFab.style.display = 'inline-flex'; (this.optionsFab.style as any).pointerEvents = 'auto' }
@@ -6456,6 +6458,8 @@ class Game {
     drv.style.minWidth = '240px'
     drv.style.padding = '10px'
     drv.style.display = 'none'
+    ;(drv.style as any).zIndex = '4000'
+    ;(drv.style as any).pointerEvents = 'auto'
     let driveX = driveGroup.position.x
     let driveY = driveGroup.position.y
     let driveZ = driveGroup.position.z
