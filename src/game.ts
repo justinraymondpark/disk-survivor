@@ -632,7 +632,7 @@ class Game {
 		this.scene.remove(bg)
 		;(bg.geometry as THREE.BufferGeometry).dispose()
 		const matAny = bg.material as (THREE.Material | THREE.Material[])
-		if (Array.isArray(matAny)) matAny.forEach((m) => m.dispose())
+		if (Array.isArray(matAny)) matAny.forEach((m: any) => m?.dispose?.())
 		else matAny.dispose()
 		this.altBgMesh = undefined
 	}
@@ -2923,8 +2923,8 @@ class Game {
       const rx = this.input.axesRight.x
       const ry = this.input.axesRight.y
       if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
-        // Screen-up mapping: convert stick to screen yaw, then add camera world yaw
-        const yawScreen = Math.atan2(rx, -ry)
+        // Screen-up mapping: stick to screen yaw, then rotate by camera yaw (ensure left=left)
+        const yawScreen = Math.atan2(-rx, -ry)
         const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
         const camYaw = Math.atan2(camDir.x, camDir.z)
         let yaw = yawScreen + camYaw
@@ -3365,7 +3365,6 @@ class Game {
         }
       }
     }
-
     // Paint.exe update
     if (this.ownedWeapons.has('Paint.exe') && this.paintLevel > 0) {
       this.paintTimer += dt
@@ -4156,7 +4155,6 @@ class Game {
 
     // Magic Lasso update
     if (this.hasLasso) this.updateLasso()
-
     // Shield Wall blocking
     if (this.hasShield && this.shieldMesh) {
       // Flicker cycle
