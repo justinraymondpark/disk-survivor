@@ -2939,7 +2939,7 @@ class Game {
     if (!this.themeChosen) {
       const mv = this.input.getMoveVector()
       this.player.group.position.add(new THREE.Vector3(mv.x, 0, mv.y).multiplyScalar(this.player.speed * dt))
-      this.checkThemeTiles()
+      if (!this.isDailyV2) this.checkThemeTiles(); else { this.themeChosen = true; this.themeLocked = true }
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Allow full rotation control before theme selection
       this.input.updateGamepad()
@@ -3085,8 +3085,8 @@ class Game {
       this.spawnGiant()
     }
 
-    // Obstacles pushback (AABB resolve on Jeeves; legacy soft push elsewhere)
-    if (this.currentTheme === 'jeeves') {
+    // Obstacles pushback (AABB resolve on Jeeves or DailyV2)
+    if (this.currentTheme === 'jeeves' || this.isDailyV2) {
       const cs = this.obstacleCellSize
       const pos = this.player.group.position
       const key = `${Math.floor(pos.x / cs)},${Math.floor(pos.z / cs)}`
@@ -3120,8 +3120,8 @@ class Game {
         }
       }
     }
-    // Optional: enemy→obstacle collision on Jeeves only (simple grid lookup)
-    if (this.currentTheme === 'jeeves') {
+    // Optional: enemy→obstacle collision on Jeeves/DailyV2 (simple grid lookup)
+    if (this.currentTheme === 'jeeves' || this.isDailyV2) {
       const cs = this.obstacleCellSize
       const resolve = (e: Enemy) => {
         const pos = e.mesh.position
@@ -3483,8 +3483,8 @@ class Game {
       const speedMul = this.kernelPanic ? 1.4 : 1.0
       for (const e of this.enemies) if (e.alive) e.speed = (e.baseSpeed ?? e.speed) * speedMul
 
-      // Jeeves climbing behavior (lightweight)
-      if (this.currentTheme === 'jeeves') {
+      // Jeeves/DailyV2 climbing behavior (lightweight)
+      if (this.currentTheme === 'jeeves' || this.isDailyV2) {
         const cs = this.obstacleCellSize
         for (const e of this.enemies) {
           if (!e.alive || !e.canClimb) continue
@@ -4050,8 +4050,8 @@ class Game {
       }
       p.mesh.position.addScaledVector(p.velocity, dt)
 
-      // Bullet vs Jeeves obstacles (AABB test, stop bullet)
-      if (this.currentTheme === 'jeeves') {
+      // Bullet vs Jeeves/DailyV2 obstacles (AABB test, stop bullet)
+      if (this.currentTheme === 'jeeves' || this.isDailyV2) {
         const csj = this.obstacleCellSize
         const pk = `${Math.floor(p.mesh.position.x / csj)},${Math.floor(p.mesh.position.z / csj)}`
         const neighbors = [pk]
