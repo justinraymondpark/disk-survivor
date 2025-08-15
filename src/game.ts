@@ -683,6 +683,8 @@ class Game {
   pendingLevelUps = 0
   // Debug toggles
   debugShowDamage = false
+  // After starting from title/alt-title, force-hide any stray overlays for a short window
+  private overlayUnstuckUntil = 0
   // Dev debug HUD
   private dbgHud?: HTMLDivElement
   private dbgHudVisible = false
@@ -1736,6 +1738,7 @@ class Game {
       this.titleOverlay.style.display = 'none'
       this.showTitle = false
       this.pauseDebounceUntil = performance.now() + 400
+      this.overlayUnstuckUntil = performance.now() + 1500
       // start default music; theme selection will switch later
       this.audio.startMusic('default' as ThemeKey)
       // Safety: ensure any lingering alt planes are gone
@@ -2629,6 +2632,12 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
+    // If we just left title/alt, make sure no overlay is visible
+    if (now < this.overlayUnstuckUntil) {
+      try { if (this.titleOverlay) this.titleOverlay.style.display = 'none' } catch {}
+      try { if (this.overlay) this.overlay.style.display = (this.isPausedForLevelUp ? 'flex' : 'none') } catch {}
+      try { if (this.pauseOverlay && !this.isPaused) this.pauseOverlay.style.display = 'none' } catch {}
+    }
     // Update debug globals and HUD if enabled
     try {
       const dbg: any = (window as any).__dbg || ((window as any).__dbg = {})
