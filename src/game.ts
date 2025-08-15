@@ -1407,8 +1407,7 @@ class Game {
     ;(window as any).gameCanvas = canvas
     this.root.appendChild(canvas)
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false })
-    ;(window as any).__renderer = this.renderer
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     // Account for dynamic viewport on mobile (address bars)
@@ -1446,14 +1445,10 @@ class Game {
     canvasEl.addEventListener('webglcontextlost', (e: Event) => {
       e.preventDefault()
       this.contextLost = true
-      try { this.renderer.forceContextRestore?.() } catch {}
     })
     canvasEl.addEventListener('webglcontextrestored', () => {
       this.contextLost = false
-      try { this.renderer.info.reset?.() } catch {}
       if (this.groundTex) this.groundTex.needsUpdate = true
-      // Force immediate frame after restore
-      try { this.renderer.clear(true, true, true); this.renderer.render(this.scene, this.camera) } catch {}
     })
 
     this.grid = new THREE.GridHelper(200, 200, 0x334455, 0x223344)
@@ -2676,12 +2671,7 @@ class Game {
     const now = performance.now()
     const dt = Math.min(0.033, (now - this.lastTime) / 1000)
     this.lastTime = now
-    try {
-      const c = this.renderer.domElement as HTMLCanvasElement
-      this.renderer.setViewport(0, 0, c.width || 0, c.height || 0)
-      this.renderer.setScissorTest(false)
-      this.renderer.clear(true, true, true)
-    } catch {}
+    try { this.renderer.clear(true, true, true) } catch {}
     // Per-frame: if canvas/backing size mismatches CSS, refit
     try {
       const c = this.renderer.domElement as HTMLCanvasElement
@@ -4283,7 +4273,7 @@ class Game {
     // Update frustum from current camera
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
-    try { this.renderer.render(this.scene, this.camera) } catch {}
+    if (!this.contextLost) this.renderer.render(this.scene, this.camera)
     // Lightweight perf overlay
     if (this.debugPerfOverlay) {
       const now = performance.now()
