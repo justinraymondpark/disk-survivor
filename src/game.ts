@@ -6349,7 +6349,7 @@ class Game {
           // Debounce accidental double taps/clicks for 350ms
           const until = performance.now() + 350
           const prev = onPointerDown
-          const guard = (ev2: PointerEvent) => { if (performance.now() < until) return; overlay.removeEventListener('pointerdown', guard as any); overlay.addEventListener('pointerdown', prev as any, { passive: true } as any) }
+          const guard = () => { if (performance.now() < until) return; overlay.removeEventListener('pointerdown', guard as any); overlay.addEventListener('pointerdown', prev as any, { passive: true } as any) }
           overlay.removeEventListener('pointerdown', prev as any)
           overlay.addEventListener('pointerdown', guard as any, { passive: true } as any)
         }
