@@ -6131,7 +6131,8 @@ class Game {
     const daily = makeBtn('Daily Disk', () => { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.pauseDebounceUntil = performance.now() + 400; this.audio.startMusic('default' as ThemeKey) })
     const dbg = makeBtn('Debug Mode', () => { overlay.remove(); this.altTitleActive = false; this.showDebugPanel() })
     const boards = makeBtn('Leaderboards', () => { overlay.remove(); this.altTitleActive = false; this.showLeaderboards() })
-    grid.append(start, daily, dbg, boards)
+    const beta3d = makeBtn('3D (beta)', () => { overlay.remove(); this.showAltTitle3DOverlay() })
+    grid.append(start, daily, dbg, boards, beta3d)
     const close = document.createElement('button') as HTMLButtonElement
     close.className = 'card'
     close.style.width = 'auto'
@@ -6142,6 +6143,165 @@ class Game {
     card.append(title, grid, close)
     overlay.appendChild(card)
     this.root.appendChild(overlay)
+  }
+
+  private showAltTitle3DOverlay() {
+    // Use a separate canvas and renderer so we never touch the main scene/camera
+    this.altTitleActive = true
+    const overlay = document.createElement('div') as HTMLDivElement
+    overlay.className = 'overlay'
+    overlay.style.display = 'flex'
+    overlay.style.background = 'rgba(0,0,0,0.6)'
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'absolute'
+    canvas.style.inset = '0'
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+    overlay.appendChild(canvas)
+    // Top-right back button
+    const back = document.createElement('button') as HTMLButtonElement
+    back.className = 'card'
+    back.style.position = 'absolute'
+    back.style.top = '12px'
+    back.style.right = '12px'
+    back.style.width = 'auto'
+    back.style.minHeight = 'unset'
+    back.style.padding = '6px 10px'
+    back.innerHTML = '<strong>Back</strong>'
+    back.onclick = () => { cleanup(); overlay.remove(); this.altTitleActive = false }
+    overlay.appendChild(back)
+    this.root.appendChild(overlay)
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+    camera.position.set(0, 1.8, 3.4)
+    camera.lookAt(0, 0.6, 0)
+    scene.add(new THREE.AmbientLight(0xffffff, 1))
+    // Simple ground to catch some color
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
+    ground.rotation.x = -Math.PI / 2
+    scene.add(ground)
+    const rsz = () => {
+      const w = Math.max(1, overlay.clientWidth)
+      const h = Math.max(1, overlay.clientHeight)
+      renderer.setSize(w, h, false)
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+    }
+    rsz(); new ResizeObserver(rsz).observe(overlay)
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['BOARD','DEBUG','DAILY','START']
+    const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DEBUG'|'BOARD'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
+    const makeFloppy = (label: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
+      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : 'debugmode.png'
+      const loader = new THREE.TextureLoader()
+      const texTop = loader.load(`/textures/title/${texName}`)
+      ;(texTop as any).colorSpace = THREE.SRGBColorSpace
+      texTop.minFilter = THREE.LinearFilter
+      texTop.magFilter = THREE.NearestFilter
+      texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : 0xc1c1c1
+      const matTop = new THREE.MeshBasicMaterial({ map: texTop })
+      const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
+      const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
+      matSide.color.offsetHSL(0, 0, -0.1)
+      const geom = new THREE.BoxGeometry(1.8, 0.08, 1.8)
+      const groups: { start: number; count: number; materialIndex: number }[] = []
+      geom.clearGroups()
+      groups.push({ start: 2 * 6, count: 6, materialIndex: 0 })
+      groups.push({ start: 3 * 6, count: 6, materialIndex: 1 })
+      groups.push({ start: 0 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 1 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 4 * 6, count: 6, materialIndex: 2 })
+      groups.push({ start: 5 * 6, count: 6, materialIndex: 2 })
+      for (const g of groups) geom.addGroup(g.start, g.count, g.materialIndex)
+      const body = new THREE.Mesh(geom, [matTop, matBottom, matSide])
+      return body
+    }
+    const floppiesGroup = new THREE.Group()
+    scene.add(floppiesGroup)
+    items.forEach((label, i) => {
+      const m = makeFloppy(label)
+      const offsetsX = [0, 0.62, -0.62, 1.24]
+      const offsetsY = [0.90, -0.10, -0.12, -0.14]
+      const offsetsZ = [0.60, -0.20, -0.28, -0.36]
+      const baseX = offsetsX[i] ?? (i * 0.62)
+      const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
+      const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
+      m.position.set(baseX, baseY, baseZ)
+      m.scale.setScalar(1.9)
+      floppiesGroup.add(m)
+      floppies.push({ mesh: m, label, target: m.position.clone(), targetRot: 0, floatPhase: Math.random() * Math.PI * 2 })
+    })
+    let selectIndex = 0
+    const cycle = (dir: number) => {
+      if (dir === 0) return
+      selectIndex = (selectIndex - dir + floppies.length) % floppies.length
+      // Recompute targets to fan around selection
+      for (let i = 0; i < floppies.length; i++) {
+        const idx = (i - selectIndex + floppies.length) % floppies.length
+        const f = floppies[i]
+        const offsetsX = [0, 0.62, -0.62, 1.24]
+        const offsetsY = [0.90, -0.10, -0.12, -0.14]
+        const offsetsZ = [0.60, -0.20, -0.28, -0.36]
+        const baseX = offsetsX[idx] ?? (idx * 0.62)
+        const baseY = 0.05 + (idx * 0.16) + (offsetsY[idx] ?? 0)
+        const baseZ = 0.66 - (idx * 0.04) + (offsetsZ[idx] ?? 0)
+        f.target.set(baseX, baseY, baseZ)
+        f.targetRot = 0.06 * idx
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (!overlay.parentElement) { window.removeEventListener('keydown', onKey); return }
+      if (e.key === 'ArrowRight') cycle(1)
+      else if (e.key === 'ArrowLeft') cycle(-1)
+      else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
+    }
+    window.addEventListener('keydown', onKey)
+    const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
+      cleanup(); overlay.remove(); this.altTitleActive = false
+      if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+      else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+      else if (lbl === 'BOARD') this.showLeaderboards()
+      else this.showDebugPanel()
+    }
+    // Simple picking on click
+    const ray = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+    const onClick = (ev: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1)
+      ray.setFromCamera(mouse, camera)
+      const meshes = floppies.map(f => f.mesh)
+      const hit = ray.intersectObjects(meshes, true)[0]
+      if (hit) {
+        const idx = meshes.findIndex(m => (hit.object as any) === m || m.children.includes(hit.object as any))
+        if (idx >= 0) selectIndex = idx
+        doSelect(floppies[selectIndex].label)
+      }
+    }
+    canvas.addEventListener('click', onClick)
+    let raf = 0
+    const tick = () => {
+      for (const f of floppies) {
+        f.mesh.position.lerp(f.target, 0.12)
+        f.mesh.rotation.y += (f.targetRot - f.mesh.rotation.y) * 0.12
+        const t = performance.now() * 0.001 + f.floatPhase
+        f.mesh.position.y = f.target.y + Math.sin(t) * 0.03
+        f.mesh.rotation.x = -0.18 + Math.sin(t * 1.7) * 0.04
+      }
+      renderer.render(scene, camera)
+      if (overlay.parentElement) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    const cleanup = () => {
+      try { window.removeEventListener('keydown', onKey) } catch {}
+      try { canvas.removeEventListener('click', onClick) } catch {}
+      try { cancelAnimationFrame(raf) } catch {}
+      try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
+      try { renderer.dispose() } catch {}
+    }
   }
 
   private updateHitCounter() {
