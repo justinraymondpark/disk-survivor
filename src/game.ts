@@ -6174,9 +6174,21 @@ class Game {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100)
-    camera.position.set(0, 2.8, 5.8)
-    let lookTargetY = 0.5
+    const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 100)
+    camera.position.set(0, 4.0, 4.0)
+    let lookTargetY = 0.2
+    // Base FOV controlled by slider; applyFov() adds extra on narrow screens
+    let baseFov = 70
+    const applyFov = () => {
+      const w = Math.max(1, overlay.clientWidth)
+      const h = Math.max(1, overlay.clientHeight)
+      const aspect = w / h
+      let extra = 0
+      if (aspect < 0.65) extra = 20
+      else if (aspect < 0.85) extra = 10
+      camera.fov = Math.min(100, baseFov + extra)
+      camera.updateProjectionMatrix()
+    }
     camera.lookAt(0, lookTargetY, 0)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
     // Simple ground to catch some color
@@ -6188,7 +6200,7 @@ class Game {
       const h = Math.max(1, overlay.clientHeight)
       renderer.setSize(w, h, false)
       camera.aspect = w / h
-      camera.updateProjectionMatrix()
+      applyFov()
     }
     rsz(); new ResizeObserver(rsz).observe(overlay)
     const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['BOARD','DEBUG','DAILY','START']
@@ -6363,10 +6375,11 @@ class Game {
       return row
     }
     ctrl.append(
-      mkRow('FOV', 35, 70, 1, camera.fov, (v) => { camera.fov = v; camera.updateProjectionMatrix() }),
-      mkRow('CamY', 1.2, 4.0, 0.05, camera.position.y, (v) => { camera.position.y = v }),
-      mkRow('CamZ', 3.0, 8.0, 0.05, camera.position.z, (v) => { camera.position.z = v }),
-      mkRow('LookY', 0.2, 1.2, 0.02, lookTargetY, (v) => { lookTargetY = v })
+      mkRow('FOV', 35, 100, 1, baseFov, (v) => { baseFov = v; applyFov() }),
+      mkRow('CamY', 1.2, 6.0, 0.05, camera.position.y, (v) => { camera.position.y = v }),
+      mkRow('CamZ', 2.0, 10.0, 0.05, camera.position.z, (v) => { camera.position.z = v }),
+      mkRow('CamX', -3.0, 3.0, 0.05, camera.position.x, (v) => { camera.position.x = v }),
+      mkRow('LookY', 0.1, 1.5, 0.02, lookTargetY, (v) => { lookTargetY = v })
     )
     overlay.appendChild(ctrl)
     // Controller navigation
