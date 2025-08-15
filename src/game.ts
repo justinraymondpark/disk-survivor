@@ -6314,50 +6314,68 @@ class Game {
     }
     window.addEventListener('keydown', onKey)
     const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
-      // Fade others
       const sel = floppies[selectIndex]
-      floppies.forEach((f) => {
-        if (f !== sel) {
-          const m: any = f.mesh
-          const applyAlpha = (obj: any, a: number) => {
-            if (obj && obj.material) {
-              const mat = obj.material as any
-              if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
-              else { mat.transparent = true; mat.opacity = a }
-            }
-            if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a))
-          }
-          applyAlpha(m, 0)
-          m.visible = false
+      const others = floppies.filter((f) => f !== sel)
+      // Helpers
+      const applyAlpha = (obj: any, a: number, recursive = false) => {
+        if (obj && obj.material) {
+          const mat = obj.material as any
+          if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
+          else { mat.transparent = true; mat.opacity = a }
         }
-      })
-      // Cute spin + scoot toward drive slot
+        if (recursive && obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a, true))
+      }
+      const easeInOutSine = (x: number) => -(Math.cos(Math.PI * Math.max(0, Math.min(1, x))) - 1) / 2
+      const easeInOutCubic = (x: number) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+
+      // Targets
       const slot = scene.getObjectByName('slot') as THREE.Mesh
       const targetWorld = slot ? slot.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0.3)
+      const endLocal = floppiesGroup.worldToLocal(targetWorld.clone())
       const startPos = sel.mesh.position.clone()
-      const endPos = targetWorld.clone()
-      const startRotY = sel.mesh.rotation.y
-      const spinTurns = 1.5
-      const startT = performance.now()
-      const dur = 520
-      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
-      const anim = () => {
-        const u = Math.min(1, (performance.now() - startT) / dur)
-        const e = easeOut(u)
-        const p = new THREE.Vector3().lerpVectors(startPos, endPos, e)
-        sel.mesh.position.copy(p)
-        sel.mesh.rotation.y = startRotY + e * (Math.PI * 2 * spinTurns)
-        if (u < 1 && overlay.parentElement) requestAnimationFrame(anim)
-        else {
+      const startRotX = sel.mesh.rotation.x
+
+      const spinDur = 600
+      const pauseDur = 220
+      const moveDur = 1000
+      const fadeDur = 700
+      const t0 = performance.now()
+
+      const tick = () => {
+        const now = performance.now()
+        const t = now - t0
+        // Slow fade of other disks
+        const fU = Math.max(0, Math.min(1, t / fadeDur))
+        const alpha = 1 - fU
+        for (const o of others) {
+          applyAlpha(o.mesh, alpha, true)
+          if (alpha <= 0.02) o.mesh.visible = false
+        }
+        if (t < spinDur) {
+          // Spin selected on X once using smooth ease
+          const u = t / spinDur
+          const e = easeInOutSine(u)
+          sel.mesh.rotation.x = startRotX + e * (Math.PI * 2)
+        } else if (t < spinDur + pauseDur) {
+          // brief hold
+        } else if (t < spinDur + pauseDur + moveDur) {
+          const mT = t - spinDur - pauseDur
+          const u = mT / moveDur
+          const e = easeInOutCubic(u)
+          const p = new THREE.Vector3().lerpVectors(startPos, endLocal, e)
+          sel.mesh.position.copy(p)
+        } else {
           // Done: proceed
           cleanup(); overlay.remove(); this.altTitleActive = false
           if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'BOARD') this.showLeaderboards()
           else this.showDebugPanel()
+          return
         }
+        if (overlay.parentElement) requestAnimationFrame(tick)
       }
-      requestAnimationFrame(anim)
+      requestAnimationFrame(tick)
     }
     // Simple picking on click
     const ray = new THREE.Raycaster()
