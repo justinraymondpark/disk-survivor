@@ -6526,8 +6526,9 @@ class Game {
           const u = Math.max(0, Math.min(1, tEl / st.spinDur))
           const e = easeInOutSine(u)
           // Drive Z from captured base; do not recalc from current to avoid easing reversal
-          (st as any)._spinBaseZ ??= selF.mesh.rotation.z
-          selF.mesh.rotation.z = (st as any)._spinBaseZ + e * (Math.PI * 2)
+          if ((st as any)._spinBaseZ === undefined) (st as any)._spinBaseZ = selF.mesh.rotation.z
+          const baseZ = (st as any)._spinBaseZ as number
+          selF.mesh.rotation.z = baseZ + e * (Math.PI * 2)
         } else if (tEl < st.spinDur + st.pauseDur) {
           // hold pose
         } else if (tEl < st.spinDur + st.pauseDur + st.moveDur) {
