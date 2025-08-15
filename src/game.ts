@@ -6388,8 +6388,7 @@ class Game {
       if (Math.abs(dx) > threshold) {
         // already cycled in move; just ease back
       } else if (dt < 250) {
-        // small bounce before select
-        selectAnim = { t: 0, dur: 240 }
+        doSelect(floppies[selectIndex].label)
       }
       swipeActive = false
       const sel = floppies[selectIndex]
@@ -6464,7 +6463,7 @@ class Game {
     let prevA = false
     let raf = 0
     let last = performance.now()
-    let selectAnim: { t: number; dur: number } | undefined
+    // removed unused pre-bounce selectAnim (spin handled in timeline)
     const tick = () => {
       const now = performance.now()
       const dt = Math.min(0.033, (now - last) / 1000)
