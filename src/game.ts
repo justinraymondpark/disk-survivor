@@ -6501,7 +6501,7 @@ class Game {
           mkRow('TitleX', -6.0, 6.0, 0.02, titleX, (v) => { titleX = v; applyTitle() }),
           mkRow('TitleY', -0.2, 4.0, 0.02, titleY, (v) => { titleY = v; applyTitle() }),
           mkRow('TitleZ', -8.0, 1.5, 0.02, titleZ, (v) => { titleZ = v; applyTitle() }),
-          mkRow('Tilt°', -35.0, 35.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() }),
+          mkRow('Tilt°', -150.0, 150.0, 0.5, titleTilt, (v) => { titleTilt = v; applyTitle() }),
           mkRow('Scale', 0.3, 3.0, 0.01, titlePlane.scale.x, (v) => { titlePlane.scale.set(v, v, v) })
         )
         titlePlane.visible = true
