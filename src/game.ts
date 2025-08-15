@@ -6175,19 +6175,27 @@ class Game {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 100)
-    camera.position.set(0, 4.0, 4.0)
+    camera.position.set(0, 6.0, 3.35)
     let lookTargetY = 0.2
-    // Base FOV controlled by slider; applyFov() adds extra on narrow screens
     let baseFov = 70
-    const applyFov = () => {
+    const applyFov = () => { camera.fov = Math.min(100, baseFov); camera.updateProjectionMatrix() }
+    const setDefaultsByAspect = () => {
       const w = Math.max(1, overlay.clientWidth)
       const h = Math.max(1, overlay.clientHeight)
       const aspect = w / h
-      let extra = 0
-      if (aspect < 0.65) extra = 20
-      else if (aspect < 0.85) extra = 10
-      camera.fov = Math.min(100, baseFov + extra)
-      camera.updateProjectionMatrix()
+      if (aspect < 0.65) {
+        // Narrow: phone portrait defaults
+        baseFov = 100
+        camera.position.set(0, 6.0, 2.0)
+        lookTargetY = 0.2
+      } else {
+        // Desktop/tablet/Z Fold: wider view
+        baseFov = 70
+        camera.position.set(0, 6.0, 3.35)
+        lookTargetY = 0.2
+      }
+      applyFov()
+      camera.lookAt(0, lookTargetY, 0)
     }
     camera.lookAt(0, lookTargetY, 0)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
@@ -6195,11 +6203,13 @@ class Game {
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
     ground.rotation.x = -Math.PI / 2
     scene.add(ground)
+    let defaultsApplied = false
     const rsz = () => {
       const w = Math.max(1, overlay.clientWidth)
       const h = Math.max(1, overlay.clientHeight)
       renderer.setSize(w, h, false)
       camera.aspect = w / h
+      if (!defaultsApplied) { setDefaultsByAspect(); defaultsApplied = true }
       applyFov()
     }
     rsz(); new ResizeObserver(rsz).observe(overlay)
@@ -6266,6 +6276,7 @@ class Game {
     }
     const onKey = (e: KeyboardEvent) => {
       if (!overlay.parentElement) { window.removeEventListener('keydown', onKey); return }
+      if (e.key.toLowerCase() === 'c' && e.shiftKey) { ctrl.style.display = ctrl.style.display === 'none' ? 'block' : 'none'; return }
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
       else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
@@ -6357,6 +6368,7 @@ class Game {
     ctrl.style.top = '12px'
     ctrl.style.minWidth = '240px'
     ctrl.style.padding = '10px'
+    ctrl.style.display = 'none'
     const mkRow = (label: string, min: number, max: number, step: number, value: number, onChange: (v: number) => void) => {
       const row = document.createElement('div') as HTMLDivElement
       row.style.display = 'grid'; (row.style as any).gridTemplateColumns = 'auto 1fr auto'
