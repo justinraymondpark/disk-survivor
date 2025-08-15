@@ -6175,8 +6175,8 @@ class Game {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
-    camera.position.set(0, 1.8, 3.4)
-    camera.lookAt(0, 0.6, 0)
+    camera.position.set(0, 2.2, 5.2)
+    camera.lookAt(0, 0.7, 0)
     scene.add(new THREE.AmbientLight(0xffffff, 1))
     // Simple ground to catch some color
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x0d0f1a }))
