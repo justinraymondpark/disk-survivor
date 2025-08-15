@@ -616,7 +616,7 @@ class Game {
   popupInterval = 5.0
   popupTimer = 0
   popupDuration = 2.6
-  popupCount = 5
+  popupCount = 1
   popupDps = 7
 
   
@@ -2362,9 +2362,9 @@ class Game {
       this.popupLevel = 1
       this.popupTimer = 0
       this.popupInterval = 5.5
-      this.popupDuration = 2.2
-      this.popupCount = 4
-      this.popupDps = 7
+      this.popupDuration = 2.4
+      this.popupCount = 3
+      this.popupDps = 8
     }
     // Removed: Cursor Beam and Antivirus Sweep
     this.updateInventoryUI()
@@ -3485,7 +3485,7 @@ class Game {
         const life = this.popupDuration
         for (let i = 0; i < n; i++) {
           const ang = Math.random() * Math.PI * 2
-          const r = 2.5 + Math.random() * 4.0
+          const r = 6.0 + Math.random() * 6.0
           const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
           const quad = new THREE.Mesh(this.sharedPopupGeom, this.sharedPopupMat.clone())
           quad.position.copy(pos)
@@ -3501,7 +3501,7 @@ class Game {
               if (!e.alive) continue
               const q = quad.position.clone(); q.y = 0
               const ep = e.mesh.position.clone(); ep.y = 0
-              if (q.distanceToSquared(ep) < 0.85 * 0.85) {
+              if (q.distanceToSquared(ep) < 1.25 * 1.25) {
                 const dmg = this.popupDps * 1.0 * dt
                 e.hp -= dmg
                 this.onEnemyDamaged(e, dmg)
