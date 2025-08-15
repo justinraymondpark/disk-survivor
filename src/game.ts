@@ -601,7 +601,7 @@ class Game {
   // Alt Title state
   altTitleActive = false
   altTitleGroup?: THREE.Group
-  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
+  altFloppies: { mesh: THREE.Mesh; label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD' | 'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase?: number }[] = []
   altDriveMesh?: THREE.Mesh
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
@@ -2304,11 +2304,11 @@ class Game {
     else value = 20
 
     if (value === 1) {
-      const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
-      mesh.position.copy(position)
-      mesh.position.y = 0.35
-      this.scene.add(mesh)
-      this.xpOrbs.push({ mesh, value: 1, alive: true })
+    const mesh = new THREE.Mesh(this.sharedXPGeom, this.sharedXPOrbMat)
+    mesh.position.copy(position)
+    mesh.position.y = 0.35
+    this.scene.add(mesh)
+    this.xpOrbs.push({ mesh, value: 1, alive: true })
       return
     }
     const mat = value === 3 ? this.sharedXPTier3Mat
@@ -2673,7 +2673,7 @@ class Game {
         if (moveAxis > 0 || dpadRight) this.cycleAltFloppies(1)
         if (moveAxis < 0 || dpadLeft) this.cycleAltFloppies(-1)
       }
-      if (a && performance.now() > (this as any).altEnterDebounceUntil) this.chooseAltFloppy(this.altFloppies[0]?.label ?? 'START')
+      if (a && performance.now() > (this as any).altEnterDebounceUntil) this.chooseAltFloppy((this.altFloppies[0]?.label as any) ?? 'START')
       // Animate insertion
       if (this.altInsertAnim) {
         const anim = this.altInsertAnim
@@ -2832,8 +2832,8 @@ class Game {
       this.renderer.render(this.scene, this.camera)
     // Ensure FABs visible on title screens (classic or Alt Title)
     if (this.showTitle || this.altTitleActive) {
-        if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
-        if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
+      if (this.optionsFab) this.optionsFab.style.display = 'inline-flex'
+      if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
         if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'inline-flex'
       }
       requestAnimationFrame(() => this.loop())
@@ -2879,8 +2879,8 @@ class Game {
         let yaw = yawScreen + camYaw
         if (yaw > Math.PI) yaw -= Math.PI * 2
         if (yaw <= -Math.PI) yaw += Math.PI * 2
-        this.player.facing = yaw
-        this.player.group.rotation.y = yaw
+      this.player.facing = yaw
+      this.player.group.rotation.y = yaw
       }
     }
 
@@ -3104,11 +3104,11 @@ class Game {
         }
       }
     } else {
-      for (const o of this.themeObstacles) {
-        const d2 = this.player.group.position.distanceToSquared(o.position)
-        if (d2 < 1.6 ** 2) {
-          const push = this.player.group.position.clone().sub(o.position).setY(0).normalize().multiplyScalar(0.08)
-          this.player.group.position.add(push)
+    for (const o of this.themeObstacles) {
+      const d2 = this.player.group.position.distanceToSquared(o.position)
+      if (d2 < 1.6 ** 2) {
+        const push = this.player.group.position.clone().sub(o.position).setY(0).normalize().multiplyScalar(0.08)
+        this.player.group.position.add(push)
         }
       }
     }
@@ -3189,10 +3189,10 @@ class Game {
         aimVector.set(0, 0, 0)
       } else {
         const ndc = new THREE.Vector2(rx, -ry)
-        this.raycaster.setFromCamera(ndc, this.camera)
-        const hitPoint2 = new THREE.Vector3()
-        this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint2)
-        aimVector.copy(hitPoint2.sub(this.player.group.position)).setY(0).normalize()
+      this.raycaster.setFromCamera(ndc, this.camera)
+      const hitPoint2 = new THREE.Vector3()
+      this.raycaster.ray.intersectPlane(this.groundPlane, hitPoint2)
+      aimVector.copy(hitPoint2.sub(this.player.group.position)).setY(0).normalize()
       }
     } else if (this.input.hasRecentMouseMove()) {
       this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
@@ -3461,16 +3461,16 @@ class Game {
              if (e.face) this.scene.remove(e.face)
              this.disposeObjectDeep(e.mesh)
              if (e.face) this.disposeObjectDeep(e.face)
-                             this.onEnemyDown()
-               this.score += 1
-               this.updateHud()
+              this.onEnemyDown()
+              this.score += 1
+              this.updateHud()
                this.dropXpOnDeath(e)
             }
           }
         }
       }
     }
-          // Special weapons passive timers
+    // Special weapons passive timers
       // Speed boost in Kernel Panic
       const speedMul = this.kernelPanic ? 1.4 : 1.0
       for (const e of this.enemies) if (e.alive) e.speed = (e.baseSpeed ?? e.speed) * speedMul
@@ -3518,7 +3518,7 @@ class Game {
         }
       }
 
-      if (this.ownedWeapons.has('Dial-up Burst')) {
+    if (this.ownedWeapons.has('Dial-up Burst')) {
       this.modemWaveTimer += dt
       if (this.modemWaveTimer >= this.modemWaveInterval) {
         this.modemWaveTimer = 0
@@ -3822,8 +3822,8 @@ class Game {
           dir.addScaledVector(perp, (e.behaviorPhase ?? 1) * 0.9).addScaledVector(toPlayer.normalize(), 0.6).normalize()
           e.speed = (e.baseSpeed ?? 2.4) * 1.35
         } else {
-          dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
-          e.speed = e.baseSpeed!
+        dir.addScaledVector(perp, e.orbitDir! * 0.9).addScaledVector(toPlayer.normalize(), 0.25).normalize()
+        e.speed = e.baseSpeed!
         }
       } else if (e.type === 'teleport') {
         // Periodically teleports to a ring near the player, then lunges briefly
@@ -4346,7 +4346,7 @@ class Game {
     this.altTitleActive = true
     // Hide classic title UI
     this.titleOverlay.style.display = 'none'
-		// Group anchored near origin in front of camera
+    // Group anchored near origin in front of camera
     const g = new THREE.Group()
     this.altTitleGroup = g
     this.scene.add(g)
@@ -4389,20 +4389,20 @@ class Game {
 		// Elements that may have been created outside of field refs
 		hide(document.querySelector('#wave') as HTMLElement)
 		// Add opaque full-screen background in world, aligned to camera each frame
-		const frustumWidth = (this.camera.right - this.camera.left)
-		const frustumHeight = (this.camera.top - this.camera.bottom)
+    const frustumWidth = (this.camera.right - this.camera.left)
+    const frustumHeight = (this.camera.top - this.camera.bottom)
 		const bgMat = new THREE.MeshBasicMaterial({ color: 0x0d0f1a, side: THREE.DoubleSide })
-		bgMat.depthTest = false
-		bgMat.depthWrite = false
+    bgMat.depthTest = false
+    bgMat.depthWrite = false
 		const bgGeom = new THREE.PlaneGeometry(frustumWidth * 3.0, frustumHeight * 3.0)
-		const bg = new THREE.Mesh(bgGeom, bgMat)
+    const bg = new THREE.Mesh(bgGeom, bgMat)
 		bg.name = 'alt-bg-plane'
-		bg.renderOrder = 1000
+    bg.renderOrder = 1000
 		bg.position.copy(this.camera.position)
 		bg.quaternion.copy(this.camera.quaternion)
 		bg.position.add(new THREE.Vector3(0, 0, -1.0).applyQuaternion(this.camera.quaternion))
 		this.scene.add(bg)
-		this.altBgMesh = bg
+    this.altBgMesh = bg
     // Keep everything on default layer; rely on oversized opaque background + DOM hides
     // Ensures we don't accidentally hide needed DOM buttons
     // Debounce A/Enter so we don't select immediately on entry
@@ -4443,16 +4443,16 @@ class Game {
     const floppiesGroup = new THREE.Group()
     floppiesGroup.position.y = 0 // align vertically with drive so bundle centers together
     g.add(floppiesGroup)
-    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD') => {
+    const makeFloppy = (label: 'START' | 'DAILY' | 'DEBUG' | 'BOARD' | 'BUGS') => {
       // Per-face materials: top uses provided 128x128 texture; sides/bottom use label-specific color
-             const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : 'debugmode.png'
+             const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
       ;(texTop as any).colorSpace = THREE.SRGBColorSpace
       texTop.minFilter = THREE.LinearFilter
       texTop.magFilter = THREE.NearestFilter
       texTop.wrapS = texTop.wrapT = THREE.ClampToEdgeWrapping
-      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : 0xc1c1c1
+      const sideColor = label === 'DAILY' ? 0x508c55 : label === 'START' ? 0xffccaa : label === 'BOARD' ? 0xecc05d : label === 'BUGS' ? 0xcc5555 : 0xc1c1c1
       const matTop = new THREE.MeshBasicMaterial({ map: texTop })
       const matSide = new THREE.MeshBasicMaterial({ color: sideColor })
       const matBottom = new THREE.MeshBasicMaterial({ color: sideColor })
@@ -4477,20 +4477,20 @@ class Game {
       groups.push({ start: 5 * 6, count: 6, materialIndex: 2 })
       for (const ginfo of groups) geom.addGroup(ginfo.start, ginfo.count, ginfo.materialIndex)
       const body = new THREE.Mesh(geom, [matTop, matBottom, matSide])
-			body.renderOrder = 1001
+      body.renderOrder = 1001
       // No overlay text label (top texture already includes text)
       return body
     }
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['BOARD','DEBUG','DAILY','START']
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['BOARD','DEBUG','DAILY','BUGS','START']
     this.altFloppies = []
     for (let i = 0; i < items.length; i++) {
       const label = items[i]
       const m = makeFloppy(label)
       const angle = (i * 0.06)
       // Center the selected disk and fan others; 0 is centered, 1 right, 2 left, 3 far right
-      const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.90, -0.10, -0.12, -0.14]
-      const offsetsZ = [0.60, -0.20, -0.28, -0.36]
+      const offsetsX = [0, 0.62, -0.62, 1.24, -1.24]
+      const offsetsY = [0.90, -0.10, -0.12, -0.14, -0.16]
+      const offsetsZ = [0.60, -0.20, -0.28, -0.36, -0.44]
       const baseX = offsetsX[i] ?? (i * 0.62)
       const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
       const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
@@ -4503,20 +4503,20 @@ class Game {
       floppiesGroup.add(m)
       this.altFloppies.push({ mesh: m, label: label as any, target: m.position.clone(), targetRot: m.rotation.y, floatPhase: Math.random() * Math.PI * 2 })
     }
-		// Input: swipe/left-right cycles
-		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
+    // Input: swipe/left-right cycles
+		const onChoose = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
       const sel = this.altFloppies[0].mesh
-		// Insert animation into drive
-		const start = sel.position.clone()
+      // Insert animation into drive
+      const start = sel.position.clone()
 		const slotPos = this.altDriveMesh ? this.altDriveMesh.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.3, 0.31)
 		// Convert world slot position into group-local for consistent animation target
 		const endWorld = new THREE.Vector3(slotPos.x, slotPos.y + 0.02, slotPos.z + 0.08)
 		const end = g.worldToLocal(endWorld.clone())
     this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
       this.disposeAltBg()
-			this.scene.remove(this.altTitleGroup!)
-			this.altTitleGroup = undefined
-			this.altTitleActive = false
+        this.scene.remove(this.altTitleGroup!)
+        this.altTitleGroup = undefined
+        this.altTitleActive = false
 			// Remove background plane and restore hidden UI
 			this.disposeAltBg()
 			if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
@@ -4535,6 +4535,10 @@ class Game {
         } else if (lbl === 'BOARD') {
           // Open leaderboards overlay
           this.showLeaderboards()
+        } else if (lbl === 'BUGS') {
+          // Open bug report overlay/screen; fallback to leaderboards if method not implemented
+          try { (this as any).showBugReport?.() } catch {}
+          if (!(this as any).showBugReport) this.showLeaderboards()
         } else {
           this.showDebugPanel()
         }
@@ -4551,9 +4555,9 @@ class Game {
       if (!this.altTitleActive) { window.removeEventListener('keydown', onKey); return }
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
-      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label as 'START'|'DAILY'|'DEBUG'|'BOARD')
+      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label as 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')
     }
-		window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
     this.altTouchOnDown = (e: PointerEvent) => {
       if (e.pointerType !== 'touch' && e.pointerType !== 'mouse') return
@@ -4607,7 +4611,7 @@ class Game {
     if (dir > 0) this.altFloppies.unshift(this.altFloppies.pop()!)
     else this.altFloppies.push(this.altFloppies.shift()!)
     for (let i = 0; i < this.altFloppies.length; i++) {
-			const f = this.altFloppies[i]
+      const f = this.altFloppies[i]
       // Selected disk centered; others fanned left/right
       const offsetsX = [0, 0.62, -0.62, 1.24]
       const offsetsY = [0.90, -0.10, -0.12, -0.14]
@@ -4629,9 +4633,9 @@ class Game {
     const end = new THREE.Vector3(0, 2.5, 0.3)
 	this.altInsertAnim = { m: sel, t: 0, dur: 620, start, end, startR: sel.rotation.y, endR: 0, startRX: 0, endRX: -Math.PI / 2, onDone: () => {
 		this.disposeAltBg()
-		if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
-		this.altTitleGroup = undefined
-		this.altTitleActive = false
+      if (this.altTitleGroup) this.scene.remove(this.altTitleGroup)
+      this.altTitleGroup = undefined
+      this.altTitleActive = false
 			// Remove background plane and restore hidden UI
 		if (this.altBgMesh) { this.scene.remove(this.altBgMesh); this.altBgMesh.geometry.dispose(); (this.altBgMesh.material as THREE.Material).dispose(); this.altBgMesh = undefined }
 		if (this.altHiddenDom) { for (const el of this.altHiddenDom) el.style.display = ''; this.altHiddenDom = undefined }
@@ -4652,15 +4656,17 @@ class Game {
       // Restore iso camera orientation
       if (this.altPrevIsoRot) this.isoPivot.rotation.copy(this.altPrevIsoRot)
       if (this.altPrevIsoPos) this.isoPivot.position.copy(this.altPrevIsoPos)
-		if (lbl === 'START') {
+      if (lbl === 'START') {
 			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-		} else if (lbl === 'DAILY') {
-			this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
+      } else if (lbl === 'DAILY') {
+        this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId)
 			this.exitAltTitleCleanup(); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
-		} else {
+      } else if ((lbl as any) === 'BUGS') {
+			this.exitAltTitleCleanup(); if ((this as any).showBugReport) (this as any).showBugReport(); else this.showLeaderboards()
+      } else {
 			this.exitAltTitleCleanup(); this.showDebugPanel()
-		}
-	} }
+      }
+    } }
   }
 
   fireSideBullet(dir: THREE.Vector3) {
@@ -4914,14 +4920,14 @@ class Game {
         hp = 2 + Math.floor(this.gameTime / 40)
         speed = 2.2
     }
-          const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
-      mesh.position.copy(spawnPos)
-      this.scene.add(mesh)
+    const mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
+    mesh.position.copy(spawnPos)
+    this.scene.add(mesh)
 
       // Some enemies can climb walls in Jeeves
       const canClimb = (type === 'runner' || type === 'charger' || type === 'shooter')
- 
-      // Create larger face billboard that tracks the player
+
+    // Create larger face billboard that tracks the player
     const faceTex = this.makeFaceTexture(type)
     const faceSize = type === 'brute' ? 1.2 : 0.9
     const face = new THREE.Mesh(
@@ -6214,10 +6220,10 @@ class Game {
       applyFov()
     }
     rsz(); new ResizeObserver(rsz).observe(overlay)
-    const items: ('START'|'DAILY'|'DEBUG'|'BOARD')[] = ['BOARD','DEBUG','DAILY','START']
-    const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DEBUG'|'BOARD'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
-    const makeFloppy = (label: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
-      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : 'debugmode.png'
+    const items: ('START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')[] = ['BOARD','DEBUG','DAILY','START','BUGS']
+    const floppies: { mesh: THREE.Mesh; label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS'; target: THREE.Vector3; targetRot: number; floatPhase: number }[] = []
+    const makeFloppy = (label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
+      const texName = label === 'START' ? 'start.png' : label === 'DAILY' ? 'dailydisk.png' : label === 'BOARD' ? 'leaderboards.png' : label === 'BUGS' ? 'bugreport.png' : 'debugmode.png'
       const loader = new THREE.TextureLoader()
       const texTop = loader.load(`/textures/title/${texName}`)
       ;(texTop as any).colorSpace = THREE.SRGBColorSpace
@@ -6295,9 +6301,9 @@ class Game {
       for (let i = 0; i < floppies.length; i++) {
         const idx = (i - selectIndex + floppies.length) % floppies.length
         const f = floppies[i]
-        const offsetsX = [0, 0.62, -0.62, 1.24]
-        const offsetsY = [0.90, -0.10, -0.12, -0.14]
-        const offsetsZ = [0.60, -0.20, -0.28, -0.36]
+        const offsetsX = [0, 0.62, -0.62, 1.24, -1.24]
+        const offsetsY = [0.90, -0.10, -0.12, -0.14, -0.16]
+        const offsetsZ = [0.60, -0.20, -0.28, -0.36, -0.44]
         const baseX = offsetsX[idx] ?? (idx * 0.62)
         const baseY = 0.05 + (idx * 0.16) + (offsetsY[idx] ?? 0)
         const baseZ = 0.66 - (idx * 0.04) + (offsetsZ[idx] ?? 0)
@@ -6312,15 +6318,15 @@ class Game {
       if (selectTimeline) return
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
-      else if (e.key === 'Enter') doSelect(floppies[selectIndex]?.label || 'START')
+      else if (e.key === 'Enter') doSelect((floppies[selectIndex]?.label as any) || 'START')
     }
     window.addEventListener('keydown', onKey)
     let selectTimeline: {
-      start: number; label: 'START'|'DAILY'|'DEBUG'|'BOARD';
+      start: number; label: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS';
       spinDur: number; pauseDur: number; moveDur: number; fadeDur: number;
       startPos: THREE.Vector3; endLocal: THREE.Vector3; startRotZ: number; selIndex: number;
     } | undefined
-    const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
+    const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS') => {
       const sel = floppies[selectIndex]
       const slot = scene.getObjectByName('slot') as THREE.Mesh
       const targetWorld = slot ? slot.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0.3)
