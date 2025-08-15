@@ -2922,28 +2922,18 @@ class Game {
       this.input.updateGamepad()
       const rx = this.input.axesRight.x
       const ry = this.input.axesRight.y
-      const rLen = Math.hypot(rx, ry)
-      if (rLen > 0.12) {
-        // Prefer ray mapping for correct screen-up alignment; fallback to direct yaw if ray fails
+      // Ignore tiny stick noise; rely solely on ray mapping here to avoid double schemes
+      if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
         const ndc = new THREE.Vector2(rx, -ry)
         this.raycaster.setFromCamera(ndc, this.camera)
         const hit = new THREE.Vector3()
-        const ok = this.raycaster.ray.intersectPlane(this.groundPlane, hit)
-        if (ok) {
+        if (this.raycaster.ray.intersectPlane(this.groundPlane, hit)) {
           const aim = hit.sub(this.player.group.position).setY(0)
           if (aim.lengthSq() > 0) {
             const yaw = Math.atan2(aim.x, aim.z)
             this.player.facing = yaw
             this.player.group.rotation.y = yaw
-          } else {
-            const yaw = Math.atan2(rx, -ry)
-            this.player.facing = yaw
-            this.player.group.rotation.y = yaw
           }
-        } else {
-          const yaw = Math.atan2(rx, -ry)
-          this.player.facing = yaw
-          this.player.group.rotation.y = yaw
         }
       } else if (this.input.hasRecentMouseMove()) {
         this.raycaster.setFromCamera(new THREE.Vector2(this.input.mouse.x, this.input.mouse.y), this.camera)
@@ -2955,11 +2945,6 @@ class Game {
           this.player.facing = yaw
           this.player.group.rotation.y = yaw
         }
-      } else if (rx !== 0 || ry !== 0) {
-        // Small stick deflection: fallback
-        const yaw = Math.atan2(rx, -ry)
-        this.player.facing = yaw
-        this.player.group.rotation.y = yaw
       }
       // Show touch pause only during gameplay
       if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = 'none'
