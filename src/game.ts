@@ -6168,6 +6168,12 @@ class Game {
     canvas.style.height = '100%'
     ;(canvas.style as any).pointerEvents = 'auto'
     overlay.appendChild(canvas)
+    // Ensure FABs visible and above overlay
+    try {
+      if (this.optionsFab) { this.optionsFab.style.display = 'inline-flex'; (this.optionsFab.style as any).zIndex = '5000' }
+      if (this.changelogFab) { this.changelogFab.style.display = 'inline-flex'; (this.changelogFab.style as any).zIndex = '5000' }
+      if (this.fullscreenBtn) { this.fullscreenBtn.style.display = 'inline-flex'; (this.fullscreenBtn.style as any).zIndex = '5000' }
+    } catch {}
     // Top-right back button
     const back = document.createElement('button') as HTMLButtonElement
     back.className = 'card'
