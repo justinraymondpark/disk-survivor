@@ -6422,20 +6422,23 @@ class Game {
     scene.add(driveGroup)
     // Initial placement; tuned via Shift+F panel below
     driveGroup.position.set(0, 0.88, -4.1)
+    // Build floppies and immediately place them relative to the selected index
+    let selectIndex = items.indexOf('DAILY') >= 0 ? items.indexOf('DAILY') : 0
+    const offX0 = [0, 0.62, -0.62, 1.24, -1.24, 1.86]
+    const offY0 = [0.90, -0.12, -0.16, -0.20, -0.22, -0.24]
+    const offZ0 = [0.60, -0.22, -0.30, -0.38, -0.46, -0.54]
     items.forEach((label, i) => {
       const m = makeFloppy(label)
-      const offsetsX = [0, 0.62, -0.62, 1.24]
-      const offsetsY = [0.90, -0.10, -0.12, -0.14]
-      const offsetsZ = [0.60, -0.20, -0.28, -0.36]
-      const baseX = offsetsX[i] ?? (i * 0.62)
-      const baseY = 0.05 + (i * 0.16) + (offsetsY[i] ?? 0)
-      const baseZ = 0.66 - (i * 0.04) + (offsetsZ[i] ?? 0)
+      const idx = (i - selectIndex + items.length) % items.length
+      const baseX = offX0[idx] ?? (idx * 0.62)
+      const baseY = 0.05 + (idx * 0.16) + (offY0[idx] ?? 0)
+      const baseZ = 0.66 - (idx * 0.04) + (offZ0[idx] ?? 0)
       m.position.set(baseX, baseY, baseZ)
+      m.rotation.set(0, 0.06 * idx, 0)
       m.scale.setScalar(1.9)
       floppiesGroup.add(m)
-      floppies.push({ mesh: m, label, target: m.position.clone(), targetRot: 0, floatPhase: Math.random() * Math.PI * 2 })
+      floppies.push({ mesh: m, label, target: new THREE.Vector3(baseX, baseY, baseZ), targetRot: 0.06 * idx, floatPhase: Math.random() * Math.PI * 2 })
     })
-    let selectIndex = items.indexOf('DAILY') >= 0 ? items.indexOf('DAILY') : 0
     const cycle = (dir: number) => {
       if (dir === 0) return
       selectIndex = (selectIndex - dir + floppies.length) % floppies.length
