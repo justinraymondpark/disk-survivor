@@ -6248,7 +6248,7 @@ class Game {
       const g = new THREE.Group()
       const driveMat = new THREE.MeshBasicMaterial({ color: 0xd8d2c5 })
       const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.6), driveMat)
-      body.rotation.x = THREE.MathUtils.degToRad(15)
+      body.rotation.x = THREE.MathUtils.degToRad(5.5)
       g.add(body)
       // Front label texture: "DISK SURVIVOR"
       const frontCanvas = document.createElement('canvas'); frontCanvas.width = 512; frontCanvas.height = 128
@@ -6264,6 +6264,7 @@ class Game {
       body.add(frontLabel)
       const slotMat = new THREE.MeshBasicMaterial({ color: 0x222 })
       const slot = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 0.2), slotMat)
+      slot.name = 'slot'
       slot.position.set(0, 0.18, 0.31)
       g.add(slot)
       return g
@@ -6271,7 +6272,7 @@ class Game {
     const driveGroup = buildDriveGroup()
     scene.add(driveGroup)
     // Initial placement; tuned via Shift+F panel below
-    driveGroup.position.set(0, 0.3, 0)
+    driveGroup.position.set(0, 0.88, -4.1)
     items.forEach((label, i) => {
       const m = makeFloppy(label)
       const offsetsX = [0, 0.62, -0.62, 1.24]
@@ -6313,11 +6314,50 @@ class Game {
     }
     window.addEventListener('keydown', onKey)
     const doSelect = (lbl: 'START'|'DAILY'|'DEBUG'|'BOARD') => {
-      cleanup(); overlay.remove(); this.altTitleActive = false
-      if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-      else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-      else if (lbl === 'BOARD') this.showLeaderboards()
-      else this.showDebugPanel()
+      // Fade others
+      const sel = floppies[selectIndex]
+      floppies.forEach((f) => {
+        if (f !== sel) {
+          const m: any = f.mesh
+          const applyAlpha = (obj: any, a: number) => {
+            if (obj && obj.material) {
+              const mat = obj.material as any
+              if (Array.isArray(mat)) mat.forEach((mm: any) => { mm.transparent = true; mm.opacity = a })
+              else { mat.transparent = true; mat.opacity = a }
+            }
+            if (obj && obj.children) obj.children.forEach((c: any) => applyAlpha(c, a))
+          }
+          applyAlpha(m, 0)
+          m.visible = false
+        }
+      })
+      // Cute spin + scoot toward drive slot
+      const slot = scene.getObjectByName('slot') as THREE.Mesh
+      const targetWorld = slot ? slot.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0.3)
+      const startPos = sel.mesh.position.clone()
+      const endPos = targetWorld.clone()
+      const startRotY = sel.mesh.rotation.y
+      const spinTurns = 1.5
+      const startT = performance.now()
+      const dur = 520
+      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
+      const anim = () => {
+        const u = Math.min(1, (performance.now() - startT) / dur)
+        const e = easeOut(u)
+        const p = new THREE.Vector3().lerpVectors(startPos, endPos, e)
+        sel.mesh.position.copy(p)
+        sel.mesh.rotation.y = startRotY + e * (Math.PI * 2 * spinTurns)
+        if (u < 1 && overlay.parentElement) requestAnimationFrame(anim)
+        else {
+          // Done: proceed
+          cleanup(); overlay.remove(); this.altTitleActive = false
+          if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'DAILY') { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
+          else if (lbl === 'BOARD') this.showLeaderboards()
+          else this.showDebugPanel()
+        }
+      }
+      requestAnimationFrame(anim)
     }
     // Simple picking on click
     const ray = new THREE.Raycaster()
