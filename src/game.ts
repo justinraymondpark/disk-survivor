@@ -1275,12 +1275,14 @@ class Game {
     const openWeapons = () => {
       const panel = document.createElement('div'); panel.className = 'card debug-panel'; panel.style.minWidth = '420px'
       const title = document.createElement('strong'); title.textContent = 'Weapons'
+      const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Filter weapons…'; search.className = 'card'; (search.style as any).padding = '4px 8px'; (search.style as any).margin = '6px 0'
       const list = document.createElement('div'); list.style.display = 'grid'; list.style.gap = '6px'
       const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
       const form = document.createElement('div')
       const mk = (name: string) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
-        const label = document.createElement('div'); label.innerHTML = `<strong>${name}</strong>`
+        const emoji = { 'CRT Beam':'📺','Dot Matrix':'🖨️','Dial-up Burst':'📞','SCSI Rocket':'🚀','Tape Whirl':'📼','Magic Lasso':'🪢','Shield Wall':'🛡️','Sata Cable Tail':'🔌','Paint.exe':'🎨','Defrag Spiral':'🌀','Zip Bomb':'🧨','Pop-up Storm':'📣' }[name] || '•'
+        const label = document.createElement('div'); label.innerHTML = `<strong>${emoji} ${name}</strong>`
         const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
         const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedWeapons.has(name)
         const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedWeapons.get(name) ?? 1); lvl.style.width = '52px'
@@ -1289,17 +1291,21 @@ class Game {
         ctrls.append(chk, document.createTextNode('Lv'), lvl)
         row.append(label, ctrls); form.append(row)
       }
-      ;['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm'].forEach(mk)
-      panel.append(title, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      const names = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm']
+      const render = () => { form.innerHTML = ''; names.filter(n => n.toLowerCase().includes((search.value||'').toLowerCase())).forEach(mk) }
+      search.oninput = render; render()
+      panel.append(title, search, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
       back.onclick = () => this.showDebugPanel()
     }
     const openUpgrades = () => {
       const panel = document.createElement('div'); panel.className = 'card debug-panel'; panel.style.minWidth = '420px'
       const title = document.createElement('strong'); title.textContent = 'Upgrades'
+      const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Filter upgrades…'; search.className = 'card'; (search.style as any).padding = '4px 8px'; (search.style as any).margin = '6px 0'
       const form = document.createElement('div')
       const mk = (name: string) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
-        const label = document.createElement('div'); label.innerHTML = `<strong>${name}</strong>`
+        const emoji = { 'Turbo CPU':'🧠','SCSI Splitter':'🔌','Overclocked Bus':'🧩','Copper Heatsink':'🧱','ECC Memory':'💊','DMA Burst':'💥','Magnet Coil':'🧲','Piercing ISA':'🧷','XP Amplifier':'📈' }[name] || '•'
+        const label = document.createElement('div'); label.innerHTML = `<strong>${emoji} ${name}</strong>`
         const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
         const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedUpgrades.has(name)
         const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedUpgrades.get(name) ?? 1); lvl.style.width = '52px'
@@ -1308,9 +1314,11 @@ class Game {
         ctrls.append(chk, document.createTextNode('Lv'), lvl)
         row.append(label, ctrls); form.append(row)
       }
-      ;['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier'].forEach(mk)
+      const names = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
+      const render = () => { form.innerHTML = ''; names.filter(n => n.toLowerCase().includes((search.value||'').toLowerCase())).forEach(mk) }
+      search.oninput = render; render()
       const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
-      panel.append(title, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      panel.append(title, search, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
       back.onclick = () => this.showDebugPanel()
     }
     const openToggles = () => {
