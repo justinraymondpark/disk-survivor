@@ -6,7 +6,7 @@ import changelogRaw from '../CHANGELOG.md?raw'
 import { AudioManager } from './audio'
 import type { ThemeKey } from './audio'
 
-type Vector2 = { x: number; y: number }
+type Vector2 = { x: number; y: 0 }
 
 type EnemyType =
   | 'slime'
@@ -434,7 +434,7 @@ class Game {
   sharedZipMat = new THREE.MeshBasicMaterial({ color: 0x66aaff })
   sharedZipFragGeom = new THREE.SphereGeometry(0.12, 8, 8)
   sharedZipFragMat = new THREE.MeshBasicMaterial({ color: 0x88ccff })
-  sharedPopupGeom = new THREE.PlaneGeometry(1.8, 1.4)
+  sharedPopupGeom = new THREE.PlaneGeometry(2.2, 1.7)
   sharedPopupMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
   sharedDefragMat = new THREE.MeshBasicMaterial({ color: 0x55ffee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending })
   sharedDefragDotGeom = new THREE.CircleGeometry(0.08, 10)
@@ -613,7 +613,7 @@ class Game {
 
   // Pop-up Storm
   popupLevel = 0
-  popupInterval = 5.0
+  popupInterval = 4.2
   popupTimer = 0
   popupDuration = 2.6
   popupCount = 1
@@ -2373,7 +2373,7 @@ class Game {
     if (name === 'Pop-up Storm' && this.popupLevel === 0) {
       this.popupLevel = 1
       this.popupTimer = 0
-      this.popupInterval = 4.6
+      this.popupInterval = 4.2
       this.popupDuration = 2.4
       this.popupCount = 3
       this.popupDps = 8
@@ -3416,8 +3416,9 @@ class Game {
               this.dropXpOnDeath(e)
             } else {
               this.audio.playImpact()
-              // Brief grey tint and face ouch
-              e.hitTintColor = 0xaaaaaa; e.hitTintUntil = this.gameTime + 0.05; e.faceOuchUntil = this.gameTime + 0.05
+              // Pop-up Storm uses white flash; other sources use native lighten handled elsewhere
+              e.hitTintColor = 0xffffff
+              e.hitTintUntil = this.gameTime + 0.06
               // Knockback should push away from the player, not toward
               const awayFromPlayer = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize().multiplyScalar(0.035)
               e.mesh.position.add(awayFromPlayer)
@@ -3474,7 +3475,6 @@ class Game {
         this.fireZipBomb()
       }
     }
-
     // Pop-up Storm: spawn popups around player that damage on touch
     if (this.ownedWeapons.has('Pop-up Storm') && this.popupLevel > 0) {
       this.popupTimer += dt
@@ -3487,12 +3487,12 @@ class Game {
         const life = this.popupDuration
         for (let i = 0; i < n; i++) {
           const ang = Math.random() * Math.PI * 2
-          const r = 6.0 + Math.random() * 6.0
+          const r = 7.0 + Math.random() * 8.0
           let pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
           let tries = 0
           while (tries < 12 && positions.some(p => p.clone().setY(0).distanceTo(pos.clone().setY(0)) < minSpacing)) {
             const a2 = Math.random() * Math.PI * 2
-            const r2 = 6.0 + Math.random() * 6.0
+            const r2 = 7.0 + Math.random() * 8.0
             pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(a2) * r2, 0.65, Math.sin(a2) * r2))
             tries++
           }
@@ -3526,7 +3526,7 @@ class Game {
               if (!e.alive) continue
               const q = quad.position.clone(); q.y = 0
               const ep = e.mesh.position.clone(); ep.y = 0
-              if (q.distanceToSquared(ep) < 1.25 * 1.25) {
+              if (q.distanceToSquared(ep) < 1.5 * 1.5) {
                 const dmg = this.popupDps * dtTick
                 e.hp -= dmg
                 this.onEnemyDamaged(e, dmg)
@@ -3616,7 +3616,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-              this.dropXpOnDeath(e)
+               this.dropXpOnDeath(e)
               // Zap effect on kill
               this.spawnZapEffect(wp, e.mesh.position.clone())
             } else {
@@ -3788,7 +3788,7 @@ class Game {
       this.lastWaveMinute = minute
     }
     // Baseline spawn interval gets faster over time (softened for perf)
-    let baseInterval = Math.max(0.6, 2.0 - this.gameTime * 0.03)
+    let baseInterval = Math.max(0.5, 2.0 - this.gameTime * 0.03)
     if (this.kernelPanic) baseInterval *= 0.45 // much faster spawns
     // Gentle sine modulation (~10% swing)
     this.spawnPhase += dt * 0.8
@@ -4245,7 +4245,6 @@ class Game {
       if (!arr) { arr = []; this.spatialMap.set(k, arr) }
       arr.push(e)
     }
-
     // Update projectiles with damage and pierce
     for (const p of this.projectiles) {
       if (!p.alive) continue
@@ -4352,9 +4351,18 @@ class Game {
               this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
               e.nextDmgToastTime = nowT + 0.15
             }
-            // Add brief white tint while being hit
-            e.hitTintColor = 0xffffff
+            // Add brief native-lighten tint on projectile hit
+            e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
             e.hitTintUntil = this.gameTime + 0.06
+            // Special: Zip bomb explodes on first enemy hit with limited shards
+            if (p.kind === 'zip' && !p.data?.armed) {
+              p.data = { armed: true }
+              // Emit 3 shards in a radial around impact point
+              this.explodeZip(p.mesh.position.clone(), 3, this.zipFragDamage)
+              p.alive = false
+              this.scene.remove(p.mesh)
+              continue
+            }
             if (e.hp <= 0) {
               e.alive = false
               this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
@@ -5176,7 +5184,7 @@ class Game {
     mesh.position.copy(start).add(forward.clone().multiplyScalar(0.2))
     mesh.position.y = 0.55
     this.scene.add(mesh)
-    const proj: Projectile = { mesh, velocity: forward.clone().multiplyScalar(9), alive: true, ttl: 1.2, damage: this.zipDamage, pierce: 0, last: mesh.position.clone(), kind: 'zip', data: { armed: false } }
+    const proj: Projectile = { mesh, velocity: forward.clone().multiplyScalar(8), alive: true, ttl: 0.6, damage: this.zipDamage, pierce: 0, last: mesh.position.clone(), kind: 'zip', data: { armed: false } }
     this.projectiles.push(proj)
   }
 
@@ -5807,7 +5815,6 @@ class Game {
     const branch = mid.clone().add(new THREE.Vector3((Math.random()-0.5)*0.6, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.6))
     drawBolt(mid, branch, 2, 0x88eeff, 140)
   }
-
   private spawnWhirlDust(center: THREE.Vector3) {
     // Small magnetic/dusty poofs using pooled quads
     const count = 8
@@ -6095,7 +6102,7 @@ class Game {
   private levelUpPopup() {
     this.popupLevel += 1
     // Faster cadence with each level (soft cap)
-    this.popupInterval = Math.max(1.8, this.popupInterval * 0.88)
+    this.popupInterval = Math.max(1.6, this.popupInterval * 0.85)
     this.popupDuration = Math.min(4.5, this.popupDuration + 0.2)
     this.popupCount = Math.min(14, this.popupCount + 2)
     this.popupDps += 2
