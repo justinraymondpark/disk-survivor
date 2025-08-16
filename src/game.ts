@@ -121,13 +121,30 @@ class InputManager {
     // Prefer keyboard if any key is pressed
     if (x !== 0 || y !== 0) {
       const lenKb = Math.hypot(x, y) || 1
-      return { x: x / lenKb, y: y / lenKb }
+      // Map keyboard move to camera-relative world axes so W = up on screen
+      const camDir = new THREE.Vector3()
+      ;(window as any).game?.camera?.getWorldDirection?.(camDir)
+      const camYaw = Math.atan2(camDir.x, camDir.z)
+      const local = new THREE.Vector2(x / lenKb, y / lenKb)
+      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
+      const rx = local.x * cos - local.y * sin
+      const ry = local.x * sin + local.y * cos
+      return { x: rx, y: ry }
     }
     // Otherwise, use left stick / touch axes
     const gx = this.axesLeft.x
     const gy = this.axesLeft.y
     if (gx !== 0 || gy !== 0) {
-      return { x: gx, y: gy }
+      // Map left stick to camera-relative world axes
+      const camDir = new THREE.Vector3()
+      ;(window as any).game?.camera?.getWorldDirection?.(camDir)
+      const camYaw = Math.atan2(camDir.x, camDir.z)
+      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
+      const rx = gx * cos - gy * sin
+      const ry = gx * sin + gy * cos
+      // Normalize to keep speed consistent on diagonals
+      const len = Math.hypot(rx, ry) || 1
+      return { x: rx / len, y: ry / len }
     }
     return { x: 0, y: 0 }
   }
