@@ -1981,7 +1981,6 @@ class Game {
     }
     this.audio.playShoot()
   }
-
   dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp') {
     // Only drops: Heal (rare) or XP bundles
     const roll = Math.random()
@@ -2476,7 +2475,6 @@ class Game {
     requestAnimationFrame(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, -70%)' })
     setTimeout(() => t.remove(), 650)
   }
-
   applyTheme(theme: Theme) {
     if (this.currentTheme === theme) return
     this.currentTheme = theme
@@ -3423,7 +3421,6 @@ class Game {
         }
       }
     }
-
     // Defrag Spiral: orbiting sector beams sweeping outward (with subtle dots)
     if (this.ownedWeapons.has('Defrag Spiral') && this.defragLevel > 0) {
       const arms = this.defragArms
@@ -3525,6 +3522,9 @@ class Game {
                   this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
                   e.nextDmgToastTime = nowT + 0.2
                 }
+                // Add brief white tint while being hit
+                e.hitTintColor = 0xffffff
+                e.hitTintUntil = this.gameTime + 0.06
                 if (e.hp <= 0) {
                   e.alive = false
                   this.scene.remove(e.mesh)
@@ -3799,7 +3799,6 @@ class Game {
         else setTimeout(() => this.spawnEnemyByWave(minute), delay)
       }
     }
-
     // Update enemies with different behaviors (throttle far ones); track onscreen time
     for (const e of this.enemies) {
       if (!e.alive) continue
@@ -4320,6 +4319,9 @@ class Game {
               this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
               e.nextDmgToastTime = nowT + 0.15
             }
+            // Add brief white tint while being hit
+            e.hitTintColor = 0xffffff
+            e.hitTintUntil = this.gameTime + 0.06
             if (e.hp <= 0) {
               e.alive = false
               this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
@@ -4431,7 +4433,6 @@ class Game {
         }
       }
     }
-
     // Update frustum from current camera
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
@@ -5644,7 +5645,6 @@ class Game {
     const y = (-this._tmpProj.y * 0.5 + 0.5) * window.innerHeight
     return { x, y }
   }
-
   private spawnExplosion(source: THREE.Mesh) {
     const pos = source.position.clone()
     const color = ((source.material as any)?.color?.getHex?.() ?? 0xffffff) as number
@@ -6259,7 +6259,6 @@ class Game {
     window.addEventListener('keydown', onKey, { once: true })
     requestAnimationFrame(onAnim)
   }
-
   private async showLeaderboards() {
     const overlay = document.createElement('div') as HTMLDivElement
     overlay.className = 'overlay'
@@ -6574,7 +6573,6 @@ class Game {
     overlay.appendChild(card)
     this.root.appendChild(overlay)
   }
-
   private showAltTitle3DOverlay() {
     // Use a separate canvas and renderer so we never touch the main scene/camera
     this.altTitleActive = true
