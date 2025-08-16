@@ -802,6 +802,9 @@ class Game {
   pendingLevelUps = 0
   // Debug toggles
   debugShowDamage = false
+  // Debug loadout state
+  debugSelectedWeapons: Map<string, number> = new Map()
+  debugSelectedUpgrades: Map<string, number> = new Map()
   // Dev debug HUD
   private dbgHud?: HTMLDivElement
   private dbgHudVisible = false
@@ -1258,18 +1261,80 @@ class Game {
     }
     fuzzyRow.appendChild(spawnFuzzyBtn)
 
-    // Group checkboxes together and place above buttons
-    const toggles = document.createElement('div')
-    toggles.className = 'card'
-    toggles.style.display = 'grid'
-    toggles.style.gap = '4px'
-    toggles.style.padding = '4px 6px'
-    toggles.appendChild(pickRow)
-    toggles.appendChild(dmgRow)
-    toggles.appendChild(perfRow)
-    toggles.appendChild(fuzzyRow)
+    // Main Debug buttons routing to sub-modals
+    const subBtnRow = document.createElement('div')
+    subBtnRow.style.display = 'grid'; (subBtnRow.style as any).gridTemplateColumns = 'repeat(2, minmax(120px, 1fr))'
+    subBtnRow.style.gap = '8px'; subBtnRow.style.margin = '8px 0'
+    const weaponsBtn = document.createElement('button'); weaponsBtn.className = 'card'; weaponsBtn.textContent = 'Weapons…'
+    const upgradesBtn = document.createElement('button'); upgradesBtn.className = 'card'; upgradesBtn.textContent = 'Upgrades…'
+    const togglesBtn = document.createElement('button'); togglesBtn.className = 'card'; togglesBtn.textContent = 'Toggles…'
+    subBtnRow.append(weaponsBtn, upgradesBtn, togglesBtn)
+    wrap.append(title, info, subBtnRow, scroll, btnRow)
 
-    wrap.append(title, info, scroll, toggles, btnRow)
+    // Sub-modal handlers
+    const openWeapons = () => {
+      const panel = document.createElement('div'); panel.className = 'card debug-panel'; panel.style.minWidth = '420px'
+      const title = document.createElement('strong'); title.textContent = 'Weapons'
+      const list = document.createElement('div'); list.style.display = 'grid'; list.style.gap = '6px'
+      const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
+      const form = document.createElement('div')
+      const mk = (name: string) => {
+        const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
+        const label = document.createElement('div'); label.innerHTML = `<strong>${name}</strong>`
+        const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedWeapons.has(name)
+        const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedWeapons.get(name) ?? 1); lvl.style.width = '52px'
+        chk.onchange = () => { if (chk.checked) this.debugSelectedWeapons.set(name, Number(lvl.value) || 1); else this.debugSelectedWeapons.delete(name) }
+        lvl.onchange = () => { if (chk.checked) this.debugSelectedWeapons.set(name, Number(lvl.value) || 1) }
+        ctrls.append(chk, document.createTextNode('Lv'), lvl)
+        row.append(label, ctrls); form.append(row)
+      }
+      ;['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm'].forEach(mk)
+      panel.append(title, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      back.onclick = () => this.showDebugPanel()
+    }
+    const openUpgrades = () => {
+      const panel = document.createElement('div'); panel.className = 'card debug-panel'; panel.style.minWidth = '420px'
+      const title = document.createElement('strong'); title.textContent = 'Upgrades'
+      const form = document.createElement('div')
+      const mk = (name: string) => {
+        const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
+        const label = document.createElement('div'); label.innerHTML = `<strong>${name}</strong>`
+        const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedUpgrades.has(name)
+        const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedUpgrades.get(name) ?? 1); lvl.style.width = '52px'
+        chk.onchange = () => { if (chk.checked) this.debugSelectedUpgrades.set(name, Number(lvl.value) || 1); else this.debugSelectedUpgrades.delete(name) }
+        lvl.onchange = () => { if (chk.checked) this.debugSelectedUpgrades.set(name, Number(lvl.value) || 1) }
+        ctrls.append(chk, document.createTextNode('Lv'), lvl)
+        row.append(label, ctrls); form.append(row)
+      }
+      ;['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier'].forEach(mk)
+      const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
+      panel.append(title, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      back.onclick = () => this.showDebugPanel()
+    }
+    const openToggles = () => {
+      const panel = document.createElement('div'); panel.className = 'card debug-panel'; panel.style.minWidth = '420px'
+      const title = document.createElement('strong'); title.textContent = 'Toggles'
+      const grid = document.createElement('div'); grid.style.display = 'grid'; grid.style.gap = '6px'
+      const mkChk = (label: string, init: boolean, on: (v: boolean) => void) => {
+        const row = document.createElement('label'); row.className = 'card'; row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '6px'; row.style.padding = '4px 8px'
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = init; chk.onchange = () => on(chk.checked)
+        const span = document.createElement('span'); span.textContent = label
+        row.append(chk, span); grid.append(row)
+      }
+      mkChk('Plentiful Pickups (heal/magnet)', this.plentifulPickups, v => this.plentifulPickups = v)
+      mkChk('Show damage toasts over enemies', this.debugShowDamage, v => this.debugShowDamage = v)
+      mkChk('Show lightweight performance overlay', this.debugPerfOverlay, v => { this.debugPerfOverlay = v; if (!v && this.perfOverlayEl) { this.perfOverlayEl.remove(); this.perfOverlayEl = undefined } })
+      mkChk('Kernel Panic', this.kernelPanic, v => { this.kernelPanic = v; if (v) this.plentifulPickups = false })
+      mkChk('Spawn 1 Fuzzy Logic on ground (toggle to drop)', false, v => { if (v) { const ang = Math.random() * Math.PI * 2; const dist = 3 + Math.random() * 4; const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * dist, 0, Math.sin(ang) * dist)); this.dropPickup(pos, 'fuzzy') } })
+      const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
+      panel.append(title, grid, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      back.onclick = () => this.showDebugPanel()
+    }
+    weaponsBtn.onclick = openWeapons
+    upgradesBtn.onclick = openUpgrades
+    togglesBtn.onclick = openToggles
 
     // Waves submenu button
     const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = 'Waves…'
@@ -1295,10 +1360,9 @@ class Game {
     // move focus to bottom buttons
     backBtn.tabIndex = 0; startBtn.tabIndex = 0
     startBtn.onclick = () => {
-      // Collect selections
-      const rows = Array.from(form.children) as any[]
-      const selectedWeapons = rows.filter(r => r.__kind === 'weapon' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
-      const selectedUpgrades = rows.filter(r => r.__kind === 'upgrade' && r.__chk.checked).map(r => ({ name: r.__name, lvl: Number(r.__lvl.value) || 1 }))
+      // Collect selections from sub-modals (auto-saved into maps)
+      const selectedWeapons = Array.from(this.debugSelectedWeapons.entries()).map(([name, lvl]) => ({ name, lvl }))
+      const selectedUpgrades = Array.from(this.debugSelectedUpgrades.entries()).map(([name, lvl]) => ({ name, lvl }))
       // Enforce caps
       if (selectedWeapons.length > this.maxWeapons) selectedWeapons.length = this.maxWeapons
       if (selectedUpgrades.length > this.maxUpgrades) selectedUpgrades.length = this.maxUpgrades
