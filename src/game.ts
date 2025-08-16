@@ -7179,6 +7179,16 @@ class Game {
     canvas.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
     canvas.addEventListener('pointermove', onPointerMove, { passive: true } as any)
     canvas.addEventListener('pointerup', onPointerUp, { passive: true } as any)
+    const onOverlayLeave = (e: Event) => {
+      if (!swipeActive) return
+      if (selectTimeline) return
+      swipeActive = false
+      dragging = false
+      cycle(dragDX > 0 ? -1 : 1)
+      ;(overlay.style as any).touchAction = prevTouchAction || ''
+    }
+    overlay.addEventListener('mouseleave', onOverlayLeave as any)
+    overlay.addEventListener('pointerleave', onOverlayLeave as any)
     // Safari/macOS: detect leaving the window and advance selection once
     const onWindowMouseOut = (e: MouseEvent) => {
       if (!swipeActive) return
@@ -7475,6 +7485,10 @@ class Game {
       try { canvas.removeEventListener('pointerdown', onPointerDown as any) } catch {}
       try { canvas.removeEventListener('pointermove', onPointerMove as any) } catch {}
       try { canvas.removeEventListener('pointerup', onPointerUp as any) } catch {}
+      try { overlay.removeEventListener('mouseleave', onOverlayLeave as any) } catch {}
+      try { overlay.removeEventListener('pointerleave', onOverlayLeave as any) } catch {}
+      try { window.removeEventListener('mouseout', onWindowMouseOut as any) } catch {}
+      try { window.removeEventListener('mouseleave', onWindowMouseOut as any) } catch {}
       try { cancelAnimationFrame(raf) } catch {}
       try { scene.traverse((o: THREE.Object3D) => { const m: any = (o as any).material; const g: any = (o as any).geometry; if (m) { if (Array.isArray(m)) m.forEach((mm: any) => mm.dispose?.()); else m.dispose?.() } if (g) g.dispose?.() }) } catch {}
       try { renderer.dispose() } catch {}
