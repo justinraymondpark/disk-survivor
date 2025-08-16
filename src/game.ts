@@ -474,7 +474,7 @@ class Game {
   }
 
   private onEnemyDamaged(e: Enemy, _amount: number) {
-    // Brief, low-cost tint
+    // Brief, low-cost tint using slightly lighter variant of base color (keep original behavior)
     e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
     e.hitTintUntil = this.gameTime + 0.06
     // Giant enrage: track rapid hits
@@ -622,7 +622,7 @@ class Game {
   // Defrag Spiral (spiral block emitter)
   defragEmitInterval = 1.2
   defragEmitTimer = 0
-  defragBlocksPerBurst = 3
+  defragBlocksPerBurst = 2
   defragBlockDamage = 6
   defragAngularSpeed = 4.0
   defragRadialSpeed = 5.0
@@ -2373,7 +2373,7 @@ class Game {
     if (name === 'Pop-up Storm' && this.popupLevel === 0) {
       this.popupLevel = 1
       this.popupTimer = 0
-      this.popupInterval = 5.5
+      this.popupInterval = 4.6
       this.popupDuration = 2.4
       this.popupCount = 3
       this.popupDps = 8
@@ -6094,9 +6094,10 @@ class Game {
 
   private levelUpPopup() {
     this.popupLevel += 1
-    this.popupInterval = Math.max(3.0, this.popupInterval * 0.9)
-    this.popupDuration = Math.min(4.5, this.popupDuration + 0.3)
-    this.popupCount = Math.min(8, this.popupCount + 1)
+    // Faster cadence with each level (soft cap)
+    this.popupInterval = Math.max(1.8, this.popupInterval * 0.88)
+    this.popupDuration = Math.min(4.5, this.popupDuration + 0.2)
+    this.popupCount = Math.min(14, this.popupCount + 2)
     this.popupDps += 2
   }
 
