@@ -2,7 +2,7 @@
 
 Arcade “survivor”-style browser game built with Three.js and Vite. Move a heroic floppy disk, pick a web-1.0 theme, collect weapons/upgrades, and survive ever-growing waves.
 
-Play online: https://garfieldslament.com/
+Play online: [garfieldslament.com](https://garfieldslament.com/)
 
 ### Quick start
 
@@ -39,10 +39,49 @@ Play online: https://garfieldslament.com/
 - Defeat enemies to drop XP and occasional pickups (Heal, XP bundle, Vacuum).
 - Level up to pick 1 of 3 randomized choices: new weapons, weapon level-ups, or upgrades.
 
-### Weapons and upgrades (high level)
+### Game reference: systems and content (for future chats)
 
-- **Weapons**: CRT Beam (piercing laser), Dot Matrix (side bullets), Dial-up Burst (shockwave), SCSI Rocket (homing), Tape Whirl (orbiting saws), Magic Lasso (loop damage), Shield Wall (blocking wall). Each can level up.
-- **Upgrades**: Fire rate, multishot, move speed, projectile damage, HP+heal, burst fire, XP magnet, projectile pierce, XP gain.
+#### Weapons (roster + key behavior)
+
+- CRT Beam: piercing forward sweep that pulses on/off
+- Dot Matrix: fires weaker side bullets while shooting
+- Dial-up Burst: periodic shockwave ring around the player
+- SCSI Rocket: homing rocket with AoE on impact
+- Tape Whirl: orbiting saws that knock back on contact
+- Magic Lasso: draw a loop; enemies inside take damage
+- Shield Wall: short blocking wall with uptime cycles
+- Paint.exe: leaves damaging paint swaths; enemies turn green when painted
+- Defrag Spiral: emits spiral bursts of colorful blocks; movement-gated with ~1s grace; occasional surge bursts scale with level
+- Zip Bomb: sticky charge that explodes into fragments; on enemy hit spawns 3 shards at impact; shorter travel before exploding
+- Pop-up Storm: rising pop-up windows spawn 7–15 units out; deal touch damage; white hit flash; +2 count per level and faster cadence
+
+Removed: Cursor Beam, Antivirus Sweep
+
+#### Upgrades
+
+- Turbo CPU (fire rate), SCSI Splitter (multishot), Overclocked Bus (move speed), Copper Heatsink (projectile damage), ECC Memory (max HP + heal), DMA Burst (burst fire), Magnet Coil (XP magnet radius), Piercing ISA (projectile pierce), XP Amplifier (XP gain)
+
+#### Enemies (high level)
+
+- Core: slime, runner, zigzag, tank, shooter, giant
+- Advanced waves: spinner, splitter (splits into two runners on low HP), bomber (proximity explode), sniper, weaver, charger (windup dash), orbiter, teleport, brute
+- Special behaviors: wave 10 “Boo” slows when watched; rare elites pursue aggressively; giants can briefly enrage after rapid hits
+
+#### XP and pickups
+
+- XP orbs and bundles drop with wave-scaled replacement odds (higher tiers later)
+- Pickups: Vacuum (global XP pull ~3s), Heal (“chicken”), extra XP bundles
+- Drop rates: heal ≈ 2× vacuum rate; XP otherwise
+
+#### Spawning and culling
+
+- Spawns are forced offscreen via camera projection checks; cadence ramps with subtle sine modulation and rare micro-bursts
+- Enemies older than one wave and offscreen are culled after a grace window
+
+#### Debugging and perf
+
+- Pause overlay shows live counts; damage toasts can be enabled in Debug Mode
+- Pooled/pooled-like resources for transient meshes; explicit disposal on removal
 
 ### Tech stack
 
@@ -140,7 +179,7 @@ Play online: https://garfieldslament.com/
 - Changelog:
   - `CHANGELOG.md` is bundled via Vite `?raw` and shown in a modal. Keep newest entries at the top; mirror commit summaries.
 
-### Recently added/important context (for a new chat)
+### Historical notes (archived)
 
 - Paint.exe weapon
   - Emits opaque green swaths on the ground (`#2c826e`) that damage enemies on them; painted enemies turn a slightly different green `#3c9e87` permanently.
@@ -221,7 +260,7 @@ No license specified yet. Add one if you plan to distribute.
 
 Isometric 3D survivor-like built with Vite + TypeScript + Three.js.
 
-- Play: https://garfieldslament.com/
+- Play: [garfieldslament.com](https://garfieldslament.com/)
 - Leaderboard: Netlify Functions + Blobs
 - Build: `npm run build` → outputs to `dist/`
 - Dev: `npm run dev`
