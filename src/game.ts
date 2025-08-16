@@ -699,12 +699,13 @@ class Game {
   defragAngleSeed = 0
   // Defrag gating and surge behavior
   defragLastMoveTime = 0
-  defragGraceSeconds = 1.0
+  defragGraceSeconds = 0.7
   // Defrag stamina (drains while emitting, refills when idle)
   defragStamina = 1.0
   defragStaminaDrainPerSec = 0.2
   defragStaminaRegenPerSec = 0.45
   defragStaminaHud?: HTMLDivElement
+  defragAwaitingFull = false
 
   
   paintDuration = 1.3
@@ -3704,7 +3705,9 @@ class Game {
       if (Math.abs(mv.x) > 0.01 || Math.abs(mv.y) > 0.01) this.defragLastMoveTime = this.gameTime
       const canEmit = (this.gameTime - this.defragLastMoveTime) <= this.defragGraceSeconds
       const hasStamina = this.defragStamina > 0.02
-      const active = canEmit && hasStamina
+      // Require full recharge once stamina has been emptied at least once
+      if (hasStamina && this.defragAwaitingFull && this.defragStamina >= 0.999) this.defragAwaitingFull = false
+      const active = canEmit && hasStamina && !this.defragAwaitingFull
       // Drain or regen stamina
       if (active) this.defragStamina = Math.max(0, this.defragStamina - this.defragStaminaDrainPerSec * dt)
       else this.defragStamina = Math.min(1, this.defragStamina + this.defragStaminaRegenPerSec * dt)
@@ -3726,18 +3729,20 @@ class Game {
       }
       // If stamina is depleted, quickly damp existing spiral blocks so they vanish
       if (!hasStamina) {
+        // Block reactivation until full
+        this.defragAwaitingFull = true
         for (const p of this.projectiles) {
           if (!p.alive) continue
           if ((p as any).fibo) {
-            p.ttl = Math.min(p.ttl, 0.25)
-            p.velocity.multiplyScalar(0.5)
+            p.ttl = Math.min(p.ttl, 0.18)
+            p.velocity.multiplyScalar(0.4)
           }
         }
       } else if (!canEmit) {
         // Gradually reduce any active projectiles' velocity for a "shrink to nothing" feel
         for (const p of this.projectiles) {
           if (!p.alive) continue
-          if ((p as any).fibo) p.velocity.multiplyScalar(0.92)
+          if ((p as any).fibo) p.velocity.multiplyScalar(0.90)
         }
       }
       this.defragEmitTimer += dt
