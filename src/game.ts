@@ -1029,6 +1029,7 @@ class Game {
     list.style.marginTop = '6px'
     list.style.display = 'grid'
     ;(list.style as any).gap = '4px'
+    ;(list.style as any).touchAction = 'none'
 
     const enemyTypes: EnemyType[] = ['slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute']
     const enemyColorHex: Partial<Record<EnemyType, number>> = {
@@ -1076,6 +1077,9 @@ class Game {
     }
 
     let dragIndex = -1
+    let touchDragging = false
+    let dragFromTouch = -1
+    let lastHoverIndex = -1
     list.addEventListener('dragstart', (e: any) => {
       const el = e.target.closest('.card')
       if (!el) return
@@ -1096,6 +1100,32 @@ class Game {
       dragIndex = -1
     })
 
+    const getChildIndex = (el: Element | null) => el ? Array.from(list.children).indexOf(el) : -1
+    list.addEventListener('pointerdown', (e: PointerEvent) => {
+      const el = (e.target as HTMLElement)?.closest('.card.ns-button') as HTMLElement | null
+      if (!el) return
+      touchDragging = true
+      dragFromTouch = getChildIndex(el)
+    })
+    list.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!touchDragging) return
+      const hovered = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.card.ns-button') as HTMLElement | null
+      lastHoverIndex = getChildIndex(hovered)
+    })
+    list.addEventListener('pointerup', (e: PointerEvent) => {
+      if (!touchDragging) return
+      const hovered = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.card.ns-button') as HTMLElement | null
+      const to = getChildIndex(hovered)
+      if (dragFromTouch >= 0 && to >= 0 && dragFromTouch !== to) {
+        const item = current.splice(dragFromTouch, 1)[0]
+        current.splice(to, 0, item)
+        render()
+      }
+      touchDragging = false
+      dragFromTouch = -1
+      lastHoverIndex = -1
+    })
+
     render()
 
     const btnRow = document.createElement('div')
@@ -1104,9 +1134,7 @@ class Game {
     resetBtn.style.padding = '4px 8px'; resetBtn.style.fontSize = '12px'
     const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
     backBtn.style.padding = '4px 8px'; backBtn.style.fontSize = '12px'
-    const saveBtn = document.createElement('button'); saveBtn.className = 'card'; saveBtn.textContent = 'Save'
-    saveBtn.style.padding = '4px 8px'; saveBtn.style.fontSize = '12px'
-    btnRow.appendChild(backBtn); btnRow.appendChild(resetBtn); btnRow.appendChild(saveBtn)
+    btnRow.appendChild(backBtn); btnRow.appendChild(resetBtn)
 
     const scroll = document.createElement('div')
     scroll.style.flex = '1 1 auto'
@@ -1123,13 +1151,9 @@ class Game {
     this.debugOverlay!.style.display = 'flex'
     this.debugOverlay!.style.pointerEvents = 'auto'
 
-    backBtn.onclick = () => this.showDebugPanel()
+    backBtn.onclick = () => { this.debugUseWavePlan = useChk.checked; this.debugWavePlan = current.slice(); this.showDebugPanel() }
     resetBtn.onclick = () => { current.splice(0, current.length, 'slime','runner','spinner','splitter','bomber','sniper','weaver','zigzag','tank','shooter','charger','orbiter','teleport','brute','slime'); render() }
-    saveBtn.onclick = () => {
-      this.debugUseWavePlan = useChk.checked
-      this.debugWavePlan = current.slice()
-      this.showDebugPanel()
-    }
+    // Save occurs automatically on Back
   }
   private showDebugPanel() {
     if (!this.debugOverlay) {
