@@ -6,7 +6,7 @@ import changelogRaw from '../CHANGELOG.md?raw'
 import { AudioManager } from './audio'
 import type { ThemeKey } from './audio'
 
-type Vector2 = { x: number; y: 0 }
+type Vector2 = { x: number; y: number }
 
 type EnemyType =
   | 'slime'
