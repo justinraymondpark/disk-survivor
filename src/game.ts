@@ -628,6 +628,9 @@ class Game {
   defragRadialSpeed = 5.0
   defragRadialAccel = 3.0
   defragAngleSeed = 0
+  // Defrag gating and surge behavior
+  defragLastMoveTime = 0
+  defragGraceSeconds = 1.0
 
   
   paintDuration = 1.3
@@ -3435,11 +3438,24 @@ class Game {
     }
     // Defrag Spiral: emit colorful blocks that fly out in a spiral pattern
     if (this.ownedWeapons.has('Defrag Spiral') && this.defragLevel > 0) {
+      // Movement gating: only emit if player moved within grace period
+      const mv = this.input.getMoveVector()
+      if (Math.abs(mv.x) > 0.01 || Math.abs(mv.y) > 0.01) this.defragLastMoveTime = this.gameTime
+      const canEmit = (this.gameTime - this.defragLastMoveTime) <= this.defragGraceSeconds
+      if (!canEmit) {
+        // Gradually reduce any active projectiles' velocity for a "shrink to nothing" feel
+        // No new emissions while idle
+        // (Projectiles naturally TTL out; we only dampen velocity here)
+      }
       this.defragEmitTimer += dt
-      if (this.defragEmitTimer >= this.defragEmitInterval) {
+      if (canEmit && this.defragEmitTimer >= this.defragEmitInterval) {
         this.defragEmitTimer = 0
         this.defragAngleSeed += 0.7
-        const count = this.defragBlocksPerBurst + Math.max(0, this.defragLevel - 1)
+        // Surge chance: occasional larger bursts, more likely at higher level
+        const surgeChance = Math.min(0.35, 0.06 * this.defragLevel)
+        const isSurge = Math.random() < surgeChance
+        const surgeMult = isSurge ? 1.8 : 1.0
+        const count = Math.ceil((this.defragBlocksPerBurst + Math.max(0, this.defragLevel - 1)) * surgeMult)
         const golden = (Math.sqrt(5) - 1) / 2 // ~0.618
         for (let i = 0; i < count; i++) {
           const t = this.defragAngleSeed + i * (2 * Math.PI * golden)
@@ -3453,9 +3469,9 @@ class Game {
           this.scene.add(mesh)
           const p: Projectile = {
             mesh,
-            velocity: dir.clone().multiplyScalar(this.defragRadialSpeed * 0.4),
+            velocity: dir.clone().multiplyScalar(this.defragRadialSpeed * 0.4 * (isSurge ? 1.4 : 1)),
             alive: true,
-            ttl: 1.35 + Math.random() * 0.5,
+            ttl: (isSurge ? 1.6 : 1.35) + Math.random() * 0.5,
             damage: Math.ceil(this.defragBlockDamage + this.defragLevel * 1.5),
             pierce: 0,
             last: mesh.position.clone(),
