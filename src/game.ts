@@ -700,6 +700,11 @@ class Game {
   // Defrag gating and surge behavior
   defragLastMoveTime = 0
   defragGraceSeconds = 1.0
+  // Defrag stamina (drains while emitting, refills when idle)
+  defragStamina = 1.0
+  defragStaminaDrainPerSec = 0.2
+  defragStaminaRegenPerSec = 0.45
+  defragStaminaHud?: HTMLDivElement
 
   
   paintDuration = 1.3
@@ -1689,6 +1694,34 @@ class Game {
     this.hud = document.createElement('div') as HTMLDivElement
     this.hud.id = 'hud'
     this.root.appendChild(this.hud)
+    // Defrag stamina HUD (circular meter above player)
+    this.defragStaminaHud = document.createElement('div') as HTMLDivElement
+    this.defragStaminaHud.style.position = 'fixed'
+    this.defragStaminaHud.style.width = '48px'
+    this.defragStaminaHud.style.height = '48px'
+    this.defragStaminaHud.style.pointerEvents = 'none'
+    this.defragStaminaHud.style.zIndex = '30'
+    this.defragStaminaHud.style.display = 'none'
+    // Simple donut via conic-gradient; background ring and inner hole
+    const setStam = (v: number) => {
+      const pct = Math.max(0, Math.min(1, v))
+      const deg = Math.floor(pct * 360)
+      this.defragStaminaHud!.style.background = `conic-gradient(#ff7a18 ${deg}deg, rgba(0,0,0,0.18) ${deg}deg 360deg)`
+      this.defragStaminaHud!.style.borderRadius = '50%'
+      this.defragStaminaHud!.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.25) inset'
+      ;(this.defragStaminaHud as any)._pct = pct
+    }
+    setStam(1)
+    const inner = document.createElement('div') as HTMLDivElement
+    inner.style.position = 'absolute'
+    inner.style.left = '8px'
+    inner.style.top = '8px'
+    inner.style.right = '8px'
+    inner.style.bottom = '8px'
+    inner.style.background = '#0d0f1a'
+    inner.style.borderRadius = '50%'
+    this.defragStaminaHud.appendChild(inner)
+    this.root.appendChild(this.defragStaminaHud)
 
     // Small fullscreen button (bottom-right)
     const fsFab = document.createElement('button') as HTMLButtonElement
@@ -3670,13 +3703,34 @@ class Game {
       const mv = this.input.getMoveVector()
       if (Math.abs(mv.x) > 0.01 || Math.abs(mv.y) > 0.01) this.defragLastMoveTime = this.gameTime
       const canEmit = (this.gameTime - this.defragLastMoveTime) <= this.defragGraceSeconds
+      const hasStamina = this.defragStamina > 0.02
+      const active = canEmit && hasStamina
+      // Drain or regen stamina
+      if (active) this.defragStamina = Math.max(0, this.defragStamina - this.defragStaminaDrainPerSec * dt)
+      else this.defragStamina = Math.min(1, this.defragStamina + this.defragStaminaRegenPerSec * dt)
+      // Scale drain/regen and duration by level (higher level lasts longer, refills a bit faster)
+      const lvl = Math.max(1, this.defragLevel)
+      const drainScale = 1 / (0.8 + 0.25 * (lvl - 1))
+      const regenScale = 1.0 + 0.12 * (lvl - 1)
+      if (active) this.defragStamina = Math.max(0, this.defragStamina - (this.defragStaminaDrainPerSec * (drainScale - 1)) * dt)
+      else this.defragStamina = Math.min(1, this.defragStamina + (this.defragStaminaRegenPerSec * (regenScale - 1)) * dt)
+      // Update HUD position above player and visibility
+      if (this.defragStaminaHud) {
+        const screen = this.worldToScreen(this.player.group.position.clone().add(new THREE.Vector3(0, 1.5, 0)))
+        this.defragStaminaHud.style.left = `${screen.x - 24}px`
+        this.defragStaminaHud.style.top = `${screen.y - 24}px`
+        const pct = Math.max(0, Math.min(1, this.defragStamina))
+        const deg = Math.floor(pct * 360)
+        this.defragStaminaHud.style.background = `conic-gradient(#ff7a18 ${deg}deg, rgba(0,0,0,0.18) ${deg}deg 360deg)`
+        this.defragStaminaHud.style.display = pct < 0.999 ? 'block' : (canEmit ? 'block' : 'none')
+      }
       if (!canEmit) {
         // Gradually reduce any active projectiles' velocity for a "shrink to nothing" feel
         // No new emissions while idle
         // (Projectiles naturally TTL out; we only dampen velocity here)
       }
       this.defragEmitTimer += dt
-      if (canEmit && this.defragEmitTimer >= this.defragEmitInterval) {
+      if (active && this.defragEmitTimer >= this.defragEmitInterval) {
         this.defragEmitTimer = 0
         this.defragAngleSeed += 0.7
         // Surge chance: occasional larger bursts, more likely at higher level
@@ -6315,6 +6369,9 @@ class Game {
     this.defragAngularSpeed = Math.min(9.0, this.defragAngularSpeed + 0.25)
     this.defragRadialSpeed = Math.min(9.5, this.defragRadialSpeed + 0.25)
     this.defragEmitInterval = Math.max(0.4, this.defragEmitInterval * 0.9)
+    // Make stamina last longer and refill a bit faster with levels
+    this.defragStaminaDrainPerSec = Math.max(0.12, this.defragStaminaDrainPerSec * 0.92)
+    this.defragStaminaRegenPerSec = Math.min(1.2, this.defragStaminaRegenPerSec * 1.06)
   }
 
   private levelUpZip() {
