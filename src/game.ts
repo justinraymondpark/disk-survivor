@@ -566,6 +566,11 @@ class Game {
   pickups: Pickup[] = []
   // Fuzzy Logic: briefly scrambles camera-relative movement mapping
   fuzzyUntil = 0
+  // Fuzzy Logic: funhouse post-process
+  private fuzzyPostTarget?: THREE.WebGLRenderTarget
+  private fuzzyPostScene?: THREE.Scene
+  private fuzzyPostCamera?: THREE.OrthographicCamera
+  private fuzzyPostMaterial?: THREE.ShaderMaterial
   xpOrbs: XPOrb[] = []
   spawnTimer = 0
   fireTimer = 0
@@ -1564,6 +1569,64 @@ class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.setClearColor(0x0d0f1a, 1)
+    // Prepare a small offscreen target for temporary post-processing when Fuzzy Logic is active
+    const rtParams = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat } as any
+    this.fuzzyPostTarget = new THREE.WebGLRenderTarget(1, 1, rtParams)
+    this.fuzzyPostScene = new THREE.Scene()
+    this.fuzzyPostCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    const quadGeom = new THREE.PlaneGeometry(2, 2)
+    this.fuzzyPostMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        time: { value: 0 },
+        amp: { value: 0.015 },
+        freq: { value: new THREE.Vector2(6.0, 4.0) },
+        center: { value: new THREE.Vector2(0.5, 0.5) },
+        aspect: { value: 1.0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv; gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        uniform sampler2D tDiffuse;
+        uniform float time;
+        uniform float amp;
+        uniform vec2 freq;
+        uniform vec2 center;
+        uniform float aspect;
+        varying vec2 vUv;
+        void main() {
+          // Polar funhouse warp: concentric ripples + directional sine bends
+          vec2 uv = vUv;
+          // Make UVs square for radial computations
+          vec2 p = uv - center;
+          p.x *= aspect;
+          float r = length(p);
+          float a = atan(p.y, p.x);
+          // Radial ripple waves that move over time
+          float ripple = sin(10.0 * r - time * 2.2) * 0.5 + 0.5;
+          // Angular wiggle for a kaleidoscope-like shimmer
+          float bend = sin(a * 6.0 + time * 1.6);
+          // Combine into a displacement vector
+          float d = (ripple * 0.6 + bend * 0.4) * amp;
+          // Direction for displacement: rotate 90deg for swirl-like feel
+          vec2 dir = vec2(-p.y, p.x);
+          // Add mild screen-space sine boing to avoid perfect symmetry
+          vec2 wave = vec2(sin((uv.y + time) * freq.x), cos((uv.x - time * 0.8) * freq.y)) * (amp * 0.25);
+          vec2 duv = uv + dir * d + wave;
+          gl_FragColor = texture2D(tDiffuse, duv);
+        }
+      `,
+      depthTest: false,
+      depthWrite: false,
+      transparent: false,
+    })
+    const quad = new THREE.Mesh(quadGeom, this.fuzzyPostMaterial)
+    this.fuzzyPostScene.add(quad)
 
     this.scene = new THREE.Scene()
 
@@ -4646,19 +4709,26 @@ class Game {
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
     if (!this.contextLost) {
-      // Fuzzy Logic post wobble: subtle camera sway without re-render passes
-      if (this.gameTime < this.fuzzyUntil) {
-        const t = this.gameTime
-        const amp = 0.015
-        const offX = Math.sin(t * 2.1) * amp
-        const offY = Math.cos(t * 1.7) * amp
-        const prev = this.renderer.getViewport(new THREE.Vector4())
-        const w = this.renderer.domElement.width
-        const h = this.renderer.domElement.height
-        // shift viewport a few pixels to create a mild sway
-        this.renderer.setViewport(offX * w, offY * h, w, h)
-        this.renderer.render(this.scene, this.camera)
-        this.renderer.setViewport(prev)
+      // Funhouse mirror effect for Fuzzy Logic using a lightweight single-pass shader
+      if (this.gameTime < this.fuzzyUntil && this.fuzzyPostTarget && this.fuzzyPostScene && this.fuzzyPostCamera && this.fuzzyPostMaterial) {
+        const renderer = this.renderer
+        const w = renderer.domElement.width
+        const h = renderer.domElement.height
+        if (this.fuzzyPostTarget.width !== w || this.fuzzyPostTarget.height !== h) {
+          this.fuzzyPostTarget.setSize(w, h)
+        }
+        // 1) Render scene into offscreen target
+        renderer.setRenderTarget(this.fuzzyPostTarget)
+        renderer.clear()
+        renderer.render(this.scene, this.camera)
+        renderer.setRenderTarget(null)
+        // 2) Draw full-screen quad with distortion sampling the offscreen
+        this.fuzzyPostMaterial.uniforms.tDiffuse.value = this.fuzzyPostTarget.texture
+        this.fuzzyPostMaterial.uniforms.time.value = this.gameTime
+        this.fuzzyPostMaterial.uniforms.aspect.value = w / Math.max(1, h)
+        // Scale amplitude a bit on larger screens
+        this.fuzzyPostMaterial.uniforms.amp.value = 0.012 + Math.min(0.02, 0.003 * Math.log2(Math.max(1, (w * h) / (1280 * 720))))
+        renderer.render(this.fuzzyPostScene, this.fuzzyPostCamera)
       } else {
         this.renderer.render(this.scene, this.camera)
       }
