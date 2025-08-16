@@ -523,6 +523,8 @@ class Game {
   projectiles: Projectile[] = []
   enemies: Enemy[] = []
   pickups: Pickup[] = []
+  // Fuzzy Logic: briefly scrambles camera-relative movement mapping
+  fuzzyUntil = 0
   xpOrbs: XPOrb[] = []
   spawnTimer = 0
   fireTimer = 0
@@ -1202,6 +1204,19 @@ class Game {
     perfLab.style.marginLeft = '6px'
     perfRow.appendChild(perfChk); perfRow.appendChild(perfLab)
 
+    // Debug: spawn one Fuzzy Logic pickup on ground
+    const fuzzyRow = document.createElement('div')
+    fuzzyRow.className = 'cardrow'
+    const spawnFuzzyBtn = document.createElement('button'); spawnFuzzyBtn.className = 'card'; spawnFuzzyBtn.textContent = 'Spawn 1 Fuzzy Logic on ground'
+    spawnFuzzyBtn.style.padding = '4px 8px'; spawnFuzzyBtn.style.fontSize = '12px'
+    spawnFuzzyBtn.onclick = () => {
+      const ang = Math.random() * Math.PI * 2
+      const dist = 3 + Math.random() * 4
+      const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * dist, 0, Math.sin(ang) * dist))
+      this.dropPickup(pos, 'fuzzy')
+    }
+    fuzzyRow.appendChild(spawnFuzzyBtn)
+
     // Group checkboxes together and place above buttons
     const toggles = document.createElement('div')
     toggles.className = 'card'
@@ -1211,6 +1226,7 @@ class Game {
     toggles.appendChild(pickRow)
     toggles.appendChild(dmgRow)
     toggles.appendChild(perfRow)
+    toggles.appendChild(fuzzyRow)
 
     wrap.append(title, info, scroll, toggles, btnRow)
 
@@ -2015,17 +2031,18 @@ class Game {
     }
     this.audio.playShoot()
   }
-  dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp') {
+  dropPickup(position: THREE.Vector3, forceKind?: 'heal' | 'xp' | 'fuzzy') {
     // Only drops: Heal (rare) or XP bundles
     const roll = Math.random()
     let kind: Pickup['kind']
     if (forceKind) kind = forceKind
     else {
       const vacOdds = this.plentifulPickups ? 0.06 : 0.015
-      // Make heal ("chicken") rate about 2x vacuum rate
       const healOdds = this.plentifulPickups ? vacOdds * 2 : vacOdds * 2
-      if (roll < vacOdds) kind = 'vacuum'
-      else if (roll < vacOdds + healOdds) kind = 'heal'
+      const fuzzyOdds = 0.003
+      if (roll < fuzzyOdds) kind = 'fuzzy'
+      else if (roll < fuzzyOdds + vacOdds) kind = 'vacuum'
+      else if (roll < fuzzyOdds + vacOdds + healOdds) kind = 'heal'
       else kind = 'xp'
     }
     let mesh: THREE.Mesh
@@ -2037,6 +2054,12 @@ class Game {
       const mat = new THREE.MeshBasicMaterial({ color: 0xffe38a })
       mesh = new THREE.Mesh(prism, mat)
       mesh.rotation.x = -Math.PI / 2
+    } else if (kind === 'fuzzy') {
+      // Black spiky ball
+      const ico = new THREE.IcosahedronGeometry(0.32, 0)
+      const mat = new THREE.MeshBasicMaterial({ color: 0x111111 })
+      mesh = new THREE.Mesh(ico, mat)
+      mesh.position.y = 0.6
     } else if (kind === 'vacuum') {
       // Blue horseshoe magnet
       const m = this.makeHorseshoeMagnet?.()
@@ -2057,6 +2080,9 @@ class Game {
       const heal = Math.ceil(this.player.maxHp * 0.25)
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
       this.updateHPBar()
+    } else if (p.kind === 'fuzzy') {
+      // Invert camera-relative mapping for ~7s
+      this.fuzzyUntil = this.gameTime + 7
     } else if (p.kind === 'vacuum') {
       // Enable a timed global vacuum that pulls all XP and XP bundles toward the player
       this.vacuumActive = true
@@ -3057,7 +3083,8 @@ class Game {
       // Map movement to camera-relative world axes so Up = screen up
       const forward = new THREE.Vector3(); this.camera.getWorldDirection(forward); forward.setY(0).normalize()
       const right = new THREE.Vector3(-forward.z, 0, forward.x) // right-handed
-      const worldMove = right.multiplyScalar(mv.x).add(forward.multiplyScalar(-mv.y))
+      const invert = (this.gameTime < this.fuzzyUntil) ? -1 : 1
+      const worldMove = right.multiplyScalar(mv.x * invert).add(forward.multiplyScalar(-mv.y * invert))
       this.player.group.position.add(worldMove.multiplyScalar(this.player.speed * dt))
       if (!this.isDailyV2) this.checkThemeTiles(); else { this.themeChosen = true; this.themeLocked = true }
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
@@ -3197,7 +3224,8 @@ class Game {
     const mv = this.input.getMoveVector()
     const fwd = new THREE.Vector3(); this.camera.getWorldDirection(fwd); fwd.setY(0).normalize()
     const rgt = new THREE.Vector3(-fwd.z, 0, fwd.x)
-    const moveDir = rgt.multiplyScalar(mv.x).add(fwd.multiplyScalar(-mv.y))
+    const invert = (this.gameTime < this.fuzzyUntil) ? -1 : 1
+    const moveDir = rgt.multiplyScalar(mv.x * invert).add(fwd.multiplyScalar(-mv.y * invert))
     this.player.group.position.add(moveDir.multiplyScalar(this.player.speed * dt))
 
     // Giant spawns periodically
@@ -4491,7 +4519,6 @@ class Game {
         orb.mesh.position.add(toPlayer.multiplyScalar(pull * dt))
       }
     }
-
     // Auto-expire vacuum after time
     if (this.vacuumActive && this.gameTime >= this.vacuumEndTime) this.vacuumActive = false
     // Theme triggers
@@ -6070,7 +6097,6 @@ class Game {
   }
 
   private levelUpBurst() {
-    // Improve radius and cycle, and add pulses on milestones
     this.burstLevel += 1
     this.modemWaveRadius = Math.min(8.0, this.modemWaveRadius + 0.7)
     this.modemWaveInterval = Math.max(0.9, this.modemWaveInterval - 0.2)
@@ -6157,8 +6183,6 @@ class Game {
     this.popupCount = Math.min(14, this.popupCount + 2)
     this.popupDps += 2
   }
-
-  // Removed: Cursor Beam and Antivirus Sweep level-ups
 
   private levelUpPaint() {
     this.paintLevel += 1
