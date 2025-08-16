@@ -5,6 +5,8 @@
   - Purged from weapon lists, debug loadout, level-up choices, inventory UI, loop logic, and emoji mapping
  - Pop-up Storm: now damages reliably; spawns farther from player; scales spawn count and DPS by level
    - Bigger popups; rise-up animation with slight per-popup offsets; fixed per-frame damage integration with kill and toasts
+ - Defrag Spiral: reworked into a spiral of colorful blocks emitted from the player (inspired by the image)
+   - Emits bursts of blocks that fly outward along a spiral; scales with level (more blocks, damage, speed)
 
 ## 0.1.28
 - Weapons: add five new weapons (initial balance, visuals TBD)

@@ -619,6 +619,15 @@ class Game {
   popupCount = 1
   popupDps = 7
 
+  // Defrag Spiral (spiral block emitter)
+  defragEmitInterval = 0.28
+  defragEmitTimer = 0
+  defragBlocksPerBurst = 6
+  defragBlockDamage = 8
+  defragAngularSpeed = 6.0
+  defragRadialSpeed = 6.5
+  defragAngleSeed = 0
+
   
   paintDuration = 1.3
   paintGap = 0.35
@@ -2017,7 +2026,6 @@ class Game {
     const xpValue = undefined
     this.pickups.push({ mesh, kind, alive: true, xpValue })
   }
-
   applyPickup(p: Pickup) {
     if (p.kind === 'heal') {
       const heal = Math.ceil(this.player.maxHp * 0.25)
@@ -2344,10 +2352,14 @@ class Game {
     }
     if (name === 'Defrag Spiral' && this.defragLevel === 0) {
       this.defragLevel = 1
-      this.defragArms = 3
-      this.defragRadius = 1.4
-      this.defragSpeed = 1.5
-      this.defragDps = 10
+      // Initialize spiral emitter params
+      this.defragEmitInterval = 0.28
+      this.defragEmitTimer = 0
+      this.defragBlocksPerBurst = 6
+      this.defragBlockDamage = 8
+      this.defragAngularSpeed = 6.0
+      this.defragRadialSpeed = 6.5
+      this.defragAngleSeed = Math.random() * Math.PI * 2
     }
     if (name === 'Zip Bomb' && this.zipLevel === 0) {
       this.zipLevel = 1
@@ -2661,7 +2673,6 @@ class Game {
     // Jeeves tile (new)
     if (Math.abs(p.x - 12) < 2.5 && Math.abs(p.z + 12) < 2.5) { this.applyTheme('jeeves'); this.themeChosen = true }
   }
-
   // Controller overlay navigation
   updateOverlaySelection(delta: number) {
     if (this.overlay.style.display !== 'flex') return
@@ -3296,7 +3307,6 @@ class Game {
       this.player.facing = yaw
       this.player.group.rotation.y = yaw
     }
-
     // Primary shooting
     this.fireTimer += dt
     const aimActive = this.input.axesRight.x !== 0 || this.input.axesRight.y !== 0
@@ -3421,45 +3431,34 @@ class Game {
         }
       }
     }
-    // Defrag Spiral: orbiting sector beams sweeping outward (with subtle dots)
+    // Defrag Spiral: emit colorful blocks that fly out in a spiral pattern
     if (this.ownedWeapons.has('Defrag Spiral') && this.defragLevel > 0) {
-      const arms = this.defragArms
-      const baseR = this.defragRadius
-      for (let i = 0; i < arms; i++) {
-        const ang = this.gameTime * this.defragSpeed + (i * Math.PI * 2) / arms
-        const segs = 10
-        for (let s = 0; s < segs; s++) {
-          const t = (s + 1) / segs
-          const r = baseR * t
-          const px = this.player.group.position.x + Math.cos(ang) * r
-          const pz = this.player.group.position.z + Math.sin(ang) * r
-          // Damage nearby enemies at these sample points
-          for (const e of this.enemies) {
-            if (!e.alive) continue
-            const dx = e.mesh.position.x - px
-            const dz = e.mesh.position.z - pz
-            if (dx * dx + dz * dz < 0.28) {
-              const dmg = (this.defragDps / segs) * 1.2 * dt
-              e.hp -= dmg
-              this.onEnemyDamaged(e, dmg)
-            }
+      this.defragEmitTimer += dt
+      if (this.defragEmitTimer >= this.defragEmitInterval) {
+        this.defragEmitTimer = 0
+        this.defragAngleSeed += 0.7
+        const count = this.defragBlocksPerBurst + Math.floor((this.defragLevel - 1) * 1)
+        for (let i = 0; i < count; i++) {
+          const t = this.defragAngleSeed + (i * 2 * Math.PI) / count
+          const dir = new THREE.Vector3(Math.cos(t), 0, Math.sin(t)).normalize()
+          const start = this.player.group.position.clone().add(new THREE.Vector3(0, 0.6, 0))
+          const mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPTier5Mat.clone())
+          ;(mesh.material as THREE.MeshBasicMaterial).color.setHex([0xb388ff, 0xffaa66, 0x6699ff, 0xff66cc, 0x55ffee][i % 5])
+          mesh.scale.setScalar(0.6)
+          mesh.position.copy(start)
+          mesh.rotation.y = t
+          this.scene.add(mesh)
+          const p: Projectile = {
+            mesh,
+            velocity: dir.clone().multiplyScalar(this.defragRadialSpeed),
+            alive: true,
+            ttl: 1.1 + Math.random() * 0.5,
+            damage: Math.ceil(this.defragBlockDamage + this.defragLevel * 1.5),
+            pierce: 0,
+            last: mesh.position.clone(),
+            kind: 'bullet'
           }
-          // Visual: transient dot
-          if ((Math.random() < 0.25)) {
-            const dot = new THREE.Mesh(this.sharedDefragDotGeom, this.sharedDefragMat)
-            dot.rotation.x = -Math.PI / 2
-            dot.position.set(px, 0.03, pz)
-            this.scene.add(dot)
-            const born = performance.now()
-            const life = 120
-            const fade = () => {
-              const u = (performance.now() - born) / life
-              if (u >= 1) { this.scene.remove(dot); (dot.material as any).dispose?.(); (dot.geometry as any).dispose?.(); return }
-              ;(dot.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - u)
-              requestAnimationFrame(fade)
-            }
-            requestAnimationFrame(fade)
-          }
+          this.projectiles.push(p)
         }
       }
     }
@@ -3478,12 +3477,23 @@ class Game {
       this.popupTimer += dt
       if (this.popupTimer >= this.popupInterval) {
         this.popupTimer = 0
+        // Ensure popups do not overlap by enforcing min spacing
+        const minSpacing = 2.2
+        const positions: THREE.Vector3[] = []
         const n = this.popupCount
         const life = this.popupDuration
         for (let i = 0; i < n; i++) {
           const ang = Math.random() * Math.PI * 2
           const r = 6.0 + Math.random() * 6.0
-          const pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
+          let pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(ang) * r, 0.65, Math.sin(ang) * r))
+          let tries = 0
+          while (tries < 12 && positions.some(p => p.clone().setY(0).distanceTo(pos.clone().setY(0)) < minSpacing)) {
+            const a2 = Math.random() * Math.PI * 2
+            const r2 = 6.0 + Math.random() * 6.0
+            pos = this.player.group.position.clone().add(new THREE.Vector3(Math.cos(a2) * r2, 0.65, Math.sin(a2) * r2))
+            tries++
+          }
+          positions.push(pos.clone())
           const quad = new THREE.Mesh(this.sharedPopupGeom, this.sharedPopupMat.clone())
           quad.position.copy(pos)
           quad.rotation.x = -Math.PI / 2
@@ -3536,6 +3546,13 @@ class Game {
                   this.updateHud()
                   this.dropXpOnDeath(e)
                 }
+              }
+            }
+            // End early once popup delivered damage for a while; accelerate fade-out
+            if (elapsed > riseOffset + riseDuration + 300) {
+              ;(quad.material as THREE.MeshBasicMaterial).opacity *= 0.85
+              if ((quad.material as THREE.MeshBasicMaterial).opacity < 0.08) {
+                this.scene.remove(quad); (quad.material as any).dispose?.(); (quad.geometry as any).dispose?.(); return
               }
             }
             requestAnimationFrame(tick)
@@ -6043,10 +6060,12 @@ class Game {
 
   private levelUpDefrag() {
     this.defragLevel += 1
-    this.defragArms = Math.min(6, this.defragArms + 1)
-    this.defragRadius = Math.min(3.6, this.defragRadius + 0.3)
-    this.defragDps += 4
-    this.defragSpeed = Math.min(3.2, this.defragSpeed + 0.15)
+    // Spiral emitter scales: more blocks, faster spin, higher damage
+    this.defragBlocksPerBurst = Math.min(14, this.defragBlocksPerBurst + 2)
+    this.defragBlockDamage += 2
+    this.defragAngularSpeed = Math.min(9.0, this.defragAngularSpeed + 0.35)
+    this.defragRadialSpeed = Math.min(9.5, this.defragRadialSpeed + 0.3)
+    this.defragEmitInterval = Math.max(0.16, this.defragEmitInterval * 0.93)
   }
 
   private levelUpZip() {
@@ -6371,7 +6390,6 @@ class Game {
     overlay.className = 'overlay'
     const wrap = document.createElement('div') as HTMLDivElement
     wrap.className = 'card'
-    // Override default card width so our grid can expand
     wrap.style.width = 'auto'
     wrap.style.minWidth = '720px'
     wrap.style.maxWidth = '86vw'
@@ -6432,13 +6450,11 @@ class Game {
       giant: 'MegaVirus — hulking threat; enrages under sustained fire.'
     } as any
 
-    // Basic preview renderer
     const canvas = document.createElement('canvas')
     canvas.style.position = 'absolute'; canvas.style.inset = '0'; canvas.style.width = '100%'; canvas.style.height = '100%'
     view.appendChild(canvas)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-    // Scene and camera must be created before first resize to avoid TDZ
     const scene = new THREE.Scene()
     const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
     const pivot = new THREE.Group(); scene.add(pivot)
@@ -6457,7 +6473,6 @@ class Game {
 
     let currentMesh: THREE.Object3D | undefined
     const buildEnemyMesh = (t: EnemyType) => {
-      // Reuse geometry/color mapping from spawner
       let geom: THREE.BufferGeometry; let color = 0xaa55ff
       switch (t) {
         case 'runner': geom = new THREE.SphereGeometry(0.6, 16, 16); color = 0xffdd55; break
@@ -6480,7 +6495,6 @@ class Game {
       const body = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color }))
       body.position.set(0, 0.6, 0)
       group.add(body)
-      // Add face plane similar to gameplay, but have it rotate with the model (not billboard)
       try {
         const faceTex = this.makeFaceTexture(t)
         geom.computeBoundingSphere()
@@ -6494,7 +6508,6 @@ class Game {
         const faceHeight = t === 'brute' ? 1.1 : Math.max(0.7, radius * 1.2)
         const frontOffset = Math.min(1.2, radius * 1.05)
         face.position.set(0, faceHeight, frontOffset)
-        // Orient so its front is +Z; it will rotate with the group
         face.rotation.y = 0
         group.add(face)
       } catch {}
@@ -6508,7 +6521,6 @@ class Game {
       if (currentMesh) { scene.add(currentMesh as any) }
     }
 
-    // Populate list
     enemies.forEach((t, i) => {
       const b = document.createElement('button') as HTMLButtonElement
       b.className = 'card'; b.style.width = '100%'; b.innerHTML = `<strong>${t.toUpperCase()}</strong>`
