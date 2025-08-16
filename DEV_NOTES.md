@@ -2,6 +2,29 @@
 
 Lightweight doc for active work, backlog, and changelog.
 
+### Conventions for new pickups (and similar gameplay objects)
+
+- Code locations
+  - `dropPickup(...)` and `applyPickup(...)` in `src/game.ts` handle spawn and effect application
+  - Add any new pickup kind to the `Pickup` type
+  - Create the pickup mesh alongside other shared geom/mats if reused
+- Spawn odds
+  - Keep odds centralized in `dropPickup(...)`; document any special cases
+  - Rare/negative pickups should be clearly marked and easy to toggle via debug
+- Debug access
+  - Add a button in Debug Mode to spawn one instance near the player (for QA)
+- HUD/UX
+  - If a pickup applies a timed effect, consider a small HUD indicator and an audio cue
+- Disposal
+  - Ensure pickups are removed from scene and arrays when collected; use `disposeObjectDeep` on custom meshs/materials
+
+Recent example: "Fuzzy Logic" bad pickup
+- Kind: `fuzzy` (added to `Pickup` type)
+- Visual: black spiky ball (icosahedron ~0.32)
+- Effect: inverts camera-relative movement for ~7s (`fuzzyUntil` timestamp)
+- Spawn: very rare (see `dropPickup` odds)
+- Debug: Debug Mode includes a button to spawn one near the player
+
 ### Current state (summary)
 
 - Core loop, UI overlays, controller support, and progression are implemented.
