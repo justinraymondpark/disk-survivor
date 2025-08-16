@@ -1160,7 +1160,7 @@ class Game {
     const jeevesBtn = document.createElement('button'); jeevesBtn.className = 'card'; jeevesBtn.textContent = 'Jeeves Maze Editor…'
     jeevesBtn.style.padding = '4px 8px'; jeevesBtn.style.fontSize = '12px'; jeevesBtn.style.marginTop = '6px'
     jeevesBtn.onclick = () => this.showJeevesEditor()
-    scroll.appendChild(jeevesBtn)
+    // scroll.appendChild(jeevesBtn)
     // Plentiful Pickups toggle
     const pickRow = document.createElement('div')
     pickRow.className = 'cardrow'
@@ -1169,52 +1169,7 @@ class Game {
     const pickLab = document.createElement('span'); pickLab.textContent = ' Plentiful Pickups (heal/magnet)'
     pickLab.style.marginLeft = '6px'
     pickRow.appendChild(pickChk); pickRow.appendChild(pickLab)
-    wrap.appendChild(pickRow)
-    const emojiMap: Record<string, string> = {
-      'CRT Beam': '🔦',
-      'Dot Matrix': '🖨️',
-      'Dial-up Burst': '📞',
-      'SCSI Rocket': '🚀',
-      'Tape Whirl': '🧷',
-      'Magic Lasso': '🪢',
-      'Shield Wall': '🛡️',
-      'Sata Cable Tail': '🪫',
-      'Paint.exe': '🎨',
-      'Defrag Spiral': '🌀',
-      'Zip Bomb': '🧨',
-      'Pop-up Storm': '📣',
-      'Turbo CPU': '⚡',
-      'SCSI Splitter': '🔀',
-      'Overclocked Bus': '🚌',
-      'Copper Heatsink': '🧊',
-      'ECC Memory': '💾',
-      'DMA Burst': '💥',
-      'Magnet Coil': '🧲',
-      'Piercing ISA': '🗡️',
-      'XP Amplifier': '📈',
-    }
-    const makeRow = (label: string, kind: 'weapon' | 'upgrade') => {
-      const row = document.createElement('div')
-      row.className = 'card dbg-row'
-      row.style.padding = '4px'
-      row.style.display = 'flex'
-      row.style.alignItems = 'center'
-      row.style.justifyContent = 'space-between'
-      const emoji = emojiMap[label] ?? '•'
-      const name = document.createElement('div'); name.innerHTML = `<strong>${emoji} ${label}</strong>`
-      const controls = document.createElement('div')
-      controls.style.display = 'flex'; controls.style.gap = '6px'; controls.style.alignItems = 'center'
-      const chk = document.createElement('input'); chk.type = 'checkbox'
-      const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = '1'; lvl.style.width = '52px'
-      controls.appendChild(chk); controls.appendChild(document.createTextNode('Lv')); controls.appendChild(lvl)
-      row.appendChild(name); row.appendChild(controls)
-      ;(row as any).__kind = kind; (row as any).__name = label; (row as any).__chk = chk; (row as any).__lvl = lvl
-      return row
-    }
-    const weapons = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm']
-    const upgrades = ['Turbo CPU','SCSI Splitter','Overclocked Bus','Copper Heatsink','ECC Memory','DMA Burst','Magnet Coil','Piercing ISA','XP Amplifier']
-    weapons.forEach(w => form.appendChild(makeRow(w, 'weapon')))
-    upgrades.forEach(u => form.appendChild(makeRow(u, 'upgrade')))
+    // wrap.appendChild(pickRow)
     const btnRow = document.createElement('div')
     btnRow.style.display = 'flex'; btnRow.style.justifyContent = 'space-between'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '12px'
     const backBtn = document.createElement('button'); backBtn.className = 'card'; backBtn.textContent = 'Back'
@@ -1268,8 +1223,10 @@ class Game {
     const weaponsBtn = document.createElement('button'); weaponsBtn.className = 'card'; weaponsBtn.textContent = 'Weapons…'
     const upgradesBtn = document.createElement('button'); upgradesBtn.className = 'card'; upgradesBtn.textContent = 'Upgrades…'
     const togglesBtn = document.createElement('button'); togglesBtn.className = 'card'; togglesBtn.textContent = 'Toggles…'
-    subBtnRow.append(weaponsBtn, upgradesBtn, togglesBtn)
-    wrap.append(title, info, subBtnRow, scroll, btnRow)
+    const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.textContent = 'Waves…'
+    const jeevesBtn2 = document.createElement('button'); jeevesBtn2.className = 'card'; jeevesBtn2.textContent = 'Jeeves…'
+    subBtnRow.append(weaponsBtn, upgradesBtn, togglesBtn, wavesBtn, jeevesBtn2)
+    wrap.append(title, info, subBtnRow, btnRow)
 
     // Sub-modal handlers
     const openWeapons = () => {
@@ -1343,26 +1300,8 @@ class Game {
     weaponsBtn.onclick = openWeapons
     upgradesBtn.onclick = openUpgrades
     togglesBtn.onclick = openToggles
-
-    // Waves submenu button
-    const wavesBtn = document.createElement('button'); wavesBtn.className = 'card'; wavesBtn.innerHTML = 'Waves…'
     wavesBtn.onclick = () => this.showWavesSubmenu()
-    wavesBtn.style.marginTop = '6px'
-    wavesBtn.style.padding = '4px 8px'
-    wavesBtn.style.fontSize = '12px'
-    // Move Waves and Kernel Panic into bottom actions
-    const kpRow = document.createElement('label') as HTMLLabelElement
-    kpRow.style.display = 'inline-flex'; kpRow.style.alignItems = 'center'; kpRow.style.gap = '6px'
-    kpRow.className = 'card'
-    kpRow.style.padding = '4px 8px'
-    kpRow.style.fontSize = '12px'
-    const kpChk = document.createElement('input'); kpChk.type = 'checkbox'; kpChk.checked = this.kernelPanic
-    const kpLab = document.createElement('span'); kpLab.textContent = 'Kernel Panic'
-    kpRow.appendChild(kpChk); kpRow.appendChild(kpLab)
-    kpChk.onchange = () => { this.kernelPanic = kpChk.checked; if (this.kernelPanic) this.plentifulPickups = false }
-    wavesBtn.tabIndex = 0; kpRow.tabIndex = 0
-    btnRow.insertBefore(wavesBtn, startBtn)
-    btnRow.appendChild(kpRow)
+    jeevesBtn2.onclick = () => this.showJeevesEditor()
 
     backBtn.onclick = () => { this.debugOverlay!.style.display = 'none' }
     // move focus to bottom buttons
@@ -4432,7 +4371,6 @@ class Game {
       if (!arr) { arr = []; this.spatialMap.set(k, arr) }
       arr.push(e)
     }
-
     // Safety cleanup occasionally to ensure dead enemies don't leave orphan faces/meshes
     if ((this.frameId ?? 0) % 20 === 0) this.cleanDeadEnemies()
     // Update projectiles with damage and pierce
@@ -5215,7 +5153,6 @@ class Game {
 		window.addEventListener('pointermove', this.altTouchOnMove, { passive: true } as any)
 		window.addEventListener('pointerup', this.altTouchOnUp, { passive: true } as any)
   }
-
   private cycleAltFloppies(dir: number) {
     if (this.altFloppies.length === 0) return
     // Reverse cycling so cards flow left-to-right visually
@@ -6001,7 +5938,6 @@ class Game {
     }
     tick()
   }
-
   private explodeAt(center: THREE.Vector3, radius: number, baseDamage: number) {
     // Visual flash ring similar to shockwave
     const ringGeom = new THREE.RingGeometry(radius * 0.6, radius * 0.62, 32)
