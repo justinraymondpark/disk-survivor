@@ -725,6 +725,7 @@ class Game {
   altNavCooldown = 0
   altInsertAnim?: { m: THREE.Mesh; t: number; dur: number; start: THREE.Vector3; end: THREE.Vector3; startR: number; endR: number; startRX: number; endRX: number; onDone: () => void }
   altEnterDebounceUntil = 0
+  altRouting = false
   altBgMesh?: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>
 	altHiddenDom?: HTMLElement[]
 	altTouchOnDown?: (e: PointerEvent) => void
@@ -1236,6 +1237,7 @@ class Game {
       const list = document.createElement('div'); list.style.display = 'grid'; list.style.gap = '6px'
       const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
       const form = document.createElement('div')
+      const capNote = document.createElement('div'); capNote.className = 'carddesc'; capNote.textContent = 'Note: max 5 weapons per run.'
       const mk = (name: string) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
         const emoji = { 'CRT Beam':'📺','Dot Matrix':'🖨️','Dial-up Burst':'📞','SCSI Rocket':'🚀','Tape Whirl':'📼','Magic Lasso':'🪢','Shield Wall':'🛡️','Sata Cable Tail':'🔌','Paint.exe':'🎨','Defrag Spiral':'🌀','Zip Bomb':'🧨','Pop-up Storm':'📣' }[name] || '•'
@@ -1243,7 +1245,12 @@ class Game {
         const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
         const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedWeapons.has(name)
         const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedWeapons.get(name) ?? 1); lvl.style.width = '52px'
-        chk.onchange = () => { if (chk.checked) this.debugSelectedWeapons.set(name, Number(lvl.value) || 1); else this.debugSelectedWeapons.delete(name) }
+        chk.onchange = () => {
+          if (chk.checked) {
+            if (this.debugSelectedWeapons.size >= this.maxWeapons) { chk.checked = false; return }
+            this.debugSelectedWeapons.set(name, Number(lvl.value) || 1)
+          } else this.debugSelectedWeapons.delete(name)
+        }
         lvl.onchange = () => { if (chk.checked) this.debugSelectedWeapons.set(name, Number(lvl.value) || 1) }
         ctrls.append(chk, document.createTextNode('Lv'), lvl)
         row.append(label, ctrls); form.append(row)
@@ -1251,7 +1258,7 @@ class Game {
       const names = ['CRT Beam','Dot Matrix','Dial-up Burst','SCSI Rocket','Tape Whirl','Magic Lasso','Shield Wall','Sata Cable Tail','Paint.exe','Defrag Spiral','Zip Bomb','Pop-up Storm']
       const render = () => { form.innerHTML = ''; names.filter(n => n.toLowerCase().includes((search.value||'').toLowerCase())).forEach(mk) }
       search.oninput = render; render()
-      panel.append(title, search, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      panel.append(title, search, capNote, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
       back.onclick = () => this.showDebugPanel()
     }
     const openUpgrades = () => {
@@ -1259,6 +1266,7 @@ class Game {
       const title = document.createElement('strong'); title.textContent = 'Upgrades'
       const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Filter upgrades…'; search.className = 'card'; (search.style as any).padding = '4px 8px'; (search.style as any).margin = '6px 0'
       const form = document.createElement('div')
+      const capNote = document.createElement('div'); capNote.className = 'carddesc'; capNote.textContent = 'Note: max 5 upgrades per run.'
       const mk = (name: string) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.gap = '8px'; row.style.padding = '4px'
         const emoji = { 'Turbo CPU':'🧠','SCSI Splitter':'🔌','Overclocked Bus':'🧩','Copper Heatsink':'🧱','ECC Memory':'💊','DMA Burst':'💥','Magnet Coil':'🧲','Piercing ISA':'🧷','XP Amplifier':'📈' }[name] || '•'
@@ -1266,7 +1274,12 @@ class Game {
         const ctrls = document.createElement('div'); ctrls.style.display = 'flex'; ctrls.style.gap = '6px'; ctrls.style.alignItems = 'center'
         const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = this.debugSelectedUpgrades.has(name)
         const lvl = document.createElement('input'); lvl.type = 'number'; (lvl as any).min = '1'; (lvl as any).max = '9'; (lvl as any).step = '1'; lvl.value = String(this.debugSelectedUpgrades.get(name) ?? 1); lvl.style.width = '52px'
-        chk.onchange = () => { if (chk.checked) this.debugSelectedUpgrades.set(name, Number(lvl.value) || 1); else this.debugSelectedUpgrades.delete(name) }
+        chk.onchange = () => {
+          if (chk.checked) {
+            if (this.debugSelectedUpgrades.size >= this.maxUpgrades) { chk.checked = false; return }
+            this.debugSelectedUpgrades.set(name, Number(lvl.value) || 1)
+          } else this.debugSelectedUpgrades.delete(name)
+        }
         lvl.onchange = () => { if (chk.checked) this.debugSelectedUpgrades.set(name, Number(lvl.value) || 1) }
         ctrls.append(chk, document.createTextNode('Lv'), lvl)
         row.append(label, ctrls); form.append(row)
@@ -1275,7 +1288,7 @@ class Game {
       const render = () => { form.innerHTML = ''; names.filter(n => n.toLowerCase().includes((search.value||'').toLowerCase())).forEach(mk) }
       search.oninput = render; render()
       const back = document.createElement('button'); back.className = 'card'; back.textContent = 'Back'; back.style.padding = '4px 8px'; back.style.fontSize = '12px'
-      panel.append(title, search, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
+      panel.append(title, search, capNote, form, back); this.debugOverlay!.innerHTML = ''; this.debugOverlay!.append(panel)
       back.onclick = () => this.showDebugPanel()
     }
     const openToggles = () => {
@@ -5104,7 +5117,12 @@ class Game {
       if (!this.altTitleActive) { window.removeEventListener('keydown', onKey); return }
       if (e.key === 'ArrowRight') cycle(1)
       else if (e.key === 'ArrowLeft') cycle(-1)
-      else if (e.key === 'Enter') onChoose(this.altFloppies[0].label as 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')
+      else if (e.key === 'Enter') {
+        if (this.altRouting) return
+        this.altRouting = true
+        onChoose(this.altFloppies[0].label as 'START'|'DAILY'|'DEBUG'|'BOARD'|'BUGS')
+        setTimeout(() => { this.altRouting = false }, 300)
+      }
     }
     window.addEventListener('keydown', onKey)
 		// Touch swipe for mobile: detect horizontal swipes
@@ -6886,7 +6904,12 @@ class Game {
       const sel = floppies[selectIndex]?.mesh
       if (!sel) return
       const selHit = ray.intersectObject(sel, true)[0]
-      if (selHit && !selectTimeline) doSelect(floppies[selectIndex].label as ('START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS'))
+      if (selHit && !selectTimeline) {
+        if (this.altRouting) return
+        this.altRouting = true
+        doSelect(floppies[selectIndex].label as ('START'|'DAILY'|'DAILY2'|'DEBUG'|'BOARD'|'BUGS'))
+        setTimeout(() => { this.altRouting = false }, 300)
+      }
     }
     canvas.addEventListener('click', onClick)
 
