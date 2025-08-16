@@ -1579,10 +1579,12 @@ class Game {
       uniforms: {
         tDiffuse: { value: null },
         time: { value: 0 },
-        amp: { value: 0.015 },
+        amp: { value: 0.035 },
         freq: { value: new THREE.Vector2(6.0, 4.0) },
         center: { value: new THREE.Vector2(0.5, 0.5) },
         aspect: { value: 1.0 },
+        overlayAmp: { value: 0.12 },
+        gamma: { value: 2.2 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1598,6 +1600,8 @@ class Game {
         uniform vec2 freq;
         uniform vec2 center;
         uniform float aspect;
+        uniform float overlayAmp;
+        uniform float gamma;
         varying vec2 vUv;
         void main() {
           // Polar funhouse warp: concentric ripples + directional sine bends
@@ -1617,8 +1621,17 @@ class Game {
           vec2 dir = vec2(-p.y, p.x);
           // Add mild screen-space sine boing to avoid perfect symmetry
           vec2 wave = vec2(sin((uv.y + time) * freq.x), cos((uv.x - time * 0.8) * freq.y)) * (amp * 0.25);
-          vec2 duv = uv + dir * d + wave;
-          gl_FragColor = texture2D(tDiffuse, duv);
+          vec2 duv = clamp(uv + dir * d + wave, vec2(0.001), vec2(0.999));
+          vec3 col0 = texture2D(tDiffuse, uv).rgb;
+          vec3 colD = texture2D(tDiffuse, duv).rgb;
+          // Blend distorted with base to preserve brightness
+          vec3 col = mix(col0, colD, 0.75);
+          // Rainbow overlay (animated gradient)
+          vec3 rainbow = 0.5 + 0.5 * sin(6.2831 * (vec3(uv.y + time * 0.08, uv.y + time * 0.08, uv.y + time * 0.08) + vec3(0.0, 2.094, 4.188)));
+          col = clamp(col + rainbow * overlayAmp, 0.0, 1.0);
+          // Apply simple gamma encode for correct display with custom shader
+          col = pow(col, vec3(1.0 / gamma));
+          gl_FragColor = vec4(col, 1.0);
         }
       `,
       depthTest: false,
@@ -4727,7 +4740,9 @@ class Game {
         this.fuzzyPostMaterial.uniforms.time.value = this.gameTime
         this.fuzzyPostMaterial.uniforms.aspect.value = w / Math.max(1, h)
         // Scale amplitude a bit on larger screens
-        this.fuzzyPostMaterial.uniforms.amp.value = 0.012 + Math.min(0.02, 0.003 * Math.log2(Math.max(1, (w * h) / (1280 * 720))))
+        this.fuzzyPostMaterial.uniforms.amp.value = 0.03 + Math.min(0.04, 0.006 * Math.log2(Math.max(1, (w * h) / (1280 * 720))))
+        // Increase overlay on higher resolutions slightly
+        this.fuzzyPostMaterial.uniforms.overlayAmp.value = 0.14
         renderer.render(this.fuzzyPostScene, this.fuzzyPostCamera)
       } else {
         this.renderer.render(this.scene, this.camera)
