@@ -3416,8 +3416,8 @@ class Game {
               this.dropXpOnDeath(e)
             } else {
               this.audio.playImpact()
-              // Pop-up Storm uses white flash; other sources use native lighten handled elsewhere
-              e.hitTintColor = 0xffffff
+              // Use native-lighten tint (Pop-up Storm uses white; others use shaded native color)
+              e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
               e.hitTintUntil = this.gameTime + 0.06
               // Knockback should push away from the player, not toward
               const awayFromPlayer = e.mesh.position.clone().sub(this.player.group.position).setY(0).normalize().multiplyScalar(0.035)
@@ -3535,7 +3535,7 @@ class Game {
                   this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
                   e.nextDmgToastTime = nowT + 0.2
                 }
-                // Add brief white tint while being hit
+                // Pop-up Storm: explicit white flash; others use native-lighten
                 e.hitTintColor = 0xffffff
                 e.hitTintUntil = this.gameTime + 0.06
                 if (e.hp <= 0) {
