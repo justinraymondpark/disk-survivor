@@ -385,7 +385,7 @@ type Enemy = {
 
 type Pickup = {
   mesh: THREE.Mesh
-  kind: 'heal' | 'xp' | 'vacuum'
+  kind: 'heal' | 'xp' | 'vacuum' | 'fuzzy'
   alive: boolean
   xpValue?: number
 }
@@ -5709,59 +5709,6 @@ class Game {
     this.audio.playEnemyDown()
     this.hitCount += 1
     this.updateHitCounter()
-  }
-  private async toggleFullscreen() {
-    try {
-      const doc: any = document
-      const el: any = document.documentElement
-      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
-      if (!isFull) {
-        if (el.requestFullscreen) await el.requestFullscreen()
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-        else if (el.msRequestFullscreen) await el.msRequestFullscreen()
-      } else {
-        if (doc.exitFullscreen) await doc.exitFullscreen()
-        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
-        else if (doc.msExitFullscreen) await doc.msExitFullscreen()
-      }
-      setTimeout(() => {
-        this.onResize()
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-      }, 150)
-    } catch {}
-  }
-
-  private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
-    if (!this.debugShowDamage) return
-    const screen = this.worldToScreen(pos)
-    const el = document.createElement('div')
-    const shown = Math.max(1, Math.round(amount))
-    el.textContent = `-${shown}`
-    const style = el.style as CSSStyleDeclaration
-    style.position = 'fixed'
-    style.left = `${screen.x}px`
-    style.top = `${screen.y}px`
-    style.transform = 'translate(-50%, -50%)'
-    style.color = color
-    style.fontFamily = 'ui-monospace, monospace'
-    style.fontSize = '13px'
-    style.textShadow = '0 0 6px rgba(0,0,0,0.6)'
-    style.pointerEvents = 'none'
-    style.zIndex = '30'
-    style.opacity = '1'
-    style.transition = 'opacity 500ms, transform 500ms'
-    document.body.appendChild(el)
-    requestAnimationFrame(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%, -90%)' })
-    setTimeout(() => el.remove(), 520)
-  }
-
-  private worldToScreen(p: THREE.Vector3) {
-    const v = p.clone()
-    this._tmpProj.copy(v)
-    this._tmpProj.project(this.camera)
-    const x = (this._tmpProj.x * 0.5 + 0.5) * window.innerWidth
-    const y = (-this._tmpProj.y * 0.5 + 0.5) * window.innerHeight
-    return { x, y }
   }
   private spawnExplosion(source: THREE.Mesh) {
     const pos = source.position.clone()
