@@ -3724,10 +3724,21 @@ class Game {
         this.defragStaminaHud.style.background = `conic-gradient(#ff7a18 ${deg}deg, rgba(0,0,0,0.18) ${deg}deg 360deg)`
         this.defragStaminaHud.style.display = pct < 0.999 ? 'block' : (canEmit ? 'block' : 'none')
       }
-      if (!canEmit) {
+      // If stamina is depleted, quickly damp existing spiral blocks so they vanish
+      if (!hasStamina) {
+        for (const p of this.projectiles) {
+          if (!p.alive) continue
+          if ((p as any).fibo) {
+            p.ttl = Math.min(p.ttl, 0.25)
+            p.velocity.multiplyScalar(0.5)
+          }
+        }
+      } else if (!canEmit) {
         // Gradually reduce any active projectiles' velocity for a "shrink to nothing" feel
-        // No new emissions while idle
-        // (Projectiles naturally TTL out; we only dampen velocity here)
+        for (const p of this.projectiles) {
+          if (!p.alive) continue
+          if ((p as any).fibo) p.velocity.multiplyScalar(0.92)
+        }
       }
       this.defragEmitTimer += dt
       if (active && this.defragEmitTimer >= this.defragEmitInterval) {
@@ -7126,6 +7137,16 @@ class Game {
       const dxNorm = rect.width > 0 ? THREE.MathUtils.clamp(dx / rect.width, -0.9, 0.9) : 0
       // Record normalized drag for render-loop application
       dragDX = dxNorm
+      // If the mouse leaves the window while dragging, cycle to next disk (desktop UX)
+      if (e.pointerType === 'mouse') {
+        const inside = e.clientX >= 0 && e.clientX <= window.innerWidth && e.clientY >= 0 && e.clientY <= window.innerHeight
+        if (!inside) {
+          swipeActive = false
+          dragging = false
+          cycle(dx > 0 ? -1 : 1)
+          ;(overlay.style as any).touchAction = prevTouchAction || ''
+        }
+      }
     }
     const onPointerUp = (ev: PointerEvent) => {
       if (ev.pointerType !== 'touch' && ev.pointerType !== 'mouse') return
