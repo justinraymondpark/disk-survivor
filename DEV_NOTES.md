@@ -13,6 +13,9 @@ Lightweight doc for active work, backlog, and changelog.
   - Rare/negative pickups should be clearly marked and easy to toggle via debug
 - Debug access
   - Add a button in Debug Mode to spawn one instance near the player (for QA)
+- Docs
+  - Update DEV_NOTES (this section) with the new pickup’s kind, visual, effect window, spawn odds, and debug affordance
+  - Update CHANGELOG with a brief note, and README only if player-facing behavior needs surfacing
 - HUD/UX
   - If a pickup applies a timed effect, consider a small HUD indicator and an audio cue
 - Disposal

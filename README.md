@@ -39,7 +39,7 @@ Play online: [garfieldslament.com](https://garfieldslament.com/)
 - Defeat enemies to drop XP and occasional pickups (Heal, XP bundle, Vacuum).
 - Level up to pick 1 of 3 randomized choices: new weapons, weapon level-ups, or upgrades.
 
-### Game reference: systems and content (for future chats)
+### Game reference: systems and content (overview)
 
 #### Weapons (roster + key behavior)
 
