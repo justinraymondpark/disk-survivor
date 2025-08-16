@@ -2022,7 +2022,8 @@ class Game {
     if (forceKind) kind = forceKind
     else {
       const vacOdds = this.plentifulPickups ? 0.06 : 0.015
-      const healOdds = this.plentifulPickups ? 0.33 : 0.12
+      // Make heal ("chicken") rate about 2x vacuum rate
+      const healOdds = this.plentifulPickups ? vacOdds * 2 : vacOdds * 2
       if (roll < vacOdds) kind = 'vacuum'
       else if (roll < vacOdds + healOdds) kind = 'heal'
       else kind = 'xp'
