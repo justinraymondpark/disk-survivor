@@ -4593,7 +4593,24 @@ class Game {
     // Update frustum from current camera
     this._frustumMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._frustumMat)
-    if (!this.contextLost) this.renderer.render(this.scene, this.camera)
+    if (!this.contextLost) {
+      // Fuzzy Logic post wobble: subtle camera sway without re-render passes
+      if (this.gameTime < this.fuzzyUntil) {
+        const t = this.gameTime
+        const amp = 0.015
+        const offX = Math.sin(t * 2.1) * amp
+        const offY = Math.cos(t * 1.7) * amp
+        const prev = this.renderer.getViewport(new THREE.Vector4())
+        const w = this.renderer.domElement.width
+        const h = this.renderer.domElement.height
+        // shift viewport a few pixels to create a mild sway
+        this.renderer.setViewport(offX * w, offY * h, w, h)
+        this.renderer.render(this.scene, this.camera)
+        this.renderer.setViewport(prev)
+      } else {
+        this.renderer.render(this.scene, this.camera)
+      }
+    }
     // Lightweight perf overlay
     if (this.debugPerfOverlay) {
       const now = performance.now()

@@ -25,6 +25,7 @@ Recent example: "Fuzzy Logic" bad pickup
 - Kind: `fuzzy` (added to `Pickup` type)
 - Visual: black spiky ball (icosahedron ~0.32)
 - Effect: inverts camera-relative movement for ~7s (`fuzzyUntil` timestamp)
+ - Visual FX: while active, a lightweight post wobble shifts the renderer viewport a few pixels each frame to simulate drunken sway (amplitude ~1.5% of screen); single render pass retained for perf
 - Spawn: very rare (see `dropPickup` odds)
 - Debug: Debug Mode includes a button to spawn one near the player
 
