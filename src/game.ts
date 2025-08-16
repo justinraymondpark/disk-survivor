@@ -494,6 +494,40 @@ class Game {
     this.aliveEnemies = alive
   }
 
+  private toggleFullscreen() {
+    const doc: any = document
+    const el: any = document.documentElement
+    const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement)
+    if (!isFs) {
+      (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el)
+    } else {
+      (doc.exitFullscreen || doc.webkitExitFullscreen || doc.msExitFullscreen)?.call(doc)
+    }
+  }
+
+  private showDamageToastAt(pos: THREE.Vector3, amount: number, color = '#ffed8a') {
+    if (!this.debugShowDamage) return
+    const screen = this.worldToScreen(pos)
+    const el = document.createElement('div')
+    el.className = 'dmg'
+    el.textContent = String(Math.round(amount))
+    el.style.position = 'fixed'
+    el.style.left = `${Math.round(screen.x)}px`
+    el.style.top = `${Math.round(screen.y)}px`
+    el.style.color = color
+    el.style.fontSize = '11px'
+    el.style.lineHeight = '1'
+    el.style.pointerEvents = 'none'
+    el.style.opacity = '0.95'
+    el.style.transition = 'all 500ms ease-out'
+    document.body.appendChild(el)
+    requestAnimationFrame(() => {
+      el.style.transform = 'translateY(-14px)'
+      el.style.opacity = '0'
+    })
+    setTimeout(() => el.remove(), 520)
+  }
+
   private onEnemyDamaged(e: Enemy, _amount: number) {
     // Brief, low-cost tint using slightly lighter variant of base color (keep original behavior)
     e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
@@ -5743,7 +5777,6 @@ class Game {
     }
     tick()
   }
-
   // More dramatic explosion for bomber
   private spawnStylishExplosion(source: THREE.Mesh) {
     const pos = source.position.clone()
