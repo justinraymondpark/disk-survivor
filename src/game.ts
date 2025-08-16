@@ -7179,7 +7179,7 @@ class Game {
     canvas.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
     canvas.addEventListener('pointermove', onPointerMove, { passive: true } as any)
     canvas.addEventListener('pointerup', onPointerUp, { passive: true } as any)
-    const onOverlayLeave = (e: Event) => {
+    const onOverlayLeave = () => {
       if (!swipeActive) return
       if (selectTimeline) return
       swipeActive = false
