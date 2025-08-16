@@ -1,6 +1,7 @@
 ## 0.1.30
 - Title: fixed rare overlap where BUGS opened with DEBUG; added route debounce for Enter/tap/click and ensured classic title overlay hides before opening any overlay (DEBUG/BUGS/BOARD). Prevented 1-frame flash of old title when 3D overlay appears.
 - Debug: weapons/upgrades sub-modals enforce a cap of 5 selections each; added small note text.
+ - Debug Waves: merged Save into Back (auto-saves Use Custom + order); added touch drag reorder via pointer events; minor UI tweaks.
 
 ## 0.1.29
 - Removal: Removed two weapons from the game

@@ -56,6 +56,7 @@ Recent example: "Fuzzy Logic" bad pickup
   - Safe alt overlay and classic title buttons that open other overlays also hide the classic title first.
 - Debug limits
   - Weapons/Upgrades sub-modals enforce selection caps of 5 each; an attempted 6th reverts the checkbox. A small note clarifies the limit.
+  - Waves modal: Save merged into Back (autosaves custom toggle and order). Touch drag reorder supported via pointer events; container uses touch-action: none.
 
 ### Nice to have
 
