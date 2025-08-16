@@ -121,30 +121,13 @@ class InputManager {
     // Prefer keyboard if any key is pressed
     if (x !== 0 || y !== 0) {
       const lenKb = Math.hypot(x, y) || 1
-      // Map keyboard move to camera-relative world axes so W = up on screen
-      const camDir = new THREE.Vector3()
-      ;(window as any).game?.camera?.getWorldDirection?.(camDir)
-      const camYaw = Math.atan2(camDir.x, camDir.z)
-      const local = new THREE.Vector2(x / lenKb, y / lenKb)
-      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
-      const rx = local.x * cos - local.y * sin
-      const ry = local.x * sin + local.y * cos
-      return { x: rx, y: ry }
+      return { x: x / lenKb, y: y / lenKb }
     }
     // Otherwise, use left stick / touch axes
     const gx = this.axesLeft.x
     const gy = this.axesLeft.y
     if (gx !== 0 || gy !== 0) {
-      // Map left stick to camera-relative world axes
-      const camDir = new THREE.Vector3()
-      ;(window as any).game?.camera?.getWorldDirection?.(camDir)
-      const camYaw = Math.atan2(camDir.x, camDir.z)
-      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
-      const rx = gx * cos - gy * sin
-      const ry = gx * sin + gy * cos
-      // Normalize to keep speed consistent on diagonals
-      const len = Math.hypot(rx, ry) || 1
-      return { x: rx / len, y: ry / len }
+      return { x: gx, y: gy }
     }
     return { x: 0, y: 0 }
   }
@@ -3071,7 +3054,13 @@ class Game {
 
     if (!this.themeChosen) {
       const mv = this.input.getMoveVector()
-      this.player.group.position.add(new THREE.Vector3(mv.x, 0, mv.y).multiplyScalar(this.player.speed * dt))
+      // Map movement to camera-relative world axes so Up = screen up
+      const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
+      const camYaw = Math.atan2(camDir.x, camDir.z)
+      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
+      const rx = mv.x * cos - mv.y * sin
+      const rz = mv.x * sin + mv.y * cos
+      this.player.group.position.add(new THREE.Vector3(rx, 0, rz).multiplyScalar(this.player.speed * dt))
       if (!this.isDailyV2) this.checkThemeTiles(); else { this.themeChosen = true; this.themeLocked = true }
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Allow full rotation control before theme selection
@@ -3208,7 +3197,12 @@ class Game {
     if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = this.input.hasRecentTouch() ? 'block' : 'none'
 
     const mv = this.input.getMoveVector()
-    const moveDir = new THREE.Vector3(mv.x, 0, mv.y)
+    const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
+    const camYaw = Math.atan2(camDir.x, camDir.z)
+    const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
+    const rx = mv.x * cos - mv.y * sin
+    const rz = mv.x * sin + mv.y * cos
+    const moveDir = new THREE.Vector3(rx, 0, rz)
     this.player.group.position.add(moveDir.multiplyScalar(this.player.speed * dt))
 
     // Giant spawns periodically
@@ -4508,7 +4502,6 @@ class Game {
 
     // Theme triggers
     this.checkThemeTiles()
-
     this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
     // Magic Lasso update
     if (this.hasLasso) this.updateLasso()
