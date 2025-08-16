@@ -4,6 +4,7 @@
   - Antivirus Sweep (🧹)
   - Purged from weapon lists, debug loadout, level-up choices, inventory UI, loop logic, and emoji mapping
  - Pop-up Storm: now damages reliably; spawns farther from player; scales spawn count and DPS by level
+   - Bigger popups; rise-up animation with slight per-popup offsets; fixed per-frame damage integration with kill and toasts
 
 ## 0.1.28
 - Weapons: add five new weapons (initial balance, visuals TBD)

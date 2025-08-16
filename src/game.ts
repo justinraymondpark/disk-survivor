@@ -434,7 +434,7 @@ class Game {
   sharedZipMat = new THREE.MeshBasicMaterial({ color: 0x66aaff })
   sharedZipFragGeom = new THREE.SphereGeometry(0.12, 8, 8)
   sharedZipFragMat = new THREE.MeshBasicMaterial({ color: 0x88ccff })
-  sharedPopupGeom = new THREE.PlaneGeometry(1.2, 1.0)
+  sharedPopupGeom = new THREE.PlaneGeometry(1.8, 1.4)
   sharedPopupMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
   sharedDefragMat = new THREE.MeshBasicMaterial({ color: 0x55ffee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending })
   sharedDefragDotGeom = new THREE.CircleGeometry(0.08, 10)
@@ -3492,19 +3492,50 @@ class Game {
           quad.rotation.x = -Math.PI / 2
           this.scene.add(quad)
           const born = performance.now()
+          const startY = pos.y - 0.35
+          const endY = pos.y + 0.15
+          const riseOffset = Math.random() * 200
+          const riseDuration = 300 + Math.random() * 200
+          quad.position.y = startY
+          let lastMs = born
           const tick = () => {
-            const t = (performance.now() - born) / (life * 1000)
+            const nowMs = performance.now()
+            const elapsed = nowMs - born
+            const dtTick = Math.min(0.05, Math.max(0, (nowMs - lastMs) / 1000))
+            lastMs = nowMs
+            const t = elapsed / (life * 1000)
             if (t >= 1) { this.scene.remove(quad); (quad.material as any).dispose?.(); (quad.geometry as any).dispose?.(); return }
             ;(quad.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - t)
+            if (elapsed > riseOffset) {
+              const rp = Math.min(1, (elapsed - riseOffset) / riseDuration)
+              const eased = 1 - (1 - rp) * (1 - rp)
+              quad.position.y = startY + (endY - startY) * eased
+            }
             // Damage on contact
             for (const e of this.enemies) {
               if (!e.alive) continue
               const q = quad.position.clone(); q.y = 0
               const ep = e.mesh.position.clone(); ep.y = 0
               if (q.distanceToSquared(ep) < 1.25 * 1.25) {
-                const dmg = this.popupDps * 1.0 * dt
+                const dmg = this.popupDps * dtTick
                 e.hp -= dmg
                 this.onEnemyDamaged(e, dmg)
+                const nowT = this.gameTime
+                if ((e.nextDmgToastTime ?? 0) <= nowT) {
+                  this.showDamageToastAt(e.mesh.position.clone().setY(0.8), dmg)
+                  e.nextDmgToastTime = nowT + 0.2
+                }
+                if (e.hp <= 0) {
+                  e.alive = false
+                  this.scene.remove(e.mesh)
+                  if (e.face) this.scene.remove(e.face)
+                  this.disposeObjectDeep(e.mesh)
+                  if (e.face) this.disposeObjectDeep(e.face)
+                  this.onEnemyDown()
+                  this.score += 1
+                  this.updateHud()
+                  this.dropXpOnDeath(e)
+                }
               }
             }
             requestAnimationFrame(tick)
