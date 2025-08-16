@@ -3065,11 +3065,11 @@ class Game {
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Allow full rotation control before theme selection
       this.input.updateGamepad()
-      const rx = this.input.axesRight.x
-      const ry = this.input.axesRight.y
-      if (Math.abs(rx) > 0.12 || Math.abs(ry) > 0.12) {
+      const aimRX = this.input.axesRight.x
+      const aimRY = this.input.axesRight.y
+      if (Math.abs(aimRX) > 0.12 || Math.abs(aimRY) > 0.12) {
         // Screen-up mapping: stick to screen yaw, then rotate by camera yaw (ensure left=left)
-        const yawScreen = Math.atan2(-rx, -ry)
+        const yawScreen = Math.atan2(-aimRX, -aimRY)
         const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
         const camYaw = Math.atan2(camDir.x, camDir.z)
         let yaw = yawScreen + camYaw
@@ -4499,7 +4499,6 @@ class Game {
 
     // Auto-expire vacuum after time
     if (this.vacuumActive && this.gameTime >= this.vacuumEndTime) this.vacuumActive = false
-
     // Theme triggers
     this.checkThemeTiles()
     this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
