@@ -7179,6 +7179,22 @@ class Game {
     canvas.addEventListener('pointerdown', onPointerDown, { passive: true } as any)
     canvas.addEventListener('pointermove', onPointerMove, { passive: true } as any)
     canvas.addEventListener('pointerup', onPointerUp, { passive: true } as any)
+    // Safari/macOS: detect leaving the window and advance selection once
+    const onWindowMouseOut = (e: MouseEvent) => {
+      if (!swipeActive) return
+      if (selectTimeline) return
+      const rel = e.relatedTarget as Node | null
+      // When leaving the browser window, relatedTarget is null in Safari/WebKit
+      if (!rel) {
+        const dx = e.clientX - swipeStartX
+        swipeActive = false
+        dragging = false
+        cycle(dx > 0 ? -1 : 1)
+        ;(overlay.style as any).touchAction = prevTouchAction || ''
+      }
+    }
+    window.addEventListener('mouseout', onWindowMouseOut, { passive: true } as any)
+    window.addEventListener('mouseleave', onWindowMouseOut as any, { passive: true } as any)
 
     // Camera tweak sliders (temporary)
     const ctrl = document.createElement('div') as HTMLDivElement
