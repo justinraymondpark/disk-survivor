@@ -46,6 +46,17 @@ Recent example: "Fuzzy Logic" bad pickup
 - Performance polish: consider simple pooling for projectiles/enemies; dispose materials/geometries proactively; reduce overdraw on additive effects.
 - Mobile: investigate touch controls (virtual stick) and UI scaling for small viewports.
 
+### Debug/Title routing notes
+
+- Title classic overlay vs 3D overlay
+  - Classic `titleOverlay` is now hidden immediately when launching the 3D Alt Title overlay to avoid a 1-frame flash and prevent input conflicts.
+  - All routes from 3D overlay (DEBUG/BUGS/BOARD/START/DAILY) explicitly hide `titleOverlay` and set `showTitle = false` before opening the next overlay.
+- Double-trigger guards
+  - Added `altRouting` debounce used across Enter, mouse click, and tap paths in the 3D overlay to prevent double routing (e.g., BUGS and DEBUG appearing together).
+  - Safe alt overlay and classic title buttons that open other overlays also hide the classic title first.
+- Debug limits
+  - Weapons/Upgrades sub-modals enforce selection caps of 5 each; an attempted 6th reverts the checkbox. A small note clarifies the limit.
+
 ### Nice to have
 
 - Meta-progression or run modifiers (curses/boons)
