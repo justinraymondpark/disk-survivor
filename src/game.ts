@@ -3055,12 +3055,10 @@ class Game {
     if (!this.themeChosen) {
       const mv = this.input.getMoveVector()
       // Map movement to camera-relative world axes so Up = screen up
-      const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
-      const camYaw = Math.atan2(camDir.x, camDir.z)
-      const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
-      const rx = mv.x * cos - mv.y * sin
-      const rz = mv.x * sin + mv.y * cos
-      this.player.group.position.add(new THREE.Vector3(rx, 0, rz).multiplyScalar(this.player.speed * dt))
+      const forward = new THREE.Vector3(); this.camera.getWorldDirection(forward); forward.setY(0).normalize()
+      const right = new THREE.Vector3(-forward.z, 0, forward.x) // right-handed
+      const worldMove = right.multiplyScalar(mv.x).add(forward.multiplyScalar(-mv.y))
+      this.player.group.position.add(worldMove.multiplyScalar(this.player.speed * dt))
       if (!this.isDailyV2) this.checkThemeTiles(); else { this.themeChosen = true; this.themeLocked = true }
       this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
       // Allow full rotation control before theme selection
@@ -3197,12 +3195,9 @@ class Game {
     if (this.pauseTouchBtn) this.pauseTouchBtn.style.display = this.input.hasRecentTouch() ? 'block' : 'none'
 
     const mv = this.input.getMoveVector()
-    const camDir = new THREE.Vector3(); this.camera.getWorldDirection(camDir)
-    const camYaw = Math.atan2(camDir.x, camDir.z)
-    const cos = Math.cos(camYaw), sin = Math.sin(camYaw)
-    const rx = mv.x * cos - mv.y * sin
-    const rz = mv.x * sin + mv.y * cos
-    const moveDir = new THREE.Vector3(rx, 0, rz)
+    const fwd = new THREE.Vector3(); this.camera.getWorldDirection(fwd); fwd.setY(0).normalize()
+    const rgt = new THREE.Vector3(-fwd.z, 0, fwd.x)
+    const moveDir = rgt.multiplyScalar(mv.x).add(fwd.multiplyScalar(-mv.y))
     this.player.group.position.add(moveDir.multiplyScalar(this.player.speed * dt))
 
     // Giant spawns periodically
