@@ -528,6 +528,13 @@ class Game {
     setTimeout(() => el.remove(), 520)
   }
 
+  private worldToScreen(v: THREE.Vector3) {
+    const p = v.clone().project(this.camera)
+    const w = Math.max(1, (this.renderer.domElement as HTMLCanvasElement).clientWidth)
+    const h = Math.max(1, (this.renderer.domElement as HTMLCanvasElement).clientHeight)
+    return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * h }
+  }
+
   private onEnemyDamaged(e: Enemy, _amount: number) {
     // Brief, low-cost tint using slightly lighter variant of base color (keep original behavior)
     e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
