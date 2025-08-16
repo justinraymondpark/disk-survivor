@@ -1079,7 +1079,6 @@ class Game {
     let dragIndex = -1
     let touchDragging = false
     let dragFromTouch = -1
-    let lastHoverIndex = -1
     list.addEventListener('dragstart', (e: any) => {
       const el = e.target.closest('.card')
       if (!el) return
@@ -1109,8 +1108,8 @@ class Game {
     })
     list.addEventListener('pointermove', (e: PointerEvent) => {
       if (!touchDragging) return
-      const hovered = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.card.ns-button') as HTMLElement | null
-      lastHoverIndex = getChildIndex(hovered)
+      // hover index not needed currently; we compute target on release
+      void e
     })
     list.addEventListener('pointerup', (e: PointerEvent) => {
       if (!touchDragging) return
@@ -1123,7 +1122,6 @@ class Game {
       }
       touchDragging = false
       dragFromTouch = -1
-      lastHoverIndex = -1
     })
 
     render()
@@ -1913,7 +1911,7 @@ class Game {
     btnRow.appendChild(altBtn)
     this.titleOverlay.appendChild(titleWrap)
     this.titleOverlay.appendChild(btnRow)
-    this.root.appendChild(this.titleOverlay)
+    // Classic title overlay disabled (not appended) to avoid 1-frame flash; 3D overlay is the default title
 
     lbBtn.onclick = () => { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showLeaderboards() } /* implemented below */
     bugBtn.onclick = () => { this.titleOverlay.style.display = 'none'; this.showTitle = false; try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
@@ -1957,8 +1955,9 @@ class Game {
     // Use safe DOM-only Alt Title to avoid GL/context/viewport interactions
     altBtn.onclick = () => this.showAltTitleSafe()
     this.uiSelectIndex = 0
-    // Default to new 3D Alt Title overlay instead of classic title; keep classic hidden to avoid 1-frame flash
-    setTimeout(() => { try { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showAltTitle3DOverlay() } catch {} }, 0)
+    // Default to new 3D Alt Title overlay; disable classic immediately to avoid 1-frame flash
+    try { this.titleOverlay.style.display = 'none'; this.showTitle = false } catch {}
+    this.showAltTitle3DOverlay()
 
     // Changelog overlay (hidden by default)
     this.changelogOverlay = document.createElement('div') as HTMLDivElement
