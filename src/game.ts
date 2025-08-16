@@ -1817,7 +1817,7 @@ class Game {
     // Title overlay
     this.titleOverlay = document.createElement('div') as HTMLDivElement
     this.titleOverlay.className = 'overlay'
-    this.titleOverlay.style.display = 'flex'
+    this.titleOverlay.style.display = 'none'
     this.titleOverlay.style.flexDirection = 'column'
     this.titleOverlay.style.gap = '18px'
     const titleWrap = document.createElement('div')
@@ -1891,8 +1891,8 @@ class Game {
     this.titleOverlay.appendChild(btnRow)
     this.root.appendChild(this.titleOverlay)
 
-    lbBtn.onclick = () => this.showLeaderboards() /* implemented below */
-    bugBtn.onclick = () => { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
+    lbBtn.onclick = () => { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showLeaderboards() } /* implemented below */
+    bugBtn.onclick = () => { this.titleOverlay.style.display = 'none'; this.showTitle = false; try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
 
     const begin = () => {
       this.exitAltTitleCleanup()
@@ -1923,7 +1923,7 @@ class Game {
     if (this.changelogFab) this.changelogFab.style.display = 'inline-flex'
     this.optionsFab?.addEventListener('click', openOptions)
     this.changelogFab?.addEventListener('click', openChangelog)
-    dbgBtn.onclick = () => this.showDebugPanel()
+    dbgBtn.onclick = () => { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showDebugPanel() }
     dailyBtn.onclick = () => {
       this.isDaily = true
       this.dailyId = this.getNewYorkDate()
@@ -1933,8 +1933,8 @@ class Game {
     // Use safe DOM-only Alt Title to avoid GL/context/viewport interactions
     altBtn.onclick = () => this.showAltTitleSafe()
     this.uiSelectIndex = 0
-    // Default to new 3D Alt Title overlay instead of classic title
-    setTimeout(() => { try { this.showAltTitle3DOverlay() } catch {} }, 0)
+    // Default to new 3D Alt Title overlay instead of classic title; keep classic hidden to avoid 1-frame flash
+    setTimeout(() => { try { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showAltTitle3DOverlay() } catch {} }, 0)
 
     // Changelog overlay (hidden by default)
     this.changelogOverlay = document.createElement('div') as HTMLDivElement
@@ -2888,7 +2888,13 @@ class Game {
         if (moveAxis > 0 || dpadRight) this.cycleAltFloppies(1)
         if (moveAxis < 0 || dpadLeft) this.cycleAltFloppies(-1)
       }
-      if (a && performance.now() > (this as any).altEnterDebounceUntil) this.chooseAltFloppy((this.altFloppies[0]?.label as any) ?? 'START')
+      if (a && performance.now() > (this as any).altEnterDebounceUntil) {
+        if (!this.altRouting) {
+          this.altRouting = true
+          this.chooseAltFloppy((this.altFloppies[0]?.label as any) ?? 'START')
+          setTimeout(() => { this.altRouting = false }, 300)
+        }
+      }
       // Animate insertion
       if (this.altInsertAnim) {
         const anim = this.altInsertAnim
@@ -3484,8 +3490,8 @@ class Game {
               e.nextDmgToastTime = nowT + 0.15
             }
             if (e.hp <= 0) {
-              e.alive = false
-              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
+            e.alive = false
+            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.spawnExplosion(e.mesh)
               if (e.face) this.scene.remove(e.face)
               this.disposeObjectDeep(e.mesh)
@@ -3755,7 +3761,7 @@ class Game {
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
-               this.dropXpOnDeath(e)
+              this.dropXpOnDeath(e)
               // Zap effect on kill
               this.spawnZapEffect(wp, e.mesh.position.clone())
             } else {
@@ -5096,12 +5102,18 @@ class Game {
           this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey)
         } else if (lbl === 'BOARD') {
           // Open leaderboards overlay
+          try { this.titleOverlay.style.display = 'none' } catch {}
+          this.showTitle = false
           this.showLeaderboards()
         } else if (lbl === 'BUGS') {
           // Open bug report overlay/screen; fallback to Bestiary if handler missing
+          try { this.titleOverlay.style.display = 'none' } catch {}
+          this.showTitle = false
           try { (this as any).showBugReport?.() } catch {}
           if (!(this as any).showBugReport) this.showBestiary()
         } else {
+          try { this.titleOverlay.style.display = 'none' } catch {}
+          this.showTitle = false
           this.showDebugPanel()
         }
         // Ensure opaque background is removed before gameplay
@@ -6698,7 +6710,7 @@ class Game {
     }
     const start = makeBtn('Start', () => { overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.pauseDebounceUntil = performance.now() + 400; this.audio.startMusic('default' as ThemeKey) })
     const daily = makeBtn('Daily Disk', () => { this.isDaily = true; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.pauseDebounceUntil = performance.now() + 400; this.audio.startMusic('default' as ThemeKey) })
-    const dbg = makeBtn('Debug Mode', () => { overlay.remove(); this.altTitleActive = false; this.showDebugPanel() })
+    const dbg = makeBtn('Debug Mode', () => { overlay.remove(); this.altTitleActive = false; this.titleOverlay.style.display = 'none'; this.showTitle = false; this.showDebugPanel() })
     const boards = makeBtn('Leaderboards', () => { overlay.remove(); this.altTitleActive = false; this.showLeaderboards() })
     const beta3d = makeBtn('3D (beta)', () => { overlay.remove(); this.showAltTitle3DOverlay() })
     grid.append(start, daily, dbg, boards, beta3d)
@@ -6716,6 +6728,9 @@ class Game {
   private showAltTitle3DOverlay() {
     // Use a separate canvas and renderer so we never touch the main scene/camera
     this.altTitleActive = true
+    // Ensure classic title is hidden to prevent 1-frame flicker and input conflicts
+    try { this.titleOverlay.style.display = 'none' } catch {}
+    this.showTitle = false
     const overlay = document.createElement('div') as HTMLDivElement
     overlay.className = 'overlay'
     overlay.style.display = 'flex'
@@ -6874,7 +6889,12 @@ class Game {
       if (selectTimeline) return
       if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') cycle(1)
       else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') cycle(-1)
-      else if (e.key === 'Enter') doSelect((floppies[selectIndex]?.label as any) || 'START')
+      else if (e.key === 'Enter') {
+        if (this.altRouting) return
+        this.altRouting = true
+        doSelect((floppies[selectIndex]?.label as any) || 'START')
+        setTimeout(() => { this.altRouting = false }, 300)
+      }
     }
     window.addEventListener('keydown', onKey)
     let selectTimeline: {
@@ -6959,7 +6979,12 @@ class Game {
         mouse.y = -(((ev.clientY - rectC.top) / rectC.height) * 2 - 1)
         ray.setFromCamera(mouse, camera)
         const sel = floppies[selectIndex]?.mesh
-        if (sel && ray.intersectObject(sel, true).length > 0 && !selectTimeline) doSelect(floppies[selectIndex].label)
+        if (sel && ray.intersectObject(sel, true).length > 0 && !selectTimeline) {
+          if (this.altRouting) return
+          this.altRouting = true
+          doSelect(floppies[selectIndex].label)
+          setTimeout(() => { this.altRouting = false }, 300)
+        }
       }
       swipeActive = false
       dragging = false
@@ -7223,9 +7248,9 @@ class Game {
           if (lbl === 'START') { this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'DAILY') { this.isDaily = true; this.isDailyV2 = false; this.dailyId = this.getNewYorkDate(); this.buildDailyPlan(this.dailyId); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
           else if (lbl === 'DAILY2') { this.isDaily = false; this.isDailyV2 = true; this.dailyIdV2 = this.getDailyV2Id(); this.buildDailyV2Config(this.dailyIdV2); this.titleOverlay.style.display = 'none'; this.showTitle = false; this.audio.startMusic('default' as ThemeKey) }
-          else if (lbl === 'BOARD') this.showLeaderboards()
-          else if (lbl === 'BUGS') { try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
-          else this.showDebugPanel()
+          else if (lbl === 'BOARD') { try { this.titleOverlay.style.display = 'none' } catch {}; this.showTitle = false; this.showLeaderboards() }
+          else if (lbl === 'BUGS') { try { this.titleOverlay.style.display = 'none' } catch {}; this.showTitle = false; try { (this as any).showBugReport?.() } catch {}; if (!(this as any).showBugReport) this.showBestiary() }
+          else { try { this.titleOverlay.style.display = 'none' } catch {}; this.showTitle = false; this.showDebugPanel() }
           return
         }
       }
