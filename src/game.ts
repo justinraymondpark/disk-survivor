@@ -620,12 +620,13 @@ class Game {
   popupDps = 7
 
   // Defrag Spiral (spiral block emitter)
-  defragEmitInterval = 0.28
+  defragEmitInterval = 1.2
   defragEmitTimer = 0
-  defragBlocksPerBurst = 6
-  defragBlockDamage = 8
-  defragAngularSpeed = 6.0
-  defragRadialSpeed = 6.5
+  defragBlocksPerBurst = 3
+  defragBlockDamage = 6
+  defragAngularSpeed = 4.0
+  defragRadialSpeed = 5.0
+  defragRadialAccel = 3.0
   defragAngleSeed = 0
 
   
@@ -3437,9 +3438,10 @@ class Game {
       if (this.defragEmitTimer >= this.defragEmitInterval) {
         this.defragEmitTimer = 0
         this.defragAngleSeed += 0.7
-        const count = this.defragBlocksPerBurst + Math.floor((this.defragLevel - 1) * 1)
+        const count = this.defragBlocksPerBurst + Math.max(0, this.defragLevel - 1)
+        const golden = (Math.sqrt(5) - 1) / 2 // ~0.618
         for (let i = 0; i < count; i++) {
-          const t = this.defragAngleSeed + (i * 2 * Math.PI) / count
+          const t = this.defragAngleSeed + i * (2 * Math.PI * golden)
           const dir = new THREE.Vector3(Math.cos(t), 0, Math.sin(t)).normalize()
           const start = this.player.group.position.clone().add(new THREE.Vector3(0, 0.6, 0))
           const mesh = new THREE.Mesh(this.sharedXPCubeGeom, this.sharedXPTier5Mat.clone())
@@ -3450,14 +3452,15 @@ class Game {
           this.scene.add(mesh)
           const p: Projectile = {
             mesh,
-            velocity: dir.clone().multiplyScalar(this.defragRadialSpeed),
+            velocity: dir.clone().multiplyScalar(this.defragRadialSpeed * 0.4),
             alive: true,
-            ttl: 1.1 + Math.random() * 0.5,
+            ttl: 1.35 + Math.random() * 0.5,
             damage: Math.ceil(this.defragBlockDamage + this.defragLevel * 1.5),
             pierce: 0,
             last: mesh.position.clone(),
             kind: 'bullet'
           }
+          ;(p as any).fibo = { t0: performance.now(), seed: this.defragAngleSeed, dir }
           this.projectiles.push(p)
         }
       }
@@ -4307,6 +4310,19 @@ class Game {
           this.scene.remove(p.mesh)
           continue
         }
+      }
+
+      // Optional: add Fibonacci spiral radial acceleration to Defrag Spiral projectiles
+      if ((p as any).fibo) {
+        const fi = (p as any).fibo
+        const age = (performance.now() - fi.t0) / 1000
+        const spin = this.defragAngularSpeed
+        // Slowly rotate direction while accelerating radially
+        const yaw = age * spin
+        const rot = new THREE.Matrix4().makeRotationY(yaw)
+        const base = fi.dir.clone().applyMatrix4(rot).normalize()
+        const speed = this.defragRadialSpeed + this.defragRadialAccel * age
+        p.velocity.copy(base.multiplyScalar(speed))
       }
 
       // Swept collision against enemies via spatial hash
@@ -6060,12 +6076,12 @@ class Game {
 
   private levelUpDefrag() {
     this.defragLevel += 1
-    // Spiral emitter scales: more blocks, faster spin, higher damage
-    this.defragBlocksPerBurst = Math.min(14, this.defragBlocksPerBurst + 2)
+    // Spiral emitter scales: more blocks, faster spin, higher damage; emits more frequently at high levels
+    this.defragBlocksPerBurst = Math.min(14, this.defragBlocksPerBurst + 1)
     this.defragBlockDamage += 2
-    this.defragAngularSpeed = Math.min(9.0, this.defragAngularSpeed + 0.35)
-    this.defragRadialSpeed = Math.min(9.5, this.defragRadialSpeed + 0.3)
-    this.defragEmitInterval = Math.max(0.16, this.defragEmitInterval * 0.93)
+    this.defragAngularSpeed = Math.min(9.0, this.defragAngularSpeed + 0.25)
+    this.defragRadialSpeed = Math.min(9.5, this.defragRadialSpeed + 0.25)
+    this.defragEmitInterval = Math.max(0.4, this.defragEmitInterval * 0.9)
   }
 
   private levelUpZip() {
