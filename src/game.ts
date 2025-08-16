@@ -473,6 +473,27 @@ class Game {
     })
   }
 
+  // Ensure any dead enemies have their meshes/faces removed and disposed;
+  // resync aliveEnemies to actual alive count to prevent spawn jams.
+  private cleanDeadEnemies() {
+    let alive = 0
+    for (const e of this.enemies) {
+      if (e.alive) { alive++; continue }
+      // Remove and dispose body
+      if (e.mesh) { this.scene.remove(e.mesh); this.disposeObjectDeep(e.mesh as any) }
+      // Remove and dispose face/billboard
+      if (e.face) {
+        this.scene.remove(e.face)
+        this.disposeObjectDeep(e.face as any)
+        e.face = undefined
+      }
+      if (e.faceTex) { try { e.faceTex.dispose?.() } catch {}
+        e.faceTex = undefined; e.faceCanvas = undefined
+      }
+    }
+    this.aliveEnemies = alive
+  }
+
   private onEnemyDamaged(e: Enemy, _amount: number) {
     // Brief, low-cost tint using slightly lighter variant of base color (keep original behavior)
     e.hitTintColor = ((e.baseColorHex ?? 0xffffff) & 0xf0f0f0) >>> 0
@@ -3363,10 +3384,12 @@ class Game {
               e.nextDmgToastTime = nowT + 0.15
             }
             if (e.hp <= 0) {
-            e.alive = false
-            this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
+              e.alive = false
+              this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.spawnExplosion(e.mesh)
               if (e.face) this.scene.remove(e.face)
+              this.disposeObjectDeep(e.mesh)
+              if (e.face) this.disposeObjectDeep(e.face)
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
@@ -4261,6 +4284,9 @@ class Game {
       if (!arr) { arr = []; this.spatialMap.set(k, arr) }
       arr.push(e)
     }
+
+    // Safety cleanup occasionally to ensure dead enemies don't leave orphan faces/meshes
+    if ((this.frameId ?? 0) % 20 === 0) this.cleanDeadEnemies()
     // Update projectiles with damage and pierce
     for (const p of this.projectiles) {
       if (!p.alive) continue
@@ -4384,6 +4410,8 @@ class Game {
               this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
               this.spawnExplosion(e.mesh)
               if (e.face) this.scene.remove(e.face)
+              this.disposeObjectDeep(e.mesh)
+              if (e.face) this.disposeObjectDeep(e.face)
               this.onEnemyDown()
               this.score += 1
               this.updateHud()
@@ -4464,7 +4492,6 @@ class Game {
     this.checkThemeTiles()
 
     this.isoPivot.position.lerp(new THREE.Vector3(this.player.group.position.x, 0, this.player.group.position.z), 0.1)
-
     // Magic Lasso update
     if (this.hasLasso) this.updateLasso()
     // Shield Wall blocking
@@ -5168,6 +5195,8 @@ class Game {
             this.aliveEnemies = Math.max(0, this.aliveEnemies - 1)
             this.spawnExplosion(e.mesh)
             if (e.face) this.scene.remove(e.face)
+            this.disposeObjectDeep(e.mesh)
+            if (e.face) this.disposeObjectDeep(e.face)
             this.onEnemyDown()
             this.score += 1
             this.dropXpOnDeath(e)
